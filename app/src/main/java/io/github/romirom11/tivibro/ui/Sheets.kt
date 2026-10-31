@@ -1,6 +1,7 @@
 package io.github.romirom11.tivibro.ui
 
 import androidx.compose.ui.platform.LocalContext
+import io.github.romirom11.tivibro.BuildConfig
 import io.github.romirom11.tivibro.L10n
 import io.github.romirom11.tivibro.R
 import io.github.romirom11.tivibro.plural
@@ -91,12 +92,14 @@ fun Menu(vm: AppViewModel) {
                             MenuItem.GROUPS -> "☰" to str(R.string.menu_groups)
                             MenuItem.GUIDE -> "↻" to str(R.string.menu_guide)
                             MenuItem.SETTINGS -> "⚙︎" to str(R.string.menu_settings)
-                            MenuItem.EXIT -> "⏻" to str(R.string.menu_exit)
+                            MenuItem.UPDATE -> "↑" to str(R.string.menu_update, vm.updater.available?.version?.toString().orEmpty())
+                            MenuItem.EXIT -> "✕" to str(R.string.menu_exit)
                         }
                         T(glyph, 30, if (foc) Tok.OnPlate else Tok.T2, modifier = Modifier.width(54.px))
                         T(title, 28, if (foc) Tok.OnPlate else Tok.T1, FontWeight.Medium, Modifier.weight(1f))
                         val small = when (m) {
                             MenuItem.GUIDE -> vm.status?.substringAfterLast("… ", "")?.takeIf { it.endsWith("%") }.orEmpty()
+                            MenuItem.UPDATE -> vm.updater.progress?.let { "$it%" }.orEmpty()
                             else -> ""
                         }
                         if (small.isNotEmpty()) T(small, 21, if (foc) Tok.OnPlate2 else Tok.T2, FontWeight.Medium)
@@ -190,6 +193,16 @@ private fun SettingsSheet(vm: AppViewModel) {
                 SheetRow(foc, str(R.string.row_language), null) {
                     Value(langLabel(L10n.lang(LocalContext.current)), foc)
                 }
+            }
+            SettingsRow.UPDATE -> {
+                val u = vm.updater
+                val desc = when {
+                    u.progress != null -> str(R.string.update_downloading, u.progress!!)
+                    u.checking -> str(R.string.update_checking)
+                    u.available != null -> str(R.string.update_ready, u.available!!.version.toString())
+                    else -> str(R.string.version, BuildConfig.VERSION_NAME)
+                }
+                SheetRow(foc, str(R.string.row_update), desc)
             }
         }
     }

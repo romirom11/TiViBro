@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -355,11 +354,8 @@ private fun Hints(vm: AppViewModel, modifier: Modifier) {
 
 @Composable
 private fun Setup(vm: AppViewModel) {
-    DisposableEffect(Unit) {
-        vm.setupServer.start()
-        onDispose { }
-    }
-    val address = vm.setupServer.address
+    // started before its address is read: the address only exists once the socket is open
+    val address = remember(vm.setupServer) { vm.setupServer.start(); vm.setupServer.address }
     val qr = remember(address) { address?.let(::qrBitmap) }
     Row(Modifier.fillMaxSize().background(Tok.Ink).padding(horizontal = 160.px), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {

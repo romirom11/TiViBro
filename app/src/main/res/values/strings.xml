@@ -278,4 +278,12 @@
     <string name="page_empty">Поле порожнє.</string>
     <string name="page_not_link">Це не схоже на посилання.</string>
     <string name="page_done">Готово. Дивіться на телевізор.</string>
+    <string name="update_available">Доступне оновлення %1$s</string>
+    <string name="update_latest">У вас найновіша версія</string>
+    <string name="update_check_failed">Не вдалося перевірити оновлення</string>
+    <string name="update_failed">Оновлення не вдалося: %1$s</string>
+    <string name="update_allow">Дозвольте TiViBro встановлювати застосунки, тоді виберіть «Оновити» ще раз</string>
+    <string name="update_checking">Перевіряю…</string>
+    <string name="update_downloading">Завантажую оновлення… %1$d%%</string>
+    <string name="update_ready">Доступна версія %1$s: OK, щоб оновити</string>
 </resources>

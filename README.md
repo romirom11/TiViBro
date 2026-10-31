@@ -163,6 +163,94 @@ A debug build accepts a playlist from adb, which is handy on an emulator:
 adb shell am start -n io.github.romirom11.tivibro/.MainActivity --es playlist 'https://example.com/playlist.m3u'
 ```
 
+### Versions and signing
+
+`versionName` and `versionCode` come from the release tag: `vX.Y.Z` gives version name `X.Y.Z` and version code
+`X*10000 + Y*100 + Z` (v1.4.2 is 10402). Pass it as `-PtivibroVersion=X.Y.Z` or the `TIVIBRO_VERSION` environment
+variable; without it a local build is version `0.1` (code 1).
+
+The release build is signed with the first of these that exists:
+
+1. `~/.config/tivibro/keystore.properties` with `storeFile`, `storePassword`, `keyAlias` and `keyPassword`;
+2. the environment variables `TIVIBRO_KEYSTORE_BASE64`, `TIVIBRO_KEYSTORE_PASSWORD`, `TIVIBRO_KEY_ALIAS` and
+   `TIVIBRO_KEY_PASSWORD` (used by CI);
+3. the debug key, so that anyone can build a release APK without the real one.
+
+Never commit the keystore or its passwords; `.gitignore` already keeps `*.jks`, `*.keystore` and
+`keystore.properties` out.
+
+## Releasing
+
+### One-time setup
+
+Add four repository secrets under Settings > Secrets and variables > Actions on GitHub, taken from
+`~/.config/tivibro/` on the machine that holds the release key:
+
+| Secret | Value |
+| --- | --- |
+| `TIVIBRO_KEYSTORE_BASE64` | the contents of `release.jks.base64` |
+| `TIVIBRO_KEYSTORE_PASSWORD` | `storePassword` from `keystore.properties` |
+| `TIVIBRO_KEY_ALIAS` | `keyAlias` from `keystore.properties` |
+| `TIVIBRO_KEY_PASSWORD` | `keyPassword` from `keystore.properties` |
+
+With the GitHub CLI, from the repository directory:
+
+```sh
+cd ~/.config/tivibro
+gh secret set TIVIBRO_KEYSTORE_BASE64 -R romirom11/TiViBro < release.jks.base64
+gh secret set TIVIBRO_KEYSTORE_PASSWORD -R romirom11/TiViBro --body "$(sed -n 's/^storePassword=//p' keystore.properties)"
+gh secret set TIVIBRO_KEY_ALIAS -R romirom11/TiViBro --body "$(sed -n 's/^keyAlias=//p' keystore.properties)"
+gh secret set TIVIBRO_KEY_PASSWORD -R romirom11/TiViBro --body "$(sed -n 's/^keyPassword=//p' keystore.properties)"
+```
+
+Keep a backup of `~/.config/tivibro/` somewhere safe. Android only accepts an update signed with the same key, so if
+the key is lost, every user has to uninstall and install again.
+
+### Publishing a release
+
+```sh
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+The `Release` workflow (`.github/workflows/release.yml`) then:
+
+1. checks that the tag is `vX.Y.Z` and that the signing secrets are present;
+2. runs the unit tests and builds the signed release APK with version `X.Y.Z`;
+3. publishes a GitHub Release for the tag with `TiViBro-vX.Y.Z.apk` attached and release notes generated from the
+   commits since the previous release.
+
+Building and publishing are separate jobs: the build job sees the signing secrets but can only read the repository,
+and the publish job can create releases but never sees the secrets. Every action is pinned to a commit SHA, and
+Dependabot (`.github/dependabot.yml`) proposes updates to those pins weekly.
+
+Installed copies find the new release on their next check (see below) and offer to update. The `CI` workflow builds
+and tests every other push and every pull request.
+
+## Auto-update
+
+On start, and at most once every 12 hours, TiViBro asks the GitHub API for the latest release of
+`romirom11/TiViBro` (no account or token involved). If its tag is newer than the installed version and it has an APK
+attached:
+
+- a short message says "Update available: X.Y.Z";
+- the main menu gets an "Update to X.Y.Z" item;
+- Settings > Check for updates checks right away, or installs the update when one is waiting.
+
+Choosing the update downloads the APK to the app's cache, showing progress, and hands it to Android's package
+installer, which asks you to confirm. On Android 8 and newer, the first time, Android has to allow TiViBro to install
+apps: TiViBro opens that settings screen for you; switch it on, go back and choose the update again.
+
+Being offline, hitting GitHub's rate limit or a repository without releases are not errors: an automatic check stays
+quiet, and a manual check just says it couldn't check.
+
+For testing, a debug build can read a local JSON shaped like GitHub's `releases/latest` response:
+
+```sh
+adb shell am start -n io.github.romirom11.tivibro/.MainActivity --es updateUrl 'http://10.0.2.2:8000/latest.json'
+adb shell am start -n io.github.romirom11.tivibro/.MainActivity --es updateUrl ''   # back to GitHub
+```
+
 ## Privacy
 
 - Your playlist links, guide links, favourites and bookmarks stay on the device. Nothing is uploaded anywhere.

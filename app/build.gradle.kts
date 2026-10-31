@@ -1,7 +1,41 @@
+import java.util.Base64
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+}
+
+// ---- version: CI passes the tag (vX.Y.Z) as -PtivibroVersion=X.Y.Z or TIVIBRO_VERSION; local builds keep the defaults
+val tivibroVersion: String? = ((findProperty("tivibroVersion") as String?) ?: System.getenv("TIVIBRO_VERSION"))
+    ?.trim()?.removePrefix("v")?.takeIf { it.isNotEmpty() }
+
+/** X.Y.Z -> X*10000 + Y*100 + Z. */
+fun versionCodeOf(v: String): Int {
+    val p = v.split('.').map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 } + listOf(0, 0, 0)
+    return p[0] * 10000 + p[1] * 100 + p[2]
+}
+
+// ---- release signing: ~/.config/tivibro/keystore.properties, else the TIVIBRO_* env vars (CI), else the debug key
+data class Signing(val store: File, val storePassword: String, val alias: String, val keyPassword: String)
+
+val releaseSigning: Signing? = run {
+    val local = File(System.getProperty("user.home"), ".config/tivibro/keystore.properties")
+    val b64 = System.getenv("TIVIBRO_KEYSTORE_BASE64")?.takeIf { it.isNotBlank() }
+    when {
+        local.isFile -> {
+            val p = Properties().apply { local.inputStream().use { load(it) } }
+            Signing(File(p.getProperty("storeFile")), p.getProperty("storePassword"), p.getProperty("keyAlias"), p.getProperty("keyPassword"))
+        }
+        b64 != null -> {
+            val f = layout.buildDirectory.file("signing/release.jks").get().asFile
+            f.parentFile.mkdirs()
+            f.writeBytes(Base64.getMimeDecoder().decode(b64))
+            Signing(f, System.getenv("TIVIBRO_KEYSTORE_PASSWORD"), System.getenv("TIVIBRO_KEY_ALIAS"), System.getenv("TIVIBRO_KEY_PASSWORD"))
+        }
+        else -> null
+    }
 }
 
 android {
@@ -12,8 +46,19 @@ android {
         applicationId = "io.github.romirom11.tivibro"
         minSdk = 23
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1"
+        versionCode = tivibroVersion?.let(::versionCodeOf) ?: 1
+        versionName = tivibroVersion ?: "0.1"
+    }
+
+    signingConfigs {
+        releaseSigning?.let { s ->
+            create("release") {
+                storeFile = s.store
+                storePassword = s.storePassword
+                keyAlias = s.alias
+                keyPassword = s.keyPassword
+            }
+        }
     }
 
     buildTypes {
@@ -21,7 +66,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (releaseSigning != null) "release" else "debug")
         }
     }
     compileOptions {

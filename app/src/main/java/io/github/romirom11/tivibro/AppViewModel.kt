@@ -50,6 +50,7 @@ import io.github.romirom11.tivibro.data.XmltvGuide
 import io.github.romirom11.tivibro.data.inArchive
 import io.github.romirom11.tivibro.data.now
 import io.github.romirom11.tivibro.ui.channelsWord
+import io.github.romirom11.tivibro.update.Updater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -74,8 +75,8 @@ enum class Layer { NONE, LIST }
 enum class Focus { GROUPS, CHANNELS, DAYS, PROGS }
 /** Layers above the list / video, stacked: the menu stays visible under a settings sheet opened from it. */
 enum class Sheet { MENU, SETTINGS, GROUPS, HIDDEN, PLAYLISTS, PLAYLIST, GUIDE, LINK, LANGUAGE }
-enum class MenuItem { GROUPS, GUIDE, SETTINGS, EXIT }
-enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, LANGUAGE }
+enum class MenuItem { GROUPS, GUIDE, SETTINGS, UPDATE, EXIT }
+enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, LANGUAGE, UPDATE }
 /** Actions on one playlist (Sheet.PLAYLIST), top to bottom. */
 enum class PlaylistAction { USE, REFRESH, RENAME, DELETE }
 /** Rows of «Програма передач» (Sheet.GUIDE): the three sources, then the refresh. */
@@ -185,6 +186,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val marks = LinkedHashMap<String, Mark>()
     /** What the database holds (and what was saved since), by [markKey]: [marks] is this with the playlist's channels. */
     private val markRows = LinkedHashMap<String, Db.MarkRow>()
+    /** Bumped when a bookmark is added, removed or marked watched: what shows them reads it to recompose. */
+    var markVersion by mutableIntStateOf(0); private set
 
     /** «Нещодавні»: the last channels tuned, most recent first (ids, per playlist). */
     private var recent = mutableListOf<String>()
@@ -233,6 +236,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** A bookmark the user just removed or marked watched while it plays: the running playback must not write it back
      *  until the user touches the playback again ([showOsd]) or starts something else ([playArchive]). */
     private var markLock: String? = null
+
+    /** Self-update from GitHub Releases. */
+    val updater = Updater(app, http, viewModelScope).also { it.say = { msg -> showToast(msg) } }
 
     val setupServer = SetupServer { link -> viewModelScope.launch { usePlaylist(link) } }
     /** What Sheet.LINK is collecting, and for which playlist. */
@@ -287,6 +293,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Log.i(TAG, "db ${getApplication<Application>().getDatabasePath("tivibro.db").length() / 1024} KB")
         }
         playlist?.let { openPlaylist(it, download = true) }
+        Updater.onInstallError = { showToast(str(R.string.update_failed, it)) }
+        updater.checkIfDue()
         viewModelScope.launch {
             while (true) {
                 delay(1000)
@@ -774,7 +782,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun markKey(ch: Channel, p: Programme) = ch.id + ":" + p.start
 
-    fun watched(ch: Channel, p: Programme): Float = marks[markKey(ch, p)]?.watched ?: 0f
+    fun watched(ch: Channel, p: Programme): Float {
+        markVersion
+        return marks[markKey(ch, p)]?.watched ?: 0f
+    }
 
     private fun resumeList(): List<Mark> =
         marks.values.filter { it.watched < DONE && it.ch.inArchive(it.p) && isShown(it.ch) }.sortedByDescending { it.at }.take(20)
@@ -804,13 +815,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val pl = playlist?.id ?: return
             viewModelScope.launch(dbIo) { db.saveMark(pl, m) }
         }
-        if (isNew) rebuildGroups()
+        if (isNew) { rebuildGroups(); markVersion++ }
     }
 
     fun forgetMark(ch: Channel, p: Programme) {
         lockMarkIfPlaying(ch, p)
         marks.remove(markKey(ch, p))
         markRows.remove(markKey(ch, p))
+        markVersion++
         rebuildGroups()
         syncGroup()
         val pl = playlist?.id ?: return
@@ -823,6 +835,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val m = Mark(ch, p, p.end, now())
         marks[markKey(ch, p)] = m
         markRows[markKey(ch, p)] = Db.MarkRow(ch.id, p, p.end, m.at)
+        markVersion++
         rebuildGroups()
         syncGroup()
         val pl = playlist?.id ?: return
@@ -1133,9 +1146,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         player.stop()
         onExit()
     }
-    fun onStart() { if (!paused && cur != null) player.playWhenReady = true }
+    fun onStart() {
+        if (!paused && cur != null) player.playWhenReady = true
+        updater.checkIfDue()
+    }
 
     override fun onCleared() {
+        Updater.onInstallError = null
         setupServer.stop()
         player.release()
         guideThread.close()
@@ -1350,7 +1367,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** The side menu's rows, top to bottom. */
-    fun menuItems(): List<MenuItem> = MenuItem.entries
+    fun menuItems(): List<MenuItem> = MenuItem.entries.filter { it != MenuItem.UPDATE || updater.available != null }
 
     /** ▲▼ choose, OK opens, ▶ back to the list under it; BACK (or MENU) closes the menu back to playback. */
     private fun menuKey(k: Key) {
@@ -1364,6 +1381,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 MenuItem.GROUPS -> openSheet(Sheet.GROUPS)
                 MenuItem.SETTINGS -> openSheet(Sheet.SETTINGS)
                 MenuItem.GUIDE -> { closeSheets(); refreshGuide(force = true) }
+                MenuItem.UPDATE -> updater.install()
                 MenuItem.EXIT -> exitApp()
             }
             Key.RIGHT -> pop()
@@ -1399,6 +1417,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     SettingsRow.HIDDEN -> openSheet(Sheet.HIDDEN)
                     SettingsRow.GUIDE -> openSheet(Sheet.GUIDE)
                     SettingsRow.LANGUAGE -> openSheet(Sheet.LANGUAGE)
+                    SettingsRow.UPDATE -> if (updater.available != null) updater.install() else updater.check(manual = true)
                 }
                 Sheet.LANGUAGE -> setLanguage(L10n.Lang.entries[rowIdx])
                 Sheet.PLAYLISTS -> playlists.getOrNull(rowIdx)?.let(::openPlaylistSheet) ?: openLink(LinkPurpose.ADD_PLAYLIST, null)

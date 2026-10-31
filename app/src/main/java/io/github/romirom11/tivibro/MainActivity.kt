@@ -36,6 +36,8 @@ class MainActivity : ComponentActivity() {
      *  A release build ignores the extra, so no other app can switch the playlist through the exported activity. */
     private fun takePlaylist(i: Intent?) {
         if (!BuildConfig.DEBUG) return
+        // `--es updateUrl http://10.0.2.2:8000/latest.json` (empty: back to GitHub) tests the updater against a local server
+        i?.getStringExtra("updateUrl")?.let { vm.updater.setDebugUrl(it.ifBlank { null }); vm.updater.check(manual = true) }
         i?.getStringExtra("playlist")?.takeIf { it.startsWith("http") }?.let(vm::usePlaylist)
     }
 

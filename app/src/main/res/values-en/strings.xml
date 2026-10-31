@@ -266,4 +266,12 @@
     <string name="page_empty">The field is empty.</string>
     <string name="page_not_link">That doesn\'t look like a link.</string>
     <string name="page_done">Done. Check your TV.</string>
+    <string name="update_available">Update available: %1$s</string>
+    <string name="update_latest">You\'re on the latest version</string>
+    <string name="update_check_failed">Couldn\'t check for updates</string>
+    <string name="update_failed">Update failed: %1$s</string>
+    <string name="update_allow">Allow TiViBro to install apps, then choose Update again</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_downloading">Downloading the update… %1$d%%</string>
+    <string name="update_ready">Version %1$s is available: press OK to update</string>
 </resources>
