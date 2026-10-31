@@ -50,6 +50,10 @@ import dev.romirom.tivibro.home.HomeCard
 import dev.romirom.tivibro.home.HomeKind
 import dev.romirom.tivibro.home.HomeRow
 import dev.romirom.tivibro.str
+import dev.romirom.tivibro.L10n
+import dev.romirom.tivibro.tmdb.TmdbInfo
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import kotlin.math.max
 
 /** Card size on the 1920×1080 stage (16:9). */
@@ -142,15 +146,43 @@ private fun CardRow(vm: AppViewModel, r: HomeRow, focusedRow: Boolean, col: Int,
 private fun HomeCardView(vm: AppViewModel, c: HomeCard, foc: Boolean, sel: Boolean) {
     val s by animateFloatAsState(if (foc) 1.06f else 1f, tween(140), label = "lift")
     val shape = RoundedCornerShape(18.px)
+    val info = vm.tmdbInfo(c.p)
+    val picture = info?.backdropUrl != null
     Box(
         Modifier.size(CARD_W.px, CARD_H.px)
             .graphicsLayer { scaleX = s; scaleY = s }
             .then(if (foc) Modifier.shadow(14.dp, shape) else Modifier)
             .clip(shape)
-            .background(if (foc) Tok.Plate else if (sel) Color(0x38FFFFFF) else Color(0x1FFFFFFF))
-            .then(if (foc) Modifier else Modifier.border(1.dp, if (sel) Color(0x66FFFFFF) else Tok.Hair, shape)),
+            .background(if (foc && !picture) Tok.Plate else if (sel) Color(0x38FFFFFF) else Color(0x1FFFFFFF)),
     ) {
-        TypeCard(vm, c, foc)
+        when {
+            picture -> PictureCard(vm, c, info!!, foc)
+            info?.posterUrl != null -> Row(Modifier.fillMaxSize()) {
+                Box(Modifier.weight(1f).fillMaxSize()) { TypeCard(vm, c, foc) }
+                AsyncImage(info.posterUrl, null, Modifier.width((CARD_H * 2 / 3).px).fillMaxSize(), contentScale = ContentScale.Crop)
+            }
+            else -> TypeCard(vm, c, foc)
+        }
+        // on a picture the lit plate would hide it: a white frame instead
+        if (foc && picture) Box(Modifier.fillMaxSize().border(4.px, Tok.Plate, shape))
+        else if (!foc) Box(Modifier.fillMaxSize().border(1.dp, if (sel) Color(0x66FFFFFF) else Tok.Hair, shape))
+    }
+}
+
+/** A card on TMDB's backdrop: the picture, a shade under the title, the channel's logo and the badge kept. */
+@Composable
+private fun BoxScope.PictureCard(vm: AppViewModel, c: HomeCard, info: TmdbInfo, foc: Boolean) {
+    AsyncImage(info.backdropUrl, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color(0x33000000), .45f to Color(0x1A000000), 1f to Color(0xE6000000))))
+    Column(Modifier.fillMaxSize().padding(start = 22.px, end = 22.px, top = 18.px, bottom = 20.px)) {
+        Logo(c.ch, 52)
+        Spacer(Modifier.weight(1f))
+        T(c.p.title, 29, Tok.T1, FontWeight.SemiBold, maxLines = 2)
+        Ticking(vm) { t -> CardMeta(c, false, t) }
+    }
+    Ticking(vm) { t ->
+        val f = cardProgress(c, t)
+        if (f != null) Progress(f, Modifier.align(Alignment.BottomStart).fillMaxWidth(), if (c.mark != null) Tok.Arch else Tok.Live, Color(0x33FFFFFF), 5)
     }
 }
 
@@ -211,7 +243,16 @@ private fun cardProgress(c: HomeCard, t: Long): Float? = when {
 @Composable
 private fun HomeDetails(vm: AppViewModel, c: HomeCard, modifier: Modifier) {
     val p = c.p
-    Column(modifier.widthIn(max = 1180.px).padding(bottom = 8.px)) {
+    val info = vm.tmdbInfo(p)
+    Row(modifier.padding(bottom = 8.px), verticalAlignment = Alignment.Bottom) {
+    if (info?.posterUrl != null) {
+        AsyncImage(
+            info.posterUrl, null,
+            Modifier.padding(end = 40.px).size(216.px, 324.px).clip(RoundedCornerShape(16.px)).border(1.dp, Tok.Hair, RoundedCornerShape(16.px)),
+            contentScale = ContentScale.Crop,
+        )
+    }
+    Column(Modifier.widthIn(max = 1180.px)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Logo(c.ch, 56)
             T(c.ch.name, 24, Tok.T2, FontWeight.SemiBold, Modifier.padding(start = 18.px))
@@ -228,14 +269,31 @@ private fun HomeDetails(vm: AppViewModel, c: HomeCard, modifier: Modifier) {
             }
             T("${dayWord(p.start)}, ${hm(p.start)} – ${hm(p.end)}", 22, Tok.T2)
             T(str(R.string.dur_min, (p.duration / 60_000).toInt()), 22, Tok.T2)
+            if (info != null) TmdbMeta(info)
         }
-        val d = vm.desc(p)
-        T(d.orEmpty(), 23, Tok.T2, modifier = Modifier.padding(top = 14.px).heightIn(min = 62.px), maxLines = 2)
+        // a film is best told by TMDB's overview; a show's episode by the guide's own description
+        val guide = vm.desc(p)
+        val d = if (info?.type == "movie") info.overview.ifBlank { guide.orEmpty() } else guide?.ifBlank { info?.overview.orEmpty() } ?: info?.overview.orEmpty()
+        T(d, 23, Tok.T2, modifier = Modifier.padding(top = 14.px).heightIn(min = 62.px), maxLines = 2)
         FlowRow(Modifier.padding(top = 16.px), horizontalArrangement = Arrangement.spacedBy(32.px), verticalArrangement = Arrangement.spacedBy(12.px)) {
             for ((k, label) in homeActions(vm, c)) Row(verticalAlignment = Alignment.CenterVertically) {
                 KeyCap(k); T(label, 21, Tok.T2, modifier = Modifier.padding(start = 10.px))
             }
         }
+    }
+    }
+}
+
+/** «TMDB 7.8 · 2004 · Thriller, Action · 1 h 48 min». */
+@Composable
+private fun TmdbMeta(i: TmdbInfo) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (i.votes > 0) {
+            T("TMDB ", 20, Color(0xFF01B4E4), FontWeight.Black)
+            T(String.format(L10n.locale, "%.1f", i.rating), 22, Tok.T1, FontWeight.SemiBold)
+        }
+        val rest = listOfNotNull(i.year?.toString(), i.genres.take(3).joinToString(", ").ifEmpty { null }, i.runtime?.let { ago(it * MIN) })
+        if (rest.isNotEmpty()) T((if (i.votes > 0) " · " else "") + rest.joinToString(" · "), 22, Tok.T2)
     }
 }
 

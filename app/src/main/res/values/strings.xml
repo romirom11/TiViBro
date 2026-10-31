@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name" translatable="false">TiViBro</string>
+    <!-- TMDB's required attribution, kept in English in every language -->
+    <string name="tmdb_notice" translatable="false">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
 
     <!-- common -->
     <string name="loading">Завантаження…</string>
@@ -327,4 +329,23 @@
     <string name="hint_long_live">довго: наживо</string>
     <string name="hint_when">Коли почнеться</string>
     <string name="hint_pick">Позначити</string>
+
+    <!-- TMDB -->
+    <string name="row_tmdb">Постери й описи з TMDB</string>
+    <string name="row_tmdb_desc">Ряди «Фільми» і «Серіали», рейтинг і жанри. Назви передач надсилаються в TMDB</string>
+    <string name="tmdb_need_key">Спершу додайте ключ TMDB</string>
+    <string name="row_tmdb_key">Свій ключ TMDB</string>
+    <string name="row_tmdb_key_desc">API Read Access Token з themoviedb.org, вводиться з телефона</string>
+    <string name="tmdb_key_builtin">вбудований</string>
+    <string name="tmdb_key_own">свій</string>
+    <string name="link_tmdb_title">Ключ TMDB</string>
+    <string name="link_tmdb_sub">Відскануйте код телефоном і вставте API Read Access Token з налаштувань API на themoviedb.org</string>
+    <string name="page_tmdb_title">Ключ TMDB для TiViBro</string>
+    <string name="page_tmdb_hint">API Read Access Token (v4) з налаштувань API на themoviedb.org. Надішліть «-», щоб повернутися до вбудованого ключа.</string>
+    <string name="tmdb_key_checking">Перевіряю ключ…</string>
+    <string name="tmdb_key_saved">Ключ TMDB збережено</string>
+    <string name="tmdb_key_bad">TMDB не прийняв цей ключ</string>
+    <string name="tmdb_key_removed">Свій ключ TMDB видалено</string>
+    <string name="row_about">Про застосунок</string>
+    <string name="about_tmdb">Постери, рейтинги й описи фільмів: TMDB. Цей продукт використовує TMDB API, але не схвалений і не сертифікований TMDB.</string>
 </resources>

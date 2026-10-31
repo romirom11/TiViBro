@@ -37,6 +37,16 @@ class Prefs(ctx: Context) {
         get() = sp.getBoolean("startHome", false)
         set(v) = sp.edit().putBoolean("startHome", v).apply()
 
+    /** «Постери й описи з TMDB». Global. */
+    var tmdbEnabled: Boolean
+        get() = sp.getBoolean("tmdbOn", true)
+        set(v) = sp.edit().putBoolean("tmdbOn", v).apply()
+
+    /** «Свій ключ TMDB»: the user's own API Read Access Token over the built-in one. Global. */
+    var tmdbKey: String?
+        get() = sp.getString("tmdbKey", null)
+        set(v) = sp.edit().putString("tmdbKey", v).apply()
+
     var guideAt: Long
         get() = sp.getLong("guideAt", 0)
         set(v) = sp.edit().putLong("guideAt", v).apply()

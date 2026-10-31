@@ -325,4 +325,23 @@
     <string name="hint_long_live">долго: в эфире</string>
     <string name="hint_when">Когда начнётся</string>
     <string name="hint_pick">Отметить</string>
+
+    <!-- TMDB -->
+    <string name="row_tmdb">Постеры и описания из TMDB</string>
+    <string name="row_tmdb_desc">Ряды «Фильмы» и «Сериалы», рейтинг и жанры. Названия передач отправляются в TMDB</string>
+    <string name="tmdb_need_key">Сначала добавьте ключ TMDB</string>
+    <string name="row_tmdb_key">Свой ключ TMDB</string>
+    <string name="row_tmdb_key_desc">API Read Access Token с themoviedb.org, вводится с телефона</string>
+    <string name="tmdb_key_builtin">встроенный</string>
+    <string name="tmdb_key_own">свой</string>
+    <string name="link_tmdb_title">Ключ TMDB</string>
+    <string name="link_tmdb_sub">Отсканируйте код телефоном и вставьте API Read Access Token из настроек API на themoviedb.org</string>
+    <string name="page_tmdb_title">Ключ TMDB для TiViBro</string>
+    <string name="page_tmdb_hint">API Read Access Token (v4) из настроек API на themoviedb.org. Отправьте «-», чтобы вернуться к встроенному ключу.</string>
+    <string name="tmdb_key_checking">Проверяю ключ…</string>
+    <string name="tmdb_key_saved">Ключ TMDB сохранён</string>
+    <string name="tmdb_key_bad">TMDB не принял этот ключ</string>
+    <string name="tmdb_key_removed">Свой ключ TMDB удалён</string>
+    <string name="row_about">О приложении</string>
+    <string name="about_tmdb">Постеры, рейтинги и описания фильмов: TMDB. Этот продукт использует TMDB API, но не одобрен и не сертифицирован TMDB.</string>
 </resources>

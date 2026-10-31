@@ -318,4 +318,23 @@
     <string name="hint_long_live">hold: live</string>
     <string name="hint_when">When it starts</string>
     <string name="hint_pick">Tick</string>
+
+    <!-- TMDB -->
+    <string name="row_tmdb">Posters and descriptions from TMDB</string>
+    <string name="row_tmdb_desc">The Movies and TV shows rows, ratings and genres. Programme titles are sent to TMDB</string>
+    <string name="tmdb_need_key">Add a TMDB key first</string>
+    <string name="row_tmdb_key">Your own TMDB key</string>
+    <string name="row_tmdb_key_desc">An API Read Access Token from themoviedb.org, typed on your phone</string>
+    <string name="tmdb_key_builtin">built-in</string>
+    <string name="tmdb_key_own">your own</string>
+    <string name="link_tmdb_title">TMDB key</string>
+    <string name="link_tmdb_sub">Scan the code with your phone and paste the API Read Access Token from the API settings on themoviedb.org</string>
+    <string name="page_tmdb_title">TMDB key for TiViBro</string>
+    <string name="page_tmdb_hint">The API Read Access Token (v4) from the API settings on themoviedb.org. Send «-» to go back to the built-in key.</string>
+    <string name="tmdb_key_checking">Checking the key…</string>
+    <string name="tmdb_key_saved">TMDB key saved</string>
+    <string name="tmdb_key_bad">TMDB did not accept this key</string>
+    <string name="tmdb_key_removed">Your TMDB key was removed</string>
+    <string name="row_about">About</string>
+    <string name="about_tmdb">Posters, ratings and film descriptions: TMDB.</string>
 </resources>

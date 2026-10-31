@@ -268,8 +268,12 @@ adb shell am start -n dev.romirom.tivibro/.MainActivity --es updateUrl ''   # ba
 
 - Your playlist links, guide links, favourites and bookmarks stay on the device. Nothing is uploaded anywhere.
 - No analytics, no crash reporting, no accounts.
-- The app talks only to your provider (playlist and streams), to the guide source you chose, and to the GitHub API to
-  check for updates.
+- The app talks only to your provider (playlist and streams), to the guide source you chose, to the GitHub API to
+  check for updates and, when «Posters and descriptions from TMDB» is on, to TMDB.
+- With TMDB on, the titles of programmes shown on Home (only those, never your whole playlist) are sent to
+  [TMDB](https://www.themoviedb.org) to find posters, ratings and descriptions, and the pictures are loaded from
+  TMDB's image server. Nothing else is sent: no playlist or stream links, no account. Answers are cached on the device
+  for a week. Turn it off in Settings → Home page.
 - The QR setup page is served on your local network only, under a random address, and only while it is on screen.
 
 ## License

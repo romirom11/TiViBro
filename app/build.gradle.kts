@@ -38,6 +38,13 @@ val releaseSigning: Signing? = run {
     }
 }
 
+// ---- TMDB (posters and descriptions on Home): -PtmdbToken, else TIVIBRO_TMDB_TOKEN (CI), else
+//      ~/.config/tivibro/tmdb_token; none: built without one (the user can still add their own in Settings)
+val tmdbToken: String = ((findProperty("tmdbToken") as String?)?.takeIf { it.isNotBlank() }
+    ?: System.getenv("TIVIBRO_TMDB_TOKEN")?.takeIf { it.isNotBlank() }
+    ?: File(System.getProperty("user.home"), ".config/tivibro/tmdb_token").takeIf { it.isFile }?.readText())
+    ?.trim()?.filter { it.isLetterOrDigit() || it in "._-" }.orEmpty()
+
 android {
     namespace = "dev.romirom.tivibro"
     compileSdk = 35
@@ -48,6 +55,7 @@ android {
         targetSdk = 35
         versionCode = tivibroVersion?.let(::versionCodeOf) ?: 1
         versionName = tivibroVersion ?: "0.1"
+        buildConfigField("String", "TMDB_TOKEN", "\"$tmdbToken\"")
     }
 
     signingConfigs {
@@ -101,4 +109,5 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303") // the real org.json: android.jar only has stubs
 }

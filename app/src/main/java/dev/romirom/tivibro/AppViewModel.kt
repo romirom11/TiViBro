@@ -55,6 +55,10 @@ import dev.romirom.tivibro.home.HomeKind
 import dev.romirom.tivibro.home.HomePicks
 import dev.romirom.tivibro.home.HomeRow
 import dev.romirom.tivibro.home.HomeRows
+import dev.romirom.tivibro.home.Filler
+import dev.romirom.tivibro.home.Slot
+import dev.romirom.tivibro.tmdb.Tmdb
+import dev.romirom.tivibro.tmdb.TmdbInfo
 import dev.romirom.tivibro.ui.channelsWord
 import dev.romirom.tivibro.ui.dayWord
 import dev.romirom.tivibro.ui.hm
@@ -85,15 +89,15 @@ enum class Focus { GROUPS, CHANNELS, DAYS, PROGS }
 /** Layers above the list / video, stacked: the menu stays visible under a settings sheet opened from it. */
 enum class Sheet { MENU, SETTINGS, GROUPS, HIDDEN, PLAYLISTS, PLAYLIST, GUIDE, LINK, LANGUAGE, HOME, HOME_SOURCES, HOME_GROUP }
 /** Rows of «Головна сторінка» (Sheet.HOME). */
-enum class HomeSetting { SOURCES }
+enum class HomeSetting { SOURCES, TMDB, TMDB_KEY }
 enum class MenuItem { HOME, GROUPS, GUIDE, SETTINGS, UPDATE, EXIT }
-enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, HOME, STARTUP, LANGUAGE, SCALE, UPDATE }
+enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, HOME, STARTUP, LANGUAGE, SCALE, UPDATE, ABOUT }
 /** Actions on one playlist (Sheet.PLAYLIST), top to bottom. */
 enum class PlaylistAction { USE, REFRESH, RENAME, DELETE }
 /** Rows of «Програма передач» (Sheet.GUIDE): the three sources, then the refresh. */
 enum class GuideRow { AUTO, PLAYLIST, CUSTOM, REFRESH }
 /** What the QR / LAN page (Sheet.LINK) is collecting. */
-enum class LinkPurpose { ADD_PLAYLIST, GUIDE_URL, RENAME }
+enum class LinkPurpose { ADD_PLAYLIST, GUIDE_URL, RENAME, TMDB_KEY }
 /** Where the active playlist's guide is read from right now. */
 sealed class GuideSource {
     data object Segmented : GuideSource()
@@ -258,6 +262,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         homeLoading = homeIndex.building && homeIndex.slots.isEmpty()
         refreshHome()
     }
+    // ---------- TMDB
+    /** «Свій ключ TMDB», else the one built in (BuildConfig.TMDB_TOKEN); null: none, TMDB stays out of sight. */
+    var tmdbOwnKey by mutableStateOf(prefs.tmdbKey?.takeIf { it.isNotBlank() }); private set
+    var tmdbOn by mutableStateOf(prefs.tmdbEnabled); private set
+    val tmdbToken: String? get() = tmdbOwnKey ?: BuildConfig.TMDB_TOKEN.takeIf { it.isNotBlank() }
+    /** TMDB is asked: there is a key and the switch is on. */
+    val tmdbActive: Boolean get() = tmdbOn && tmdbToken != null
+    /** What the lookup thread sends: the key while [tmdbActive], else nothing (and nothing is asked). */
+    @Volatile private var tmdbKeyNow: String? = null
+    var tmdbVersion by mutableIntStateOf(0); private set
+    private val tmdb = Tmdb(http, File(app.cacheDir, "tmdb"), { tmdbKeyNow }) { tmdbVersion++; refreshHome() }
+
     /** Home's guide index is being read for the first time: the rows it feeds are still to come. */
     var homeLoading by mutableStateOf(false); private set
     /** Sources are picked, nothing is loading, and still nothing to show from them. */
@@ -330,6 +346,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             runCatching { db.dropOldGuide() }.onFailure { Log.w(TAG, "db: quick migration failed", it) }
             Log.i(TAG, "db ${getApplication<Application>().getDatabasePath("tivibro.db").length() / 1024} KB")
         }
+        tmdb.lang = Tmdb.tmdbLang(L10n.locale.language)
+        tmdbKeyNow = if (tmdbActive) tmdbToken else null
         playlist?.let { openPlaylist(it, download = true) }
         Updater.onInstallError = { showToast(str(R.string.update_failed, it)) }
         updater.checkIfDue()
@@ -506,6 +524,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             LinkPurpose.RENAME -> SetupServer.Page(
                 str(R.string.page_name_title), str(R.string.page_name_hint), str(R.string.page_save), link = false, value = target?.title.orEmpty(),
             )
+            LinkPurpose.TMDB_KEY -> SetupServer.Page(str(R.string.page_tmdb_title), str(R.string.page_tmdb_hint), str(R.string.page_save), link = false)
         }
         setupServer.onSubmit = { v -> viewModelScope.launch { onLinkAnswer(purpose, v) } }
         setupServer.start()
@@ -523,6 +542,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 pop()
                 showToast(str(R.string.renamed, p.title))
             }
+            LinkPurpose.TMDB_KEY -> setTmdbKey(v)
             LinkPurpose.GUIDE_URL -> {
                 val p = repo.update(id ?: return) { it.copy(guideMode = GuideMode.CUSTOM, guideUrl = v.trim()) } ?: return
                 afterPlaylistEdit(p)
@@ -1485,6 +1505,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     SettingsRow.LANGUAGE -> openSheet(Sheet.LANGUAGE)
                     SettingsRow.SCALE -> stepScale(1, wrap = true)
                     SettingsRow.UPDATE -> if (updater.available != null) updater.install() else updater.check(manual = true)
+                    SettingsRow.ABOUT -> Unit
                 }
                 Sheet.LANGUAGE -> setLanguage(L10n.Lang.entries[rowIdx])
                 Sheet.PLAYLISTS -> playlists.getOrNull(rowIdx)?.let(::openPlaylistSheet) ?: openLink(LinkPurpose.ADD_PLAYLIST, null)
@@ -1510,6 +1531,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 Sheet.HOME -> when (HomeSetting.entries[rowIdx]) {
                     HomeSetting.SOURCES -> openSheet(Sheet.HOME_SOURCES)
+                    HomeSetting.TMDB -> switchTmdb(!tmdbOn || tmdbToken == null)
+                    HomeSetting.TMDB_KEY -> openLink(LinkPurpose.TMDB_KEY, null)
                 }
                 Sheet.HOME_SOURCES -> allGroups.getOrNull(rowIdx)?.let(::openHomeGroup)
                 Sheet.HOME_GROUP -> homeGroup?.let { g -> if (rowIdx == 0) toggleHomeGroup(g) else g.channels.getOrNull(rowIdx - 1)?.let { toggleHomeChannel(g, it) } }
@@ -1533,6 +1556,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val app = getApplication<Application>()
         if (L10n.lang(app) == l) return
         L10n.setLang(app, l)
+        tmdb.lang = Tmdb.tmdbLang(L10n.locale.language)
+        tmdb.reset() // titles, overviews and genres come in the new language
         status = null // already formatted in the old language; the next progress update writes it in the new one
         rebuildGroups()
         cfgVersion++
@@ -1646,6 +1671,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         homeRows = buildHomeRows()
         homeRowIdx = 0
         homeColIdx = 0
+        homeFocused()
     }
 
     private fun closeHome() { if (layer == Layer.HOME) layer = Layer.NONE }
@@ -1667,6 +1693,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         add(HomeKind.NOW, HomePicks.now(slots, t, HOME_NOW_MAX))
         add(HomeKind.STARTED, HomePicks.started(slots, t, ::canArchive, HOME_ROW_MAX))
         add(HomeKind.SOON, HomePicks.soon(slots, t, HOME_ROW_MAX))
+        if (tmdbActive) {
+            val (films, series) = tmdbRows(slots, t)
+            add(HomeKind.FILMS, films)
+            add(HomeKind.SERIES, series)
+        }
         return rows
     }
 
@@ -1681,6 +1712,92 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         homeRowIdx = r
         val cards = homeRows.getOrNull(r)?.cards.orEmpty()
         homeColIdx = cards.indexOfFirst { it.key == focused }.takeIf { it >= 0 } ?: homeColIdx.coerceIn(0, max(0, cards.size - 1))
+    }
+
+    /**
+     * «Фільми» and «Серіали»: programmes of the sources on now or later today that TMDB matched as a film or a show,
+     * what is on now or within the hour first, then by rating; one card per film. Asks TMDB about what it doesn't know
+     * yet: what is on now first, then later programmes that look like films or episodes (a prefix, a year, an episode
+     * marker, or feature length). Only these, never the whole playlist.
+     */
+    private fun tmdbRows(slots: List<Slot>, t: Long): Pair<List<HomeCard>, List<HomeCard>> {
+        val end = dayStart(t) + DAY
+        val asksNow = ArrayList<Tmdb.Ask>()
+        val asksLater = ArrayList<Tmdb.Ask>()
+        val films = ArrayList<Pair<HomeCard, TmdbInfo>>()
+        val series = ArrayList<Pair<HomeCard, TmdbInfo>>()
+        for (s in slots) {
+            var n = 0
+            for (p in s.progs) {
+                if (p.end <= t || p.start >= end) continue
+                if (++n > 10) break
+                if (Filler.isFiller(p.title)) continue
+                val info = tmdb.get(p.title)
+                if (info == null) {
+                    if (tmdb.known(p.title)) continue
+                    val ask = Tmdb.Ask(p.title, (p.duration / MIN).toInt())
+                    if (p.isNow(t)) asksNow += ask else if (p.duration >= 75 * MIN || TMDB_HINT.containsMatchIn(p.title)) asksLater += ask
+                    continue
+                }
+                val kind = if (info.type == "movie") HomeKind.FILMS else HomeKind.SERIES
+                (if (kind == HomeKind.FILMS) films else series) += HomeCard(HomeRows.progKey(kind, s.ch, p), kind, s.ch, p) to info
+            }
+        }
+        tmdb.want(asksNow + asksLater)
+        fun order(l: List<Pair<HomeCard, TmdbInfo>>) = l
+            .sortedWith(compareBy<Pair<HomeCard, TmdbInfo>> { if (it.first.p.start <= t + HOUR) 0 else 1 }.thenByDescending { it.second.rating }.thenBy { it.first.p.start })
+            .distinctBy { it.second.type + it.second.id }.take(HOME_ROW_MAX).map { it.first }
+        return order(films) to order(series)
+    }
+
+    /** What TMDB matched for [p], if it was looked up; never asks (see [tmdbRows], [homeFocused]). */
+    fun tmdbInfo(p: Programme): TmdbInfo? {
+        tmdbVersion
+        return if (tmdbActive) tmdb.get(p.title) else null
+    }
+
+    /** The focused card's programme is looked up first, whatever row it is in. */
+    private fun homeFocused() {
+        if (!tmdbActive) return
+        val c = homeCard() ?: return
+        if (c.mark == null && Filler.isFiller(c.p.title)) return
+        tmdb.want(listOf(Tmdb.Ask(c.p.title, (c.p.duration / MIN).toInt())), first = true)
+    }
+
+    private fun switchTmdb(v: Boolean) {
+        if (v && tmdbToken == null) { showToast(str(R.string.tmdb_need_key)); return }
+        tmdbOn = v
+        prefs.tmdbEnabled = v
+        tmdbKeyNow = if (tmdbActive) tmdbToken else null
+        cfgVersion++
+    }
+
+    /** «Свій ключ TMDB» from the LAN page: checked with TMDB before it is kept; «-» goes back to the built-in one. */
+    private fun setTmdbKey(v: String) {
+        val key = v.trim()
+        if (key == "-" || key.isEmpty()) {
+            tmdbOwnKey = null
+            prefs.tmdbKey = null
+            tmdbKeyNow = if (tmdbActive) tmdbToken else null
+            tmdb.reset()
+            cfgVersion++
+            pop()
+            showToast(str(R.string.tmdb_key_removed))
+            return
+        }
+        showToast(str(R.string.tmdb_key_checking))
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) { Tmdb.check(http, key) }
+            if (!ok) { showToast(str(R.string.tmdb_key_bad)); return@launch }
+            tmdbOwnKey = key
+            prefs.tmdbKey = key
+            if (!tmdbOn) { tmdbOn = true; prefs.tmdbEnabled = true }
+            tmdbKeyNow = tmdbToken
+            tmdb.reset()
+            cfgVersion++
+            if (sheets.lastOrNull() == Sheet.LINK && linkPurpose == LinkPurpose.TMDB_KEY) pop()
+            showToast(str(R.string.tmdb_key_saved))
+        }
     }
 
     /** Reads the sources' now/next again when they changed or it is old; otherwise nothing. */
@@ -1716,6 +1833,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Key.RED -> homeCard()?.ch?.let(::toggleFav)
             else -> Unit
         }
+        if (k == Key.UP || k == Key.DOWN || k == Key.LEFT || k == Key.RIGHT || k == Key.CHUP || k == Key.CHDOWN) homeFocused()
     }
 
     /** OK on a card: the bookmark resumes, «Щойно почалось» starts from the beginning, a live programme plays live, a
@@ -1931,6 +2049,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         /** Where the provider sends an archive it doesn't have (302 Location, segment names). */
         private val STUB = Regex("noarch|/stub", RegexOption.IGNORE_CASE)
         private const val NO_ARCHIVE = "X-TiViBro-No-Archive"
+        /** A later programme worth a TMDB lookup even when it is short: it says it is a film or an episode, or has a year. */
+        private val TMDB_HINT = Regex("""^\s*(х|x|м|д|т)\s*[/\\.]\s*(ф|с)|\b(19|20)\d{2}\b|сезон|серия|серія|season|staffel|\bs\d{1,2}\s*e\d""", RegexOption.IGNORE_CASE)
 
         fun isEpgTeam(url: String) = PlaylistInfo.hostOf(url).let { it == "epg.team" || it.endsWith(".epg.team") }
 

@@ -322,4 +322,23 @@
     <string name="hint_long_live">mantener: en directo</string>
     <string name="hint_when">Cuándo empieza</string>
     <string name="hint_pick">Marcar</string>
+
+    <!-- TMDB -->
+    <string name="row_tmdb">Pósters y descripciones de TMDB</string>
+    <string name="row_tmdb_desc">Las filas Películas y Series, valoraciones y géneros. Los títulos de los programas se envían a TMDB</string>
+    <string name="tmdb_need_key">Primero añade una clave de TMDB</string>
+    <string name="row_tmdb_key">Tu propia clave de TMDB</string>
+    <string name="row_tmdb_key_desc">Un API Read Access Token de themoviedb.org, escrito desde el móvil</string>
+    <string name="tmdb_key_builtin">integrada</string>
+    <string name="tmdb_key_own">propia</string>
+    <string name="link_tmdb_title">Clave de TMDB</string>
+    <string name="link_tmdb_sub">Escanea el código con el móvil y pega el API Read Access Token de los ajustes de API en themoviedb.org</string>
+    <string name="page_tmdb_title">Clave de TMDB para TiViBro</string>
+    <string name="page_tmdb_hint">El API Read Access Token (v4) de los ajustes de API en themoviedb.org. Envía «-» para volver a la clave integrada.</string>
+    <string name="tmdb_key_checking">Comprobando la clave…</string>
+    <string name="tmdb_key_saved">Clave de TMDB guardada</string>
+    <string name="tmdb_key_bad">TMDB no aceptó esta clave</string>
+    <string name="tmdb_key_removed">Se quitó tu clave de TMDB</string>
+    <string name="row_about">Acerca de</string>
+    <string name="about_tmdb">Pósters, valoraciones y descripciones: TMDB. Este producto usa la API de TMDB, pero TMDB no lo respalda ni lo certifica.</string>
 </resources>

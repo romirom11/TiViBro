@@ -267,6 +267,7 @@ private fun SettingsSheet(vm: AppViewModel) {
                 }
                 SheetRow(foc, str(R.string.row_update), desc)
             }
+            SettingsRow.ABOUT -> AboutRow(foc)
         }
     }
 }
@@ -503,6 +504,7 @@ private fun LinkSheet(vm: AppViewModel) {
         LinkPurpose.ADD_PLAYLIST -> str(R.string.link_add_title) to str(R.string.link_add_sub)
         LinkPurpose.GUIDE_URL -> str(R.string.link_guide_title) to str(R.string.link_guide_sub)
         LinkPurpose.RENAME -> str(R.string.link_rename_title) to str(R.string.link_rename_sub)
+        LinkPurpose.TMDB_KEY -> str(R.string.link_tmdb_title) to str(R.string.link_tmdb_sub)
     }
     SheetTitle(title, sub)
     val address = vm.setupServer.address
@@ -556,6 +558,23 @@ private fun HomeSheet(vm: AppViewModel) {
         val foc = vm.rowIdx == i
         when (HomeSetting.entries[i]) {
             HomeSetting.SOURCES -> SheetRow(foc, str(R.string.home_sources), str(R.string.home_sources_desc)) { Value(homeSourcesValue(vm), foc) }
+            HomeSetting.TMDB -> {
+                Section("TMDB")
+                val has = vm.tmdbToken != null
+                SheetRow(foc, str(R.string.row_tmdb), str(if (has) R.string.row_tmdb_desc else R.string.tmdb_need_key), dim = !has) {
+                    Switch(vm.tmdbActive, onPlate = foc, modifier = Modifier.padding(start = 24.px))
+                }
+            }
+            HomeSetting.TMDB_KEY -> SheetRow(foc, str(R.string.row_tmdb_key), str(R.string.row_tmdb_key_desc)) {
+                Value(
+                    when {
+                        vm.tmdbOwnKey != null -> str(R.string.tmdb_key_own)
+                        vm.tmdbToken != null -> str(R.string.tmdb_key_builtin)
+                        else -> str(R.string.none)
+                    },
+                    foc,
+                )
+            }
         }
     }
 }
@@ -623,4 +642,32 @@ private fun Check(on: Boolean, foc: Boolean) {
             .then(if (on) Modifier.background(if (foc) Tok.OnPlate else Tok.Ok, RoundedCornerShape(8.px)) else Modifier.border(3.px, if (foc) Tok.OnPlate2 else Tok.T3, RoundedCornerShape(8.px))),
         contentAlignment = Alignment.Center,
     ) { if (on) T("✓", 22, if (foc) Tok.Plate else Color.White, FontWeight.Bold) }
+}
+
+// ---------------------------------------------------------------- about (with TMDB's attribution)
+
+@Composable
+private fun AboutRow(foc: Boolean) {
+    Plate(foc, Modifier.padding(start = 36.px, end = 36.px, bottom = 4.px).fillMaxWidth(), lift = 1.02f) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 28.px, vertical = 18.px), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                T(str(R.string.row_about), 26, if (foc) Tok.OnPlate else Tok.T1, FontWeight.Medium)
+                T("TiViBro " + BuildConfig.VERSION_NAME + " · GPL-3.0", 20, if (foc) Tok.OnPlate2 else Tok.T2, modifier = Modifier.padding(top = 5.px))
+                // TMDB asks for this notice wherever its data is used; the English sentence stays whatever the language
+                val notice = str(R.string.about_tmdb) + if (L10n.locale.language == "en") " " + str(R.string.tmdb_notice) else "\n" + str(R.string.tmdb_notice)
+                T(notice, 19, if (foc) Tok.OnPlate2 else Tok.T3, modifier = Modifier.padding(top = 8.px), maxLines = 5)
+            }
+            TmdbMark(Modifier.padding(start = 24.px))
+        }
+    }
+}
+
+/** TMDB's name in its colours (their logo is the word set in this gradient). */
+@Composable
+fun TmdbMark(modifier: Modifier = Modifier) {
+    Box(
+        modifier.height(40.px).background(Brush.horizontalGradient(listOf(Color(0xFF90CEA1), Color(0xFF3CBEC9), Color(0xFF00B3E5))), RoundedCornerShape(10.px))
+            .padding(horizontal = 14.px),
+        contentAlignment = Alignment.Center,
+    ) { T("TMDB", 22, Color(0xFF0D253F), FontWeight.Black) }
 }

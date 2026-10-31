@@ -54,6 +54,9 @@ jobs:
           TIVIBRO_KEYSTORE_PASSWORD: ${{ secrets.TIVIBRO_KEYSTORE_PASSWORD }}
           TIVIBRO_KEY_ALIAS: ${{ secrets.TIVIBRO_KEY_ALIAS }}
           TIVIBRO_KEY_PASSWORD: ${{ secrets.TIVIBRO_KEY_PASSWORD }}
+          # TMDB API Read Access Token, built into the APK (posters and descriptions on Home); optional: without it the
+          # release has no built-in key and users can add their own in Settings
+          TIVIBRO_TMDB_TOKEN: ${{ secrets.TIVIBRO_TMDB_TOKEN }}
         run: ./gradlew --no-daemon testDebugUnitTest assembleRelease -PtivibroVersion=${{ steps.version.outputs.version }}
 
       - name: Rename the APK

@@ -337,7 +337,7 @@ private fun Hints(vm: AppViewModel, modifier: Modifier) {
             Sheet.PLAYLIST -> listOf(h("▲▼", R.string.hint_action), h("OK", R.string.hint_run), h("BACK", R.string.hint_back))
             Sheet.GUIDE, Sheet.LANGUAGE -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_apply), h("BACK", R.string.hint_back))
             Sheet.LINK -> listOf(h("BACK", R.string.hint_cancel))
-            Sheet.HOME -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_open), h("BACK", R.string.hint_back))
+            Sheet.HOME -> listOf(h("▲▼", R.string.hint_choose), h("OK", if (dev.romirom.tivibro.HomeSetting.entries.getOrNull(vm.rowIdx) == dev.romirom.tivibro.HomeSetting.TMDB) R.string.hint_change else R.string.hint_open), h("BACK", R.string.hint_back))
             Sheet.HOME_SOURCES -> listOf(h("▲▼", R.string.hint_group), h("OK", R.string.hint_channels), h("BACK", R.string.hint_done))
             Sheet.HOME_GROUP -> listOf(h("▲▼", R.string.hint_channel), h("OK", R.string.hint_pick), h("BACK", R.string.hint_back))
         }

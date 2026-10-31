@@ -325,4 +325,23 @@
     <string name="hint_long_live">przytrzymaj: na żywo</string>
     <string name="hint_when">Kiedy się zacznie</string>
     <string name="hint_pick">Zaznacz</string>
+
+    <!-- TMDB -->
+    <string name="row_tmdb">Plakaty i opisy z TMDB</string>
+    <string name="row_tmdb_desc">Rzędy Filmy i Seriale, oceny i gatunki. Tytuły programów są wysyłane do TMDB</string>
+    <string name="tmdb_need_key">Najpierw dodaj klucz TMDB</string>
+    <string name="row_tmdb_key">Własny klucz TMDB</string>
+    <string name="row_tmdb_key_desc">API Read Access Token z themoviedb.org, wpisywany z telefonu</string>
+    <string name="tmdb_key_builtin">wbudowany</string>
+    <string name="tmdb_key_own">własny</string>
+    <string name="link_tmdb_title">Klucz TMDB</string>
+    <string name="link_tmdb_sub">Zeskanuj kod telefonem i wklej API Read Access Token z ustawień API na themoviedb.org</string>
+    <string name="page_tmdb_title">Klucz TMDB dla TiViBro</string>
+    <string name="page_tmdb_hint">API Read Access Token (v4) z ustawień API na themoviedb.org. Wyślij «-», aby wrócić do wbudowanego klucza.</string>
+    <string name="tmdb_key_checking">Sprawdzam klucz…</string>
+    <string name="tmdb_key_saved">Klucz TMDB zapisany</string>
+    <string name="tmdb_key_bad">TMDB nie przyjął tego klucza</string>
+    <string name="tmdb_key_removed">Własny klucz TMDB usunięty</string>
+    <string name="row_about">O aplikacji</string>
+    <string name="about_tmdb">Plakaty, oceny i opisy filmów: TMDB. Ten produkt korzysta z API TMDB, ale nie jest zatwierdzony ani certyfikowany przez TMDB.</string>
 </resources>

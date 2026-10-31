@@ -319,4 +319,23 @@
     <string name="hint_long_live">ұзақ: тікелей</string>
     <string name="hint_when">Қашан басталады</string>
     <string name="hint_pick">Белгілеу</string>
+
+    <!-- TMDB -->
+    <string name="row_tmdb">TMDB постерлері мен сипаттамалары</string>
+    <string name="row_tmdb_desc">«Фильмдер» мен «Сериалдар» қатарлары, рейтинг пен жанрлар. Хабар атаулары TMDB-ге жіберіледі</string>
+    <string name="tmdb_need_key">Алдымен TMDB кілтін қосыңыз</string>
+    <string name="row_tmdb_key">Өз TMDB кілтіңіз</string>
+    <string name="row_tmdb_key_desc">themoviedb.org сайтынан API Read Access Token, телефоннан енгізіледі</string>
+    <string name="tmdb_key_builtin">кіріктірілген</string>
+    <string name="tmdb_key_own">өзіңіздікі</string>
+    <string name="link_tmdb_title">TMDB кілті</string>
+    <string name="link_tmdb_sub">Кодты телефонмен сканерлеп, themoviedb.org API баптауларындағы API Read Access Token-ді қойыңыз</string>
+    <string name="page_tmdb_title">TiViBro үшін TMDB кілті</string>
+    <string name="page_tmdb_hint">themoviedb.org API баптауларындағы API Read Access Token (v4). Кіріктірілген кілтке оралу үшін «-» жіберіңіз.</string>
+    <string name="tmdb_key_checking">Кілтті тексеріп жатырмын…</string>
+    <string name="tmdb_key_saved">TMDB кілті сақталды</string>
+    <string name="tmdb_key_bad">TMDB бұл кілтті қабылдамады</string>
+    <string name="tmdb_key_removed">Өз TMDB кілтіңіз жойылды</string>
+    <string name="row_about">Қолданба туралы</string>
+    <string name="about_tmdb">Постерлер, рейтингтер мен фильм сипаттамалары: TMDB. Бұл өнім TMDB API-ын пайдаланады, бірақ TMDB оны мақұлдамаған әрі сертификаттамаған.</string>
 </resources>
