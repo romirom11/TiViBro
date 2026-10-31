@@ -1,0 +1,1674 @@
+package dev.romankudin.tplay
+
+import android.app.ActivityManager
+import android.app.Application
+import android.os.Process
+import android.os.SystemClock
+import android.util.Log
+import android.view.KeyEvent
+import androidx.annotation.OptIn
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.Player
+import androidx.media3.common.Timeline
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.datasource.HttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.hls.DefaultHlsExtractorFactory
+import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
+import dev.romankudin.tplay.data.Catchup
+import dev.romankudin.tplay.data.Channel
+import dev.romankudin.tplay.data.DAY
+import dev.romankudin.tplay.data.Db
+import dev.romankudin.tplay.data.Guide
+import dev.romankudin.tplay.data.GuideMode
+import dev.romankudin.tplay.data.GuideSync
+import dev.romankudin.tplay.data.Group
+import dev.romankudin.tplay.data.HOUR
+import dev.romankudin.tplay.data.MIN
+import dev.romankudin.tplay.data.Mark
+import dev.romankudin.tplay.data.Pacer
+import dev.romankudin.tplay.data.PlaylistInfo
+import dev.romankudin.tplay.data.PlaylistRepo
+import dev.romankudin.tplay.data.Prefs
+import dev.romankudin.tplay.data.Programme
+import dev.romankudin.tplay.data.ProgrammeGuide
+import dev.romankudin.tplay.data.SetupServer
+import dev.romankudin.tplay.data.XmltvGuide
+import dev.romankudin.tplay.data.inArchive
+import dev.romankudin.tplay.data.now
+import dev.romankudin.tplay.ui.channelsWord
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.channels.Channel as Wake
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
+import okhttp3.ResponseBody.Companion.toResponseBody
+import java.io.File
+import java.util.Calendar
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
+
+enum class Mode { LIVE, ARCHIVE }
+enum class Layer { NONE, LIST }
+enum class Focus { GROUPS, CHANNELS, DAYS, PROGS }
+/** Layers above the list / video, stacked: the menu stays visible under a settings sheet opened from it. */
+enum class Sheet { MENU, SETTINGS, GROUPS, HIDDEN, PLAYLISTS, PLAYLIST, GUIDE, LINK }
+enum class MenuItem { GROUPS, GUIDE, SETTINGS, EXIT }
+enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE }
+/** Actions on one playlist (Sheet.PLAYLIST), top to bottom. */
+enum class PlaylistAction { USE, REFRESH, RENAME, DELETE }
+/** Rows of «Програма передач» (Sheet.GUIDE): the three sources, then the refresh. */
+enum class GuideRow { AUTO, PLAYLIST, CUSTOM, REFRESH }
+/** What the QR / LAN page (Sheet.LINK) is collecting. */
+enum class LinkPurpose { ADD_PLAYLIST, GUIDE_URL, RENAME }
+/** Where the active playlist's guide is read from right now. */
+sealed class GuideSource {
+    data object Segmented : GuideSource()
+    data class Xmltv(val url: String) : GuideSource()
+}
+enum class CtxItem { FAV, HIDE }
+/** The «Продовжити перегляд» context menu (long OK on a bookmark or a watched programme), top to bottom. */
+enum class MarkAction { FROM_START, FORGET, DONE }
+/** The player control panel's button row, left to right. */
+enum class OsdButton { RESTART, PREV, NEXT, LIVE, AUDIO }
+enum class Key { UP, DOWN, LEFT, RIGHT, OK, BACK, CHUP, CHDOWN, PLAYPAUSE, RED, GREEN, YELLOW, BLUE, INFO, MENU, D0, D1, D2, D3, D4, D5, D6, D7, D8, D9 }
+
+/**
+ * All app state and remote-control logic. Mirrors prototype/index.html: one focus owner, every key routed
+ * by the current layer, so the remote behaves the same everywhere.
+ */
+@OptIn(UnstableApi::class)
+class AppViewModel(app: Application) : AndroidViewModel(app) {
+    private val http = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).build()
+    private val prefs = Prefs(app)
+    private val db = Db(app)
+    /** Every database call, in order, off the main thread (the first open may migrate a 380 MB guide away). */
+    private val dbIo = Dispatchers.IO.limitedParallelism(1)
+    private val repo = PlaylistRepo(app, http, prefs)
+    private val segGuide = Guide(File(app.noBackupFilesDir, "epg"), ::onGuideChanged)
+    private val xmlGuide = XmltvGuide(File(app.noBackupFilesDir, "xmltv"), ::onGuideChanged)
+    /** The guide of the active playlist's source ([guideSource]). */
+    private var guide: ProgrammeGuide = segGuide
+    // HTTP/1.1 for the guide: over HTTP/2 epg.team resets streams (PROTOCOL_ERROR) when the reader is slower than
+    // the server sends, which a throttled, pausing download always is
+    private val guideSync = GuideSync(segGuide, http.newBuilder().protocols(listOf(okhttp3.Protocol.HTTP_1_1)).build(), ::guideHold) { s ->
+        viewModelScope.launch(Dispatchers.Main) { status = s }
+    }
+    private val guideThread = Executors.newSingleThreadExecutor { r ->
+        Thread({ Process.setThreadPriority(Process.THREAD_PRIORITY_LOWEST); r.run() }, "guide-sync")
+    }.asCoroutineDispatcher()
+    private val guideWake = Wake<Unit>(Wake.CONFLATED)
+    @Volatile private var guideSyncing = false
+    @Volatile private var guideForced = false
+    /** [guideSource] and [channels] as the download thread sees them. */
+    @Volatile private var guideSourceNow: GuideSource = GuideSource.Segmented
+    @Volatile private var guideChannels: List<Channel> = emptyList()
+    /** Why the last guide pass of the current source failed; null after one that worked. */
+    var guideError by mutableStateOf<String?>(null); private set
+    @Volatile private var lastKeyAt = 0L
+    @Volatile private var bufferingSince = 0L // 0: not buffering
+
+    /** The player's client: an archive the server doesn't have comes back as a redirect to a stub, or as a playlist of
+     *  stub segments; both are turned into a 410 marked [NO_ARCHIVE] so that the player stops instead of playing it. */
+    private val playerHttp = http.newBuilder().addNetworkInterceptor(Interceptor { chain ->
+        val r = chain.proceed(chain.request())
+        val stub = when {
+            r.isRedirect -> STUB.containsMatchIn(r.header("Location").orEmpty())
+            r.isSuccessful && chain.request().url.encodedPath.endsWith(".m3u8") -> r.peekBody(16 * 1024).string().contains("stub_noarch")
+            else -> false
+        }
+        if (!stub) return@Interceptor r
+        r.close()
+        r.newBuilder().code(410).message("No archive").header(NO_ARCHIVE, "1").removeHeader("Location").body("".toResponseBody(null)).build()
+    }).build()
+
+    val player: ExoPlayer = ExoPlayer.Builder(
+        app,
+        DefaultRenderersFactory(app).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON),
+    )
+        .setLoadControl(loadControl(app))
+        .setMediaSourceFactory(
+            // The provider's H.264 has no IDR frames (I-slices + recovery-point SEI only): without this flag the TS
+            // extractor never sees a keyframe, the video renderer never starts and playback hangs in BUFFERING.
+            HlsMediaSource.Factory(OkHttpDataSource.Factory(playerHttp).setUserAgent(USER_AGENT))
+                .setExtractorFactory(DefaultHlsExtractorFactory(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES, true)),
+        )
+        .build()
+
+    // ---------- data ----------
+    /** The active playlist; null until the first one is set up. */
+    var playlist by mutableStateOf(repo.get(prefs.activePlaylist) ?: repo.all().firstOrNull()); private set
+    val playlistUrl get() = playlist?.url
+    /** Every saved playlist, for «Плейлисти». */
+    var playlists by mutableStateOf(repo.all()); private set
+    /** Playlist being downloaded by a user action (add, refresh, switch): its id. */
+    var loadingPlaylist by mutableStateOf<String?>(null); private set
+    var guideSource by mutableStateOf<GuideSource>(GuideSource.Segmented); private set
+    var channels by mutableStateOf<List<Channel>>(emptyList()); private set
+    var groups by mutableStateOf<List<Group>>(emptyList()); private set
+    var status by mutableStateOf<String?>(null); private set
+    var guideVersion by mutableIntStateOf(0); private set
+    private var byId: Map<String, Channel> = emptyMap()
+    /** Every provider group in playlist order, hidden ones included (the «Групи каналів» sheet lists them all). */
+    var allGroups by mutableStateOf<List<Group>>(emptyList()); private set
+    private var groupByName: Map<String, Group> = emptyMap()
+    private var providerGroups: List<Group> = emptyList()
+    /** Channels the user can see: not hidden, in a shown group. «Усі канали», zapping and numbers go by this. */
+    private var shown: List<Channel> = emptyList()
+    private var hidden = emptySet<String>()
+    /** Bumped on every show/hide change: the settings live in Prefs, so the sheets re-read them on this. */
+    var cfgVersion by mutableIntStateOf(0); private set
+    private var favs = mutableListOf<String>()
+    /** Channels whose archive the server turned out not to have (it answered with its stub), this session. */
+    private val noArchive = HashSet<String>()
+    private val marks = LinkedHashMap<String, Mark>()
+    /** What the database holds (and what was saved since), by [markKey]: [marks] is this with the playlist's channels. */
+    private val markRows = LinkedHashMap<String, Db.MarkRow>()
+
+    /** «Нещодавні»: the last channels tuned, most recent first (ids, per playlist). */
+    private var recent = mutableListOf<String>()
+
+    // ---------- playback ----------
+    var cur by mutableStateOf<Channel?>(null); private set
+    var mode by mutableStateOf(Mode.LIVE); private set
+    var paused by mutableStateOf(false); private set
+    private var archiveFrom = 0L
+    private var archiveTo = 0L // OPEN = a growing `-now` window that reaches the broadcast
+    private var pausedLiveAt: Long? = null
+    private var pendingAbs: Long? = null
+    var buffering by mutableStateOf(false); private set
+
+    // ---------- overlays ----------
+    var tick by mutableLongStateOf(now()); private set
+    var layer by mutableStateOf(Layer.NONE); private set
+    var banner by mutableStateOf(false); private set
+    /** The player control panel. Focus is on the timeline, or on [osdBtn] in the button row. */
+    var osd by mutableStateOf(false); private set
+    var osdOnButtons by mutableStateOf(false); private set
+    var osdBtn by mutableStateOf(OsdButton.RESTART); private set
+    var audioTracks by mutableIntStateOf(0); private set
+    private var seekRun = 0
+    private var lastSeekAt = 0L
+    var seekAcc by mutableLongStateOf(0L); private set
+    var toast by mutableStateOf<String?>(null); private set
+    var numBuf by mutableStateOf(""); private set
+
+    // ---------- list ----------
+    var focus by mutableStateOf(Focus.CHANNELS); private set
+    var groupIdx by mutableIntStateOf(0); private set
+    var chIdx by mutableIntStateOf(0); private set
+    var dayIdx by mutableIntStateOf(0); private set
+    var progIdx by mutableIntStateOf(0); private set
+    private var groupId = "all"
+
+    // ---------- menu, settings sheets, channel context menu ----------
+    var sheets by mutableStateOf<List<Sheet>>(emptyList()); private set
+    var menuIdx by mutableIntStateOf(0); private set
+    var rowIdx by mutableIntStateOf(0); private set // row of the settings sheet on top
+    var ctx by mutableStateOf<Channel?>(null); private set
+    var ctxIdx by mutableIntStateOf(0); private set
+    /** The bookmark the «Продовжити перегляд» context menu acts on. */
+    var markCtx by mutableStateOf<Mark?>(null); private set
+    /** A bookmark the user just removed or marked watched while it plays: the running playback must not write it back
+     *  until the user touches the playback again ([showOsd]) or starts something else ([playArchive]). */
+    private var markLock: String? = null
+
+    val setupServer = SetupServer { link -> viewModelScope.launch { usePlaylist(link) } }
+    /** What Sheet.LINK is collecting, and for which playlist. */
+    var linkPurpose by mutableStateOf(LinkPurpose.ADD_PLAYLIST); private set
+    private var linkTarget: String? = null
+    /** The playlist Sheet.PLAYLIST acts on. */
+    var sheetPlaylist by mutableStateOf<PlaylistInfo?>(null); private set
+    private var deleteArmed = 0L
+    var onExit: () -> Unit = {}
+
+    private var bannerJob: Job? = null
+    private var osdJob: Job? = null
+    private var toastJob: Job? = null
+    private var numJob: Job? = null
+    private var seekJob: Job? = null
+    private var guideJob: Job? = null
+
+    init {
+        player.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                buffering = state == Player.STATE_BUFFERING
+                bufferingSince = if (!buffering) 0L else bufferingSince.takeIf { it != 0L } ?: SystemClock.elapsedRealtime()
+                if (state == Player.STATE_READY) pendingAbs = null
+            }
+
+            /** The archive playlist starts on the first segment boundary after `from` (window start comes from
+             *  PROGRAM-DATE-TIME), so the offset given to setMediaItem() can land up to a segment late: re-aim. */
+            override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+                val t = pendingAbs ?: return
+                if (mode != Mode.ARCHIVE || timeline.isEmpty) return
+                val target = max(0L, t - windowBase())
+                if (abs(target - player.currentPosition) > 1000) player.seekTo(target)
+            }
+
+            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+                audioTracks = audioGroups().size
+            }
+
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                if (isNoArchive(error)) { onNoArchive(); return }
+                if (error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
+                    player.seekToDefaultPosition(); player.prepare(); return // fell behind the live window: rejoin live
+                }
+                showToast("Не вдалося відтворити: ${error.errorCodeName.removePrefix("ERROR_CODE_").lowercase()}")
+            }
+        })
+        if (BuildConfig.DEBUG) player.addAnalyticsListener(androidx.media3.exoplayer.util.EventLogger())
+        viewModelScope.launch(dbIo) {
+            runCatching { db.dropOldGuide() }.onFailure { Log.w(TAG, "db: quick migration failed", it) }
+            Log.i(TAG, "db ${getApplication<Application>().getDatabasePath("tplay.db").length() / 1024} KB")
+        }
+        playlist?.let { openPlaylist(it, download = true) }
+        viewModelScope.launch {
+            while (true) {
+                delay(1000)
+                tick = now()
+                onTick()
+            }
+        }
+    }
+
+    // ============================================================ loading
+
+    /** First run, the intent extra: this link becomes the active playlist (added if new). */
+    fun usePlaylist(url: String) {
+        setupServer.stop()
+        val info = repo.add(url)
+        playlists = repo.all()
+        openPlaylist(info, download = true)
+    }
+
+    private var openJob: Job? = null
+
+    /** Makes [info] the active playlist: its own favourites, hidden channels, groups and bookmarks, its guide. */
+    private fun openPlaylist(info: PlaylistInfo, download: Boolean) {
+        openJob?.cancel()
+        if (playlist?.id != info.id) saveMark()
+        prefs.activePlaylist = info.id
+        prefs.scope = info.id
+        playlist = info
+        favs = prefs.favorites.toMutableList()
+        recent = prefs.recent.toMutableList()
+        hidden = prefs.hiddenChannels
+        groupId = prefs.lastGroup ?: "all"
+        markRows.clear(); marks.clear(); noArchive.clear()
+        channels = emptyList(); guideChannels = emptyList(); byId = emptyMap()
+        allGroups = emptyList(); groupByName = emptyMap(); providerGroups = emptyList(); shown = emptyList(); groups = emptyList()
+        cur = null
+        mode = Mode.LIVE; paused = false; pausedLiveAt = null; pendingAbs = null
+        layer = Layer.NONE; osd = false; banner = false
+        player.stop(); player.clearMediaItems()
+        applyGuideSource()
+        cfgVersion++
+        val id = info.id
+        openJob = viewModelScope.launch {
+            val rows = withContext(dbIo) { db.marks(id) }
+            for (r in rows) markRows.putIfAbsent(r.ch + ":" + r.p.start, r)
+            load(download)
+        }
+    }
+
+    private suspend fun load(download: Boolean) {
+        val id = playlist?.id ?: return
+        val cached = withContext(Dispatchers.IO) { runCatching { repo.cached(id) }.getOrNull() }
+        if (cached != null && cached.channels.isNotEmpty()) applyChannels(cached.channels)
+        if (!download && channels.isNotEmpty()) { applyGuideSource(); refreshGuide(force = false); return }
+        status = if (channels.isEmpty()) "Завантажую канали…" else null
+        val fresh = withContext(Dispatchers.IO) { runCatching { repo.download(id) } }
+        if (playlist?.id != id) return
+        playlists = repo.all()
+        repo.get(id)?.let { playlist = it }
+        // usually identical to the cached copy: re-applying it would rebuild every list on the main thread for nothing
+        fresh.onSuccess { if (it.channels != channels) applyChannels(it.channels) }.onFailure {
+            if (channels.isEmpty()) status = "Не вдалося завантажити плейлист: ${it.message}"
+        }
+        if (channels.isNotEmpty()) {
+            status = null
+            applyGuideSource()
+            refreshGuide(force = false)
+        }
+    }
+
+    // ============================================================ playlists («Плейлисти»)
+
+    fun openPlaylistSheet(p: PlaylistInfo) {
+        sheetPlaylist = p
+        deleteArmed = 0
+        openSheet(Sheet.PLAYLIST)
+    }
+
+    /** Downloads [url] first: only a playlist that loads is added (and switched to). */
+    private fun addPlaylist(url: String) {
+        if (loadingPlaylist != null) return
+        val existing = repo.all().firstOrNull { it.url == url }
+        val info = existing ?: repo.add(url)
+        loadingPlaylist = info.id
+        playlists = repo.all()
+        viewModelScope.launch {
+            val r = withContext(Dispatchers.IO) { runCatching { repo.download(info.id) } }
+            loadingPlaylist = null
+            r.onSuccess { parsed ->
+                playlists = repo.all()
+                closeSheets()
+                openPlaylist(repo.get(info.id) ?: return@launch, download = false)
+                showToast(if (existing != null) "Цей плейлист уже є · ${channelsWord(parsed.channels.size)}" else "Плейлист додано · ${channelsWord(parsed.channels.size)}")
+            }.onFailure {
+                if (existing == null) repo.remove(info.id)
+                playlists = repo.all()
+                showToast("Не вдалося завантажити плейлист: ${it.message}")
+            }
+        }
+    }
+
+    private fun playlistAction(a: PlaylistAction) {
+        val p = sheetPlaylist?.let { repo.get(it.id) } ?: return
+        if (a != PlaylistAction.DELETE) deleteArmed = 0
+        when (a) {
+            PlaylistAction.USE -> {
+                if (p.id == playlist?.id) { showToast("Цей плейлист уже відкритий"); return }
+                closeSheets()
+                openPlaylist(p, download = true)
+                showToast("Плейлист: ${p.title}")
+            }
+            PlaylistAction.REFRESH -> {
+                if (loadingPlaylist != null) return
+                loadingPlaylist = p.id
+                viewModelScope.launch {
+                    val r = withContext(Dispatchers.IO) { runCatching { repo.download(p.id) } }
+                    loadingPlaylist = null
+                    playlists = repo.all()
+                    sheetPlaylist = repo.get(p.id)
+                    r.onSuccess {
+                        if (p.id == playlist?.id) {
+                            playlist = repo.get(p.id)
+                            if (it.channels != channels) applyChannels(it.channels)
+                            applyGuideSource()
+                        }
+                        showToast("Плейлист оновлено · ${channelsWord(it.channels.size)}")
+                    }.onFailure { showToast("Не вдалося оновити: ${it.message}") }
+                }
+            }
+            PlaylistAction.RENAME -> openLink(LinkPurpose.RENAME, p)
+            PlaylistAction.DELETE -> {
+                if (now() - deleteArmed > 3000) { deleteArmed = now(); showToast("Натисніть OK ще раз, щоб видалити «${p.title}»"); return }
+                deleteArmed = 0
+                deletePlaylist(p)
+            }
+        }
+    }
+
+    private fun deletePlaylist(p: PlaylistInfo) {
+        repo.remove(p.id)
+        prefs.forget(p.id)
+        viewModelScope.launch(dbIo) { db.deleteMarks(p.id) }
+        playlists = repo.all()
+        showToast("Плейлист «${p.title}» видалено")
+        if (p.id != playlist?.id) { pop(); return }
+        closeSheets()
+        val next = playlists.firstOrNull()
+        if (next != null) { openPlaylist(next, download = true); return }
+        // the last one: back to the first-run screen
+        openJob?.cancel()
+        player.stop(); player.clearMediaItems()
+        prefs.activePlaylist = null
+        playlist = null
+        channels = emptyList(); groups = emptyList(); allGroups = emptyList(); cur = null
+        applyGuideSource()
+    }
+
+    /** Sheet.LINK: the QR code of the LAN page, set up to collect [purpose]. */
+    private fun openLink(purpose: LinkPurpose, target: PlaylistInfo?) {
+        linkPurpose = purpose
+        linkTarget = target?.id
+        setupServer.page = when (purpose) {
+            LinkPurpose.ADD_PLAYLIST -> SetupServer.PLAYLIST
+            LinkPurpose.GUIDE_URL -> SetupServer.Page(
+                "Програма передач (XMLTV)", "Вставте посилання на XMLTV-файл (.xml або .xml.gz).", "Надіслати на телевізор",
+                value = target?.guideUrl.orEmpty(),
+            )
+            LinkPurpose.RENAME -> SetupServer.Page(
+                "Назва плейлиста", "Як цей плейлист називатиметься в списку.", "Зберегти", link = false, value = target?.title.orEmpty(),
+            )
+        }
+        setupServer.onSubmit = { v -> viewModelScope.launch { onLinkAnswer(purpose, v) } }
+        setupServer.start()
+        openSheet(Sheet.LINK)
+    }
+
+    private fun onLinkAnswer(purpose: LinkPurpose, v: String) {
+        if (sheets.lastOrNull() != Sheet.LINK || linkPurpose != purpose) return
+        val id = linkTarget
+        when (purpose) {
+            LinkPurpose.ADD_PLAYLIST -> addPlaylist(v)
+            LinkPurpose.RENAME -> {
+                val p = repo.update(id ?: return) { it.copy(name = v.trim().take(60)) } ?: return
+                afterPlaylistEdit(p)
+                pop()
+                showToast("Назву змінено: ${p.title}")
+            }
+            LinkPurpose.GUIDE_URL -> {
+                val p = repo.update(id ?: return) { it.copy(guideMode = GuideMode.CUSTOM, guideUrl = v.trim()) } ?: return
+                afterPlaylistEdit(p)
+                pop()
+                showToast("Програма передач: власне посилання")
+                refreshGuide(force = true)
+            }
+        }
+    }
+
+    private fun afterPlaylistEdit(p: PlaylistInfo) {
+        playlists = repo.all()
+        if (sheetPlaylist?.id == p.id) sheetPlaylist = p
+        if (playlist?.id == p.id) { playlist = p; applyGuideSource() }
+    }
+
+    // ============================================================ guide source («Програма передач»)
+
+    private fun sourceFor(p: PlaylistInfo?): GuideSource {
+        p ?: return GuideSource.Segmented
+        val tvg = p.tvgUrl
+        return when (p.guideMode) {
+            GuideMode.AUTO -> if (tvg == null || isEpgTeam(tvg)) GuideSource.Segmented else GuideSource.Xmltv(tvg)
+            GuideMode.PLAYLIST -> tvg?.let { GuideSource.Xmltv(it) } ?: GuideSource.Segmented
+            GuideMode.CUSTOM -> p.guideUrl?.let { GuideSource.Xmltv(it) } ?: GuideSource.Segmented
+        }
+    }
+
+    /** Points [guide] at the active playlist's source; a change wakes the download loop for it. */
+    private fun applyGuideSource() {
+        val s = sourceFor(playlist)
+        guideSourceNow = s
+        if (s == guideSource) return
+        guideSource = s
+        guide = if (s is GuideSource.Xmltv) xmlGuide else segGuide
+        guideError = null
+        status = null
+        guideVersion++
+        if (s is GuideSource.Segmented && repo.all().none { sourceFor(it) is GuideSource.Xmltv }) xmlGuide.clear()
+        guideWake.trySend(Unit)
+    }
+
+    private fun setGuideMode(m: GuideMode) {
+        val p = playlist ?: return
+        if (m == GuideMode.CUSTOM) { openLink(LinkPurpose.GUIDE_URL, p); return }
+        if (m == GuideMode.PLAYLIST && p.tvgUrl == null) { showToast("У плейлисті немає посилання на програму (url-tvg)"); return }
+        if (p.guideMode == m) return
+        afterPlaylistEdit(repo.update(p.id) { it.copy(guideMode = m) } ?: return)
+        showToast(if (m == GuideMode.AUTO) "Програма передач: авто" else "Програма передач: з плейлиста")
+    }
+
+    private fun applyChannels(list: List<Channel>) {
+        val first = channels.isEmpty()
+        channels = list
+        guideChannels = list
+        // the XMLTV import keeps only these channels: a pass that ran before they were known did nothing
+        if (guideSourceNow is GuideSource.Xmltv) guideWake.trySend(Unit)
+        byId = list.associateBy { it.id }
+        // a fresh download replaces the cached copy the playing channel came from: the lists find it by equality
+        cur = cur?.let { byId[it.id] ?: it }
+        allGroups = list.groupBy { it.group }.map { (name, chs) -> Group("g:$name", name, chs) }
+        groupByName = allGroups.associateBy { it.name }
+        marksFromDb()
+        applyVisibility()
+        if (first) {
+            val start = prefs.lastChannel?.let(byId::get)?.takeIf(::isShown) ?: shown.firstOrNull() ?: list.first()
+            tune(start)
+        }
+    }
+
+    /** Re-derives what is visible after the playlist or a show/hide setting changed. */
+    private fun applyVisibility() {
+        val groupOn = allGroups.filter(::groupShown).mapTo(HashSet()) { it.name }
+        shown = channels.filter { it.id !in hidden && it.group in groupOn }
+        providerGroups = allGroups.filter { it.name in groupOn }
+            .map { g -> g.copy(channels = g.channels.filter { it.id !in hidden }) }
+            .filter { it.channels.isNotEmpty() }
+        rebuildGroups()
+        if (layer == Layer.LIST) {
+            syncGroup()
+            chIdx = chIdx.coerceIn(0, max(0, (currentGroup()?.channels?.size ?: 1) - 1))
+        }
+        cfgVersion++
+    }
+
+    private fun rebuildGroups() {
+        val g = ArrayList<Group>()
+        val cont = resumeList()
+        if (cont.isNotEmpty()) g += Group("cont", "Продовжити перегляд", cont.map { it.ch }, cont)
+        g += Group("fav", "Обране", favs.mapNotNull(byId::get).filter(::isShown))
+        g += Group("recent", "Нещодавні", recent.mapNotNull(byId::get).filter(::isShown))
+        g += Group("all", "Усі канали", shown)
+        g += providerGroups
+        groups = g
+    }
+
+    // ============================================================ what is shown
+
+    /** Every group is shown until the user says otherwise, except the adult one. */
+    private fun defaultShown(g: Group) = !ADULT.containsMatchIn(g.name)
+
+    fun groupShown(g: Group) = prefs.groupShown(g.name, defaultShown(g))
+    private fun groupOf(ch: Channel) = groupByName[ch.group]
+
+    fun isShown(ch: Channel) = ch.id !in hidden && groupOf(ch)?.let(::groupShown) != false
+    fun isHidden(ch: Channel) = ch.id in hidden
+
+    fun hiddenChannels(): List<Channel> = channels.filter { it.id in hidden }
+
+    private fun toggleGroupShown(g: Group) {
+        prefs.setGroupShown(g.name, !groupShown(g))
+        applyVisibility()
+    }
+
+    private fun setHidden(ch: Channel, hide: Boolean) {
+        hidden = if (hide) hidden + ch.id else hidden - ch.id
+        prefs.hiddenChannels = hidden
+        applyVisibility()
+    }
+
+    // ============================================================ guide download
+
+    /** When the current source last finished a pass. */
+    fun guideAt() = if (guideSource is GuideSource.Xmltv) xmlGuide.meta?.at ?: 0L else prefs.guideAt
+
+    /** How many channels the XMLTV import kept, for the sheet; null for the segmented guide. */
+    fun xmltvChannels(): Int? = if (guideSource is GuideSource.Xmltv) xmlGuide.meta?.channels else null
+
+    /**
+     * The guide download loop, one pass at a time on a lowest-priority thread of its own. epg.team's segmented guide
+     * ([GuideSync]) is checked on start, every 3 h and just after UTC midnight (when the days shift); an XMLTV source
+     * is imported again when the last import is 12 h old, is of another source or playlist, or when [force]d. A source
+     * change ([applyGuideSource]) wakes it at once.
+     */
+    fun refreshGuide(force: Boolean) {
+        if (force) {
+            if (guideSyncing) { showToast("Програма передач уже оновлюється"); return }
+            showToast("Оновлюю програму передач")
+            guideForced = true
+            guideWake.trySend(Unit)
+        }
+        if (guideJob != null) return
+        guideJob = viewModelScope.launch(guideThread) {
+            while (true) {
+                guideWake.tryReceive() // a wake that came in before this pass started is this pass
+                val forced = guideForced
+                guideForced = false
+                val src = guideSourceNow
+                guideSyncing = true
+                val r = runCatching { guidePass(src, forced) }
+                guideSyncing = false
+                withContext(Dispatchers.Main) {
+                    if (src != guideSource) return@withContext
+                    r.onSuccess { msg -> guideError = null; if (forced && msg != null) showToast(msg) }.onFailure { e ->
+                        Log.e(TAG, "guide sync failed", e)
+                        guideError = e.message ?: e.javaClass.simpleName
+                        status = null
+                        if (forced) showToast("Програма передач не оновилась: ${guideError}")
+                    }
+                }
+                val toMidnight = DAY - Math.floorMod(now(), DAY) + 15 * MIN
+                val retry = if (src is GuideSource.Xmltv) HOUR else 10 * MIN
+                withTimeoutOrNull(if (r.isSuccess) min(3 * HOUR, toMidnight) else retry) { guideWake.receive() }
+            }
+        }
+    }
+
+    /** One pass for [src] on the guide thread; the toast for a forced pass that had nothing to do. */
+    private fun guidePass(src: GuideSource, forced: Boolean): String? {
+        when (src) {
+            GuideSource.Segmented -> {
+                val it = guideSync.run()
+                prefs.guideAt = now()
+                if (it.bytes > 0) {
+                    val disk = segGuide.blobs.listFiles()?.sumOf { f -> f.length() } ?: 0L
+                    Log.i(TAG, "guide: rev ${it.revision}: fetched ${it.bytes / 1024} KB in ${it.millis / 1000} s, today bound after ${it.todayMillis} ms, blobs on disk ${disk / 1024} KB")
+                    return null
+                }
+                return "Програма передач актуальна"
+            }
+            is GuideSource.Xmltv -> {
+                val pl = playlist?.id ?: return null
+                val chs = guideChannels.takeIf { it.isNotEmpty() } ?: return null
+                val m = xmlGuide.meta
+                if (!forced && m != null && m.url == src.url && m.playlist == pl && now() - m.at < 12 * HOUR) return null
+                val r = xmlGuide.import(xmltvHttp, src.url, pl, chs, Pacer(::guideHold)) { s ->
+                    viewModelScope.launch(Dispatchers.Main) { if (guideSourceNow == src) status = s }
+                }
+                Log.i(TAG, "xmltv: ${r.channels} channels, ${r.programmes} programmes from ${r.bytes / 1024} KB in ${r.millis / 1000} s")
+                return "Програма передач оновлена · ${channelsWord(r.channels)}"
+            }
+        }
+    }
+
+    private val xmltvHttp by lazy { http.newBuilder().protocols(listOf(okhttp3.Protocol.HTTP_1_1)).readTimeout(2, TimeUnit.MINUTES).build() }
+
+    /** Why the guide download should hold still right now: the user is at the remote, or the stream is starving
+     *  (for at most a minute: a channel that never starts must not stop the guide for good). Any thread. */
+    private fun guideHold(): String? {
+        val b = bufferingSince
+        return when {
+            SystemClock.uptimeMillis() - lastKeyAt < 3000 -> "keys"
+            b != 0L && SystemClock.elapsedRealtime() - b < MIN -> "buffering"
+            else -> null
+        }
+    }
+
+    // ============================================================ guide
+
+    /** Decoded programmes or a description landed. Every getter below reads [guideVersion], so whatever showed their
+     *  results recomposes. */
+    private fun onGuideChanged(id: String?, old: List<Programme>?, new: List<Programme>?) {
+        if (id != null && old != null && new != null) keepProgFocus(id, old, new)
+        // a screenful of rows lands as a burst of decodes: one recomposition for the lot
+        if (guideBumpAt != 0L) return
+        guideBumpAt = SystemClock.uptimeMillis()
+        viewModelScope.launch { delay(120); guideBumpAt = 0L; guideVersion++ }
+    }
+
+    private var guideBumpAt = 0L
+
+    /** More days decoded (or an update) under the open programme view shift its indexes: stay on the same programme. */
+    private fun keepProgFocus(id: String, old: List<Programme>, new: List<Programme>) {
+        if (layer != Layer.LIST || (focus != Focus.PROGS && focus != Focus.DAYS)) return
+        val ch = listChannel()?.takeIf { it.epgId == id } ?: return
+        val from = listFrom(ch)
+        val o = old.filter { it.end >= from }
+        val n = new.filter { it.end >= from }
+        o.getOrNull(progIdx)?.let { p -> n.indexOfFirst { it.start == p.start }.takeIf { it >= 0 }?.let { progIdx = it } }
+        daysOf(o).getOrNull(dayIdx)?.let { d -> daysOf(n).indexOf(d).takeIf { it >= 0 }?.let { dayIdx = it } }
+    }
+
+    /** These getters never touch the disk: they return what is decoded (empty at first) and queue the rest. */
+    fun progs(ch: Channel): List<Programme> {
+        guideVersion
+        return guide.list(ch, null)
+    }
+
+    fun progAt(ch: Channel, t: Long): Programme? {
+        guideVersion
+        val a = guide.list(ch, t)
+        var lo = 0
+        var hi = a.size - 1
+        while (lo <= hi) {
+            val m = (lo + hi) ushr 1
+            when {
+                a[m].end <= t -> lo = m + 1
+                a[m].start > t -> hi = m - 1
+                else -> return a[m]
+            }
+        }
+        return null
+    }
+
+    /** The description of [p]; null while it is being read. */
+    fun desc(p: Programme): String? {
+        guideVersion
+        return guide.desc(p)
+    }
+
+    /** A group's rows around [center]: what's on for ±10 rows, every day for the focused channel (decoded first). */
+    fun prefetch(chs: List<Channel>, center: Int) {
+        val t = now()
+        for (k in 10 downTo 0) {
+            chs.getOrNull(center + k)?.let { guide.list(it, t) }
+            if (k > 0) chs.getOrNull(center - k)?.let { guide.list(it, t) }
+        }
+        chs.getOrNull(center)?.let { guide.list(it, null) }
+    }
+
+    private fun listFrom(ch: Channel) = if (ch.archiveDays > 0) now() - ch.archiveDays * DAY else dayStart(now())
+
+    /** Programmes the user can browse: the archive window plus everything ahead. */
+    fun progList(ch: Channel): List<Programme> {
+        val from = listFrom(ch)
+        return progs(ch).filter { it.end >= from }
+    }
+
+    fun progDays(ch: Channel): List<Long> = daysOf(progList(ch))
+
+    private fun daysOf(list: List<Programme>): List<Long> {
+        val out = ArrayList<Long>()
+        for (p in list) { val d = dayStart(p.start); if (out.lastOrNull() != d) out += d }
+        return out
+    }
+
+    /** «That day at this time»: the latest programme starting on [day] no later than the current clock time, else the
+     *  day's first. Only programmes that start on [day]: one running across midnight (Tue 23:30–Wed 01:00) belongs to
+     *  the day before, and the view shows the day of the programme it lands on. */
+    private fun sameTimeOn(list: List<Programme>, day: Long): Int {
+        val t = day + (now() - dayStart(now()))
+        var i = list.indexOfLast { dayStart(it.start) == day && it.start <= t }
+        if (i < 0) i = list.indexOfFirst { dayStart(it.start) == day }
+        return max(0, i)
+    }
+
+    // ============================================================ bookmarks («Продовжити перегляд»)
+
+    private fun markKey(ch: Channel, p: Programme) = ch.id + ":" + p.start
+
+    fun watched(ch: Channel, p: Programme): Float = marks[markKey(ch, p)]?.watched ?: 0f
+
+    private fun resumeList(): List<Mark> =
+        marks.values.filter { it.watched < DONE && it.ch.inArchive(it.p) && isShown(it.ch) }.sortedByDescending { it.at }.take(20)
+
+    private fun marksFromDb() {
+        marks.clear()
+        for (r in markRows.values) {
+            val ch = byId[r.ch] ?: continue
+            marks[markKey(ch, r.p)] = Mark(ch, r.p, r.pos, r.at)
+        }
+    }
+
+    private var lastPersist = 0L
+    private fun saveMark(persist: Boolean = true) {
+        if (mode != Mode.ARCHIVE) return
+        val ch = cur ?: return
+        val t = posAbs()
+        val p = progAt(ch, t) ?: return
+        if (t - p.start < MIN) return
+        if (markKey(ch, p) == markLock) return
+        val m = Mark(ch, p, t, now())
+        val isNew = markKey(ch, p) !in marks
+        marks[markKey(ch, p)] = m
+        markRows[markKey(ch, p)] = Db.MarkRow(ch.id, p, t, m.at)
+        if (persist || now() - lastPersist > 10_000) {
+            lastPersist = now()
+            val pl = playlist?.id ?: return
+            viewModelScope.launch(dbIo) { db.saveMark(pl, m) }
+        }
+        if (isNew) rebuildGroups()
+    }
+
+    fun forgetMark(ch: Channel, p: Programme) {
+        lockMarkIfPlaying(ch, p)
+        marks.remove(markKey(ch, p))
+        markRows.remove(markKey(ch, p))
+        rebuildGroups()
+        syncGroup()
+        val pl = playlist?.id ?: return
+        viewModelScope.launch(dbIo) { db.deleteMark(pl, ch.id, p.start) }
+    }
+
+    /** «Позначити переглянутим»: the position goes to the end, so it leaves «Продовжити перегляд» and shows ✓. */
+    private fun markWatched(ch: Channel, p: Programme) {
+        lockMarkIfPlaying(ch, p)
+        val m = Mark(ch, p, p.end, now())
+        marks[markKey(ch, p)] = m
+        markRows[markKey(ch, p)] = Db.MarkRow(ch.id, p, p.end, m.at)
+        rebuildGroups()
+        syncGroup()
+        val pl = playlist?.id ?: return
+        viewModelScope.launch(dbIo) { db.saveMark(pl, m) }
+    }
+
+    private fun lockMarkIfPlaying(ch: Channel, p: Programme) {
+        if (mode == Mode.ARCHIVE && cur == ch && progAt(ch, posAbs())?.start == p.start) markLock = markKey(ch, p)
+    }
+
+    /** Remembers [ch] at the top of «Нещодавні». */
+    private fun addRecent(ch: Channel) {
+        if (recent.firstOrNull() == ch.id) return
+        recent.remove(ch.id)
+        recent.add(0, ch.id)
+        while (recent.size > RECENT_MAX) recent.removeAt(recent.size - 1)
+        prefs.recent = recent
+        rebuildGroups()
+        if (layer == Layer.LIST) syncGroup()
+    }
+
+    // ============================================================ playback
+
+    fun posAbs(): Long {
+        pausedLiveAt?.let { return it }
+        if (mode == Mode.LIVE) return now()
+        pendingAbs?.let { return it }
+        return windowBase() + player.currentPosition
+    }
+
+    /** What live is showing right now: the player sits ~20–30 s behind the broadcast, so pausing or seeking from live
+     *  starts from the frame on screen rather than from the wall clock. Measured from the end of the live window, not
+     *  from PROGRAM-DATE-TIME: some channels' live PDT runs minutes off the clock the archive is indexed by. */
+    private fun livePos(): Long {
+        val d = player.duration
+        return if (d == C.TIME_UNSET || !player.isCurrentMediaItemLive) now() else now() - (d - player.currentPosition).coerceIn(0, MIN)
+    }
+
+    private fun windowBase(): Long {
+        val tl = player.currentTimeline
+        if (!tl.isEmpty) {
+            val w = tl.getWindow(player.currentMediaItemIndex, Timeline.Window())
+            if (w.windowStartTimeMs != C.TIME_UNSET) return w.windowStartTimeMs
+        }
+        return archiveFrom
+    }
+
+    private fun play(url: String, offsetMs: Long = C.TIME_UNSET) {
+        val item = MediaItem.Builder().setUri(url).setMimeType(MimeTypes.APPLICATION_M3U8).build()
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().clearOverridesOfType(C.TRACK_TYPE_AUDIO).build()
+        if (offsetMs == C.TIME_UNSET) player.setMediaItem(item) else player.setMediaItem(item, offsetMs)
+        player.prepare()
+        player.playWhenReady = true
+    }
+
+    fun tune(ch: Channel, at: Long? = null) {
+        if (BuildConfig.DEBUG) android.util.Log.d("tplay", "tune ${ch.id} at=$at")
+        saveMark()
+        cur = ch
+        prefs.lastChannel = ch.id
+        addRecent(ch)
+        pausedLiveAt = null
+        paused = false
+        if (at == null) {
+            mode = Mode.LIVE
+            play(ch.url)
+            showBanner()
+        } else {
+            playArchive(ch, at)
+            showOsd()
+        }
+    }
+
+    /** Up to an hour behind the broadcast (resumed pause, seek back from live, current programme from the start) the
+     *  window is open-ended (`-now`): it grows with the broadcast, so playback stays behind live for as long as the
+     *  user likes without re-windowing. Further back it is a fixed window of up to 6 h, re-cut by [onTick] before it ends. */
+    private fun playArchive(ch: Channel, t: Long) {
+        val earliest = now() - ch.archiveDays * DAY
+        val from = (max(earliest, t - 30 * MIN) / 1000) * 1000
+        val open = now() - t <= HOUR
+        val durSec = min((now() - from) / 1000, Catchup.maxWindowSec(ch))
+        val url = Catchup.url(ch, from / 1000, if (open) null else durSec)
+        if (url == null) { onNoArchive(); return }
+        if (BuildConfig.DEBUG) android.util.Log.d("tplay", "archive ${ch.id} behind=${(now() - t) / 1000}s open=$open")
+        archiveFrom = from
+        archiveTo = if (open) OPEN else from + durSec * 1000
+        markLock = null
+        mode = Mode.ARCHIVE
+        paused = false
+        pausedLiveAt = null
+        pendingAbs = t
+        play(url, t - from)
+    }
+
+    /** The channel can be paused, rewound and played from the guide: it has a depth, a scheme, and the server didn't
+     *  answer with its «no archive» stub. */
+    fun canArchive(ch: Channel) = ch.archiveDays > 0 && ch.id !in noArchive && Catchup.kind(ch) != Catchup.Kind.NONE
+
+    private fun isNoArchive(e: Throwable): Boolean {
+        var c: Throwable? = e
+        while (c != null) {
+            if (c is HttpDataSource.InvalidResponseCodeException && c.responseCode == 410 && c.headerFields.keys.any { it.equals(NO_ARCHIVE, true) }) return true
+            c = c.cause
+        }
+        return false
+    }
+
+    /** No archive after all: say so and go back to the broadcast rather than show the server's stub. */
+    private fun onNoArchive() {
+        val ch = cur ?: return
+        noArchive += ch.id
+        showToast("На цьому каналі немає архіву")
+        mode = Mode.LIVE; paused = false; pausedLiveAt = null; pendingAbs = null
+        play(ch.url)
+        hideOsd()
+    }
+
+    private fun seekAbs(target: Long) {
+        val ch = cur ?: return
+        val t = max(target, now() - ch.archiveDays * DAY)
+        if (t >= now() - 5_000) { goLive(); return }
+        if (pausedLiveAt == null && mode == Mode.ARCHIVE && t >= archiveFrom && t <= archiveTo - 30_000) {
+            // past the end of a `-now` window is the live edge itself: rejoin the broadcast rather than wait for it
+            if (archiveTo == OPEN && player.duration != C.TIME_UNSET && t >= windowBase() + player.duration - 5_000) { goLive(); return }
+            pendingAbs = t
+            player.seekTo(t - windowBase())
+        } else {
+            playArchive(ch, t)
+        }
+    }
+
+    fun goLive() {
+        if (BuildConfig.DEBUG) android.util.Log.d("tplay", "goLive")
+        saveMark()
+        val ch = cur ?: return
+        mode = Mode.LIVE
+        paused = false
+        pausedLiveAt = null
+        play(ch.url)
+        hideOsd()
+        showBanner()
+        showToast("Повернулися в ефір")
+    }
+
+    private fun togglePause() {
+        val ch = cur ?: return
+        when {
+            mode == Mode.LIVE -> {
+                if (!canArchive(ch)) { showToast("На цьому каналі немає архіву"); return }
+                pausedLiveAt = livePos(); mode = Mode.ARCHIVE; paused = true; player.pause()
+            }
+            pausedLiveAt != null -> playArchive(ch, pausedLiveAt!!)
+            else -> { paused = !paused; player.playWhenReady = !paused }
+        }
+        showOsd()
+    }
+
+    /** 10 s → 30 s → 1 min → 5 min: a step up every second tap in a quick run, or every few repeats of a held key. */
+    private val seekSteps = longArrayOf(10, 30, 60, 300)
+    private fun seek(dir: Int, repeat: Int) {
+        val ch = cur ?: return
+        if (!canArchive(ch)) { showToast("На цьому каналі немає архіву"); return }
+        if (dir > 0 && mode == Mode.LIVE) return // already at the live edge
+        if (repeat == 0) { seekRun = if (now() - lastSeekAt < 1200) seekRun + 1 else 0 }
+        lastSeekAt = now()
+        if (mode == Mode.LIVE) { // ◀ in live: timeshift from the frame on screen
+            pendingAbs = livePos()
+            pausedLiveAt = null; mode = Mode.ARCHIVE; archiveFrom = 0; archiveTo = 0
+        }
+        val step = seekSteps[min(seekRun / 2 + repeat / 6, seekSteps.size - 1)] * 1000 * dir
+        seekAcc += step
+        seekAbs(posAbs() + step)
+        showOsd()
+        seekJob?.cancel()
+        seekJob = viewModelScope.launch { delay(900); seekAcc = 0 }
+    }
+
+    // ============================================================ player control panel
+
+    /** The programme at the playing position. */
+    fun playingProgramme(): Programme? = cur?.let { progAt(it, posAbs()) }
+
+    /** Buttons that make no sense right now are dimmed and skipped by focus. */
+    fun osdEnabled(b: OsdButton): Boolean {
+        val ch = cur ?: return false
+        val p = playingProgramme()
+        return when (b) {
+            OsdButton.RESTART -> p != null && ch.inArchive(p) && posAbs() - p.start > 5_000
+            OsdButton.PREV -> p != null && progAt(ch, p.start - 1)?.let(ch::inArchive) == true
+            OsdButton.NEXT, OsdButton.LIVE -> mode == Mode.ARCHIVE
+            OsdButton.AUDIO -> audioTracks > 1
+        }
+    }
+
+    private fun osdButtons() = OsdButton.entries.filter(::osdEnabled)
+
+    private fun runOsd(b: OsdButton) {
+        val ch = cur ?: return
+        val p = playingProgramme()
+        when (b) {
+            OsdButton.RESTART -> if (p != null) { saveMark(); seekAbs(p.start); showToast("З початку · ${p.title}") }
+            OsdButton.PREV -> p?.let { progAt(ch, it.start - 1) }?.let { q -> saveMark(); seekAbs(q.start); showToast(q.title) }
+            OsdButton.NEXT -> {
+                saveMark()
+                val q = progAt(ch, (p?.end ?: posAbs()) + 1)
+                if (q == null || q.start >= now() - 5000) goLive() else { seekAbs(q.start); showToast(q.title) }
+            }
+            OsdButton.LIVE -> goLive()
+            OsdButton.AUDIO -> cycleAudio()
+        }
+        if (!osd) return
+        showOsd()
+        if (!osdEnabled(osdBtn)) osdButtons().firstOrNull()?.let { osdBtn = it } ?: run { osdOnButtons = false }
+    }
+
+    private fun audioGroups() = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO && it.isSupported }
+
+    private fun cycleAudio() {
+        val gs = audioGroups()
+        if (gs.size < 2) { showToast("Інших звукових доріжок немає"); return }
+        val i = (gs.indexOfFirst { it.isSelected } + 1) % gs.size
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setOverrideForType(androidx.media3.common.TrackSelectionOverride(gs[i].mediaTrackGroup, 0)).build()
+        val f = gs[i].getTrackFormat(0)
+        val name = f.label ?: f.language?.let { java.util.Locale(it).getDisplayLanguage(java.util.Locale("uk")).replaceFirstChar(Char::uppercase) }
+        showToast("Звук: ${name ?: "доріжка ${i + 1}"} (${i + 1} з ${gs.size})")
+    }
+
+    /** Timeline: ◀▶ seek, OK pause, ▼ buttons. Buttons: ◀▶ choose, OK run, ▲ timeline. BACK closes; any key keeps it up. */
+    private fun panelKey(k: Key, repeat: Int) {
+        showOsd()
+        when (k) {
+            Key.BACK -> { hideOsd(); return }
+            Key.CHUP -> { zap(1); return }
+            Key.CHDOWN -> { zap(-1); return }
+            else -> Unit
+        }
+        if (!osdOnButtons) when (k) {
+            Key.LEFT -> seek(-1, repeat)
+            Key.RIGHT -> seek(1, repeat)
+            Key.OK -> togglePause()
+            Key.DOWN -> osdButtons().firstOrNull()?.let { osdBtn = it; osdOnButtons = true }
+            else -> Unit
+        } else when (k) {
+            Key.LEFT, Key.RIGHT -> {
+                val bs = osdButtons()
+                if (bs.isNotEmpty()) osdBtn = bs[(bs.indexOf(osdBtn).coerceAtLeast(0) + if (k == Key.RIGHT) 1 else -1).coerceIn(0, bs.size - 1)]
+            }
+            Key.OK -> if (osdEnabled(osdBtn)) runOsd(osdBtn)
+            Key.UP -> osdOnButtons = false
+            else -> Unit
+        }
+    }
+
+    /** «Продовжити перегляд» lists programmes and «Нещодавні» reorders itself on every tune: zapping goes by «Усі канали». */
+    private fun zapsBy(id: String) = id != "cont" && id != "recent"
+
+    private fun zap(dir: Int) {
+        val list = groupFor(groupId)?.channels?.takeIf { it.isNotEmpty() && zapsBy(groupId) } ?: shown
+        if (list.isEmpty()) return
+        val i = list.indexOf(cur)
+        val n = cur?.num ?: 0
+        tune(
+            if (i >= 0) list[(i + dir + list.size) % list.size]
+            // the current channel was just hidden: go on from where it stood
+            else if (dir > 0) list.firstOrNull { it.num > n } ?: list.first() else list.lastOrNull { it.num < n } ?: list.last(),
+        )
+    }
+
+    fun playProgramme(ch: Channel, p: Programme, fromStart: Boolean = false) {
+        if (BuildConfig.DEBUG) android.util.Log.d("tplay", "playProgramme ${ch.id} ${p.start} past=${p.isPast()} now=${p.isNow()}")
+        closeLayers()
+        when {
+            p.isNow() && fromStart && !canArchive(ch) -> { showToast("На цьому каналі немає архіву"); tune(ch) }
+            p.isNow() && fromStart -> tune(ch, p.start)
+            p.isNow() -> tune(ch)
+            p.isPast() -> {
+                if (!canArchive(ch)) { showToast("На цьому каналі немає архіву"); return }
+                if (!ch.inArchive(p)) { showToast("Ця передача вже поза архівом"); return }
+                val m = marks[markKey(ch, p)]
+                val resume = !fromStart && m != null && m.watched < DONE
+                tune(ch, if (resume) m!!.pos else p.start)
+                showToast(if (resume) "Продовжуємо з ${ago(m!!.pos - p.start)} · ${p.title}" else p.title)
+            }
+            else -> showToast("Передача ще не почалася")
+        }
+    }
+
+    private fun onTick() {
+        if (mode == Mode.ARCHIVE && pausedLiveAt == null) {
+            saveMark(persist = false)
+            val t = posAbs()
+            // A fixed window is re-cut before its ENDLIST stops playback; a `-now` one never runs out and is only re-cut
+            // once it has grown past 3 h, to keep the playlist the player keeps re-polling small. Never jumps to live.
+            val ch = cur ?: return
+            val openMax = min(3 * HOUR, Catchup.maxWindowSec(ch) * 1000 - 30 * MIN)
+            val renew = if (archiveTo == OPEN) now() - archiveFrom > openMax else archiveTo > 0 && t > archiveTo - 20_000
+            if (!paused && pendingAbs == null && renew) playArchive(ch, t)
+        }
+    }
+
+    fun onStop() { saveMark(); player.pause() }
+
+    /** «Вихід»: the bookmark is saved, playback stops, the activity finishes. */
+    private fun exitApp() {
+        saveMark()
+        closeSheets(); closeCtx(); markCtx = null
+        player.stop()
+        onExit()
+    }
+    fun onStart() { if (!paused && cur != null) player.playWhenReady = true }
+
+    override fun onCleared() {
+        setupServer.stop()
+        player.release()
+        guideThread.close()
+    }
+
+    // ============================================================ overlays
+
+    private fun showBanner() {
+        osd = false
+        banner = true
+        bannerJob?.cancel()
+        bannerJob = viewModelScope.launch { delay(5000); banner = false }
+    }
+
+    /** Opens the panel or keeps it up: it hides after 6 s without keys, unless paused. Reopened, it starts on the timeline. */
+    private fun showOsd() {
+        markLock = null
+        if (!osd) osdOnButtons = false
+        banner = false
+        osd = true
+        osdJob?.cancel()
+        osdJob = viewModelScope.launch { delay(6000); if (!paused) osd = false }
+    }
+
+    private fun hideOsd() { osd = false }
+
+    fun showToast(text: String) {
+        toast = text
+        toastJob?.cancel()
+        toastJob = viewModelScope.launch { delay(2600); toast = null }
+    }
+
+    private fun closeLayers() { layer = Layer.NONE }
+
+    // ============================================================ list
+
+    private fun groupFor(id: String) = groups.firstOrNull { it.id == id }
+    fun currentGroup(): Group? = groups.getOrNull(groupIdx)
+    fun listChannel(): Channel? = currentGroup()?.channels?.getOrNull(chIdx)
+    fun listMark(): Mark? = currentGroup()?.marks?.getOrNull(chIdx)
+
+    private fun syncGroup() {
+        val i = groups.indexOfFirst { it.id == groupId }
+        groupIdx = if (i >= 0) i else groups.indexOfFirst { it.id == "all" }.coerceAtLeast(0)
+    }
+
+    private fun openList(programmes: Boolean = false) {
+        listKeyAt = keyAt
+        banner = false; osd = false
+        if (!zapsBy(groupId)) groupId = prefs.lastGroup ?: "all" // «Нещодавні» / «Продовжити» were a detour
+        if (groupFor(groupId)?.channels?.contains(cur) != true) groupId = "all"
+        syncGroup()
+        chIdx = max(0, currentGroup()?.channels?.indexOf(cur) ?: 0)
+        focus = Focus.CHANNELS
+        layer = Layer.LIST
+        if (programmes) openSchedule(cur?.let { progAt(it, posAbs()) }) // the programme being played, live or archive
+    }
+
+    private fun openSchedule(target: Programme?) {
+        val ch = listChannel() ?: return
+        val list = progList(ch)
+        if (list.isEmpty()) {
+            showToast(
+                when {
+                    !guide.hasData && !guideSyncing -> "Програма передач ще не завантажена"
+                    !guide.hasData || !guide.complete(ch) -> "Програма ще завантажується"
+                    else -> "Для цього каналу немає програми"
+                },
+            )
+            return
+        }
+        progIdx = (if (target != null) list.indexOfFirst { it.start == target.start } else list.indexOfFirst { it.isNow() }).coerceAtLeast(0)
+        focus = Focus.PROGS
+    }
+
+    private fun toggleFav(ch: Channel) {
+        if (ch.id in favs) { favs.remove(ch.id); showToast("${ch.name} — прибрано з обраного") }
+        else { favs.add(ch.id); showToast("${ch.name} → Обране") }
+        prefs.favorites = favs
+        rebuildGroups()
+        syncGroup()
+    }
+
+    fun isFav(ch: Channel) = ch.id in favs
+
+    private fun listKey(k: Key) {
+        val g = currentGroup() ?: return
+        when (focus) {
+            Focus.GROUPS -> when (k) {
+                Key.UP -> { groupIdx = (groupIdx - 1 + groups.size) % groups.size; chIdx = 0 }
+                Key.DOWN -> { groupIdx = (groupIdx + 1) % groups.size; chIdx = 0 }
+                Key.RIGHT, Key.OK -> focus = Focus.CHANNELS
+                Key.LEFT, Key.BACK -> openMenu()
+                else -> Unit
+            }.also { groupIdx = groupIdx.coerceIn(0, groups.size - 1); groupId = groups[groupIdx].id; if (zapsBy(groupId)) prefs.lastGroup = groupId }
+
+            Focus.DAYS -> {
+                val ch = listChannel() ?: return
+                val days = progDays(ch)
+                when (k) {
+                    Key.UP, Key.CHUP, Key.YELLOW -> dayIdx = max(0, dayIdx - 1)
+                    Key.DOWN, Key.CHDOWN, Key.BLUE -> dayIdx = min(days.size - 1, dayIdx + 1)
+                    Key.RIGHT, Key.OK -> days.getOrNull(dayIdx)?.let { progIdx = sameTimeOn(progList(ch), it); focus = Focus.PROGS }
+                    Key.LEFT, Key.BACK -> focus = Focus.CHANNELS
+                    else -> Unit
+                }
+            }
+
+            Focus.PROGS -> {
+                val ch = listChannel() ?: return
+                val list = progList(ch)
+                if (list.isEmpty()) { focus = Focus.CHANNELS; return }
+                when (k) {
+                    Key.UP -> progIdx = max(0, progIdx - 1)
+                    Key.DOWN -> progIdx = min(list.size - 1, progIdx + 1)
+                    Key.CHUP, Key.CHDOWN, Key.YELLOW, Key.BLUE -> {
+                        val days = progDays(ch)
+                        val d = days.indexOf(dayStart(list[progIdx].start)) + if (k == Key.CHUP || k == Key.YELLOW) -1 else 1
+                        if (d in days.indices) progIdx = sameTimeOn(list, days[d])
+                    }
+                    Key.LEFT -> { dayIdx = progDays(ch).indexOf(dayStart(list[progIdx].start)).coerceAtLeast(0); focus = Focus.DAYS }
+                    Key.BACK -> focus = Focus.CHANNELS
+                    Key.OK -> playProgramme(ch, list[progIdx])
+                    else -> Unit
+                }
+            }
+
+            Focus.CHANNELS -> {
+                val n = g.channels.size
+                val m = listMark()
+                when (k) {
+                    Key.UP -> if (n > 0) chIdx = (chIdx - 1 + n) % n
+                    Key.DOWN -> if (n > 0) chIdx = (chIdx + 1) % n
+                    Key.CHUP -> chIdx = max(0, chIdx - 9)
+                    Key.CHDOWN -> chIdx = min(n - 1, chIdx + 9)
+                    Key.LEFT, Key.BACK -> focus = Focus.GROUPS
+                    Key.RIGHT -> openSchedule(m?.p)
+                    Key.OK -> {
+                        if (m != null) { playProgramme(m.ch, m.p); return }
+                        val ch = listChannel() ?: return
+                        if (zapsBy(g.id)) groupId = g.id
+                        closeLayers()
+                        if (ch == cur && mode == Mode.LIVE) showBanner() else tune(ch)
+                    }
+                    Key.RED -> listChannel()?.let(::toggleFav)
+                    else -> Unit
+                }
+            }
+        }
+    }
+
+    private fun listLongOk() {
+        when (focus) {
+            Focus.PROGS -> {
+                val ch = listChannel() ?: return
+                val p = progList(ch).getOrNull(progIdx) ?: return
+                longOkProgramme(ch, p)
+            }
+            Focus.CHANNELS -> {
+                val m = listMark()
+                if (m != null) { openMarkCtx(m); return }
+                listChannel()?.let(::openCtx)
+            }
+            else -> Unit
+        }
+    }
+
+    // ============================================================ menu, settings, context menu
+
+    /** The row each sheet under the top one was on. */
+    private val rowStack = ArrayList<Int>()
+
+    private fun push(s: Sheet) {
+        if (sheets.isNotEmpty()) rowStack += rowIdx
+        sheets = sheets + s
+    }
+
+    private fun pop() {
+        if (sheets.lastOrNull() == Sheet.LINK) stopLink()
+        sheets = sheets.dropLast(1)
+        rowIdx = rowStack.removeLastOrNull() ?: 0
+    }
+
+    private fun closeSheets() {
+        if (Sheet.LINK in sheets) stopLink()
+        sheets = emptyList()
+        rowStack.clear()
+    }
+
+    /** The LAN page goes back to what the first-run screen expects, and stops. */
+    private fun stopLink() {
+        setupServer.stop()
+        setupServer.page = SetupServer.PLAYLIST
+        setupServer.onSubmit = { link -> viewModelScope.launch { usePlaylist(link) } }
+    }
+
+    private fun openMenu() {
+        banner = false; osd = false
+        menuIdx = 0
+        closeSheets()
+        sheets = listOf(Sheet.MENU)
+    }
+
+    private fun openSheet(s: Sheet) {
+        push(s)
+        rowIdx = when (s) {
+            Sheet.PLAYLISTS -> max(0, playlists.indexOfFirst { it.id == playlist?.id })
+            Sheet.GUIDE -> playlist?.guideMode?.ordinal ?: 0
+            else -> 0
+        }
+    }
+
+    /** The side menu's rows, top to bottom. */
+    fun menuItems(): List<MenuItem> = MenuItem.entries
+
+    /** ▲▼ choose, OK opens, ▶ back to the list under it; BACK (or MENU) closes the menu back to playback. */
+    private fun menuKey(k: Key) {
+        val items = menuItems()
+        val n = items.size
+        menuIdx = menuIdx.coerceIn(0, n - 1)
+        when (k) {
+            Key.UP -> menuIdx = (menuIdx - 1 + n) % n
+            Key.DOWN -> menuIdx = (menuIdx + 1) % n
+            Key.OK -> when (items[menuIdx]) {
+                MenuItem.GROUPS -> openSheet(Sheet.GROUPS)
+                MenuItem.SETTINGS -> openSheet(Sheet.SETTINGS)
+                MenuItem.GUIDE -> { closeSheets(); refreshGuide(force = true) }
+                MenuItem.EXIT -> exitApp()
+            }
+            Key.RIGHT -> pop()
+            Key.BACK, Key.MENU -> { closeSheets(); closeLayers() }
+            else -> Unit
+        }
+    }
+
+    /** Settings sheets: ▲▼ rows, OK acts (flips a switch, opens a sheet), BACK or ◀ goes back. */
+    private fun sheetKey(s: Sheet, k: Key) {
+        val n = when (s) {
+            Sheet.SETTINGS -> SettingsRow.entries.size
+            Sheet.GROUPS -> allGroups.size
+            Sheet.HIDDEN -> hiddenChannels().size
+            Sheet.PLAYLISTS -> playlists.size + 1 // + «Додати плейлист»
+            Sheet.PLAYLIST -> PlaylistAction.entries.size
+            Sheet.GUIDE -> GuideRow.entries.size
+            Sheet.LINK -> 0
+            Sheet.MENU -> return menuKey(k)
+        }
+        when (k) {
+            Key.UP -> if (n > 0) rowIdx = (rowIdx - 1 + n) % n
+            Key.DOWN -> if (n > 0) rowIdx = (rowIdx + 1) % n
+            Key.CHUP -> rowIdx = max(0, rowIdx - 8)
+            Key.CHDOWN -> rowIdx = max(0, min(n - 1, rowIdx + 8))
+            Key.BACK, Key.MENU -> pop()
+            Key.LEFT -> pop()
+            Key.OK -> when (s) {
+                Sheet.SETTINGS -> when (SettingsRow.entries[rowIdx]) {
+                    SettingsRow.PLAYLISTS -> { playlists = repo.all(); openSheet(Sheet.PLAYLISTS) }
+                    SettingsRow.GROUPS -> openSheet(Sheet.GROUPS)
+                    SettingsRow.HIDDEN -> openSheet(Sheet.HIDDEN)
+                    SettingsRow.GUIDE -> openSheet(Sheet.GUIDE)
+                }
+                Sheet.PLAYLISTS -> playlists.getOrNull(rowIdx)?.let(::openPlaylistSheet) ?: openLink(LinkPurpose.ADD_PLAYLIST, null)
+                Sheet.PLAYLIST -> playlistAction(PlaylistAction.entries[rowIdx])
+                Sheet.GUIDE -> when (GuideRow.entries[rowIdx]) {
+                    GuideRow.AUTO -> setGuideMode(GuideMode.AUTO)
+                    GuideRow.PLAYLIST -> setGuideMode(GuideMode.PLAYLIST)
+                    GuideRow.CUSTOM -> {
+                        val p = playlist
+                        if (p?.guideUrl != null && p.guideMode != GuideMode.CUSTOM) {
+                            afterPlaylistEdit(repo.update(p.id) { it.copy(guideMode = GuideMode.CUSTOM) } ?: return)
+                            showToast("Програма передач: власне посилання · OK ще раз — змінити")
+                        } else setGuideMode(GuideMode.CUSTOM)
+                    }
+                    GuideRow.REFRESH -> refreshGuide(force = true)
+                }
+                Sheet.LINK -> Unit
+                Sheet.GROUPS -> allGroups.getOrNull(rowIdx)?.let(::toggleGroupShown)
+                Sheet.HIDDEN -> hiddenChannels().getOrNull(rowIdx)?.let { ch ->
+                    setHidden(ch, false)
+                    showToast("${ch.name} — знову у списку")
+                    rowIdx = rowIdx.coerceAtMost(max(0, n - 2))
+                }
+                Sheet.MENU -> Unit
+            }
+            else -> Unit
+        }
+    }
+
+    private fun openCtx(ch: Channel) {
+        banner = false
+        ctx = ch
+        ctxIdx = 0
+    }
+
+    private fun closeCtx() { ctx = null }
+
+    private fun ctxKey(k: Key) {
+        val ch = ctx ?: return
+        val n = CtxItem.entries.size
+        when (k) {
+            Key.UP -> ctxIdx = (ctxIdx - 1 + n) % n
+            Key.DOWN -> ctxIdx = (ctxIdx + 1) % n
+            Key.BACK, Key.LEFT, Key.MENU -> closeCtx()
+            Key.OK -> when (CtxItem.entries[ctxIdx]) {
+                CtxItem.FAV -> { closeCtx(); toggleFav(ch) }
+                CtxItem.HIDE -> {
+                    closeCtx()
+                    val hide = !isHidden(ch) // the playing channel can already be hidden: then this brings it back
+                    setHidden(ch, hide)
+                    showToast(if (hide) "${ch.name} приховано · повернути можна в налаштуваннях" else "${ch.name} — знову у списку")
+                }
+            }
+            else -> Unit
+        }
+    }
+
+    /** Long OK on a programme: a watched one in the archive gets the bookmark menu; the one on air starts over. */
+    private fun longOkProgramme(ch: Channel, p: Programme) {
+        val m = marks[markKey(ch, p)]
+        when {
+            p.isPast() && ch.inArchive(p) && m != null -> openMarkCtx(m)
+            p.isNow() && canArchive(ch) -> playProgramme(ch, p, fromStart = true)
+            else -> playProgramme(ch, p)
+        }
+    }
+
+    /** Whether long OK on [p] opens the bookmark menu (for the hints). */
+    fun hasMarkMenu(ch: Channel, p: Programme) = p.isPast() && ch.inArchive(p) && markKey(ch, p) in marks
+
+    private fun openMarkCtx(m: Mark) {
+        banner = false
+        markCtx = m
+        ctxIdx = 0
+    }
+
+    /** The bookmark menu's rows: a watched programme offers to forget the ✓ instead of marking it again. */
+    fun markActions(m: Mark): List<MarkAction> =
+        if (m.watched >= DONE) listOf(MarkAction.FROM_START, MarkAction.FORGET) else MarkAction.entries
+
+    private fun markCtxKey(k: Key) {
+        val m = markCtx ?: return
+        val items = markActions(m)
+        val n = items.size
+        when (k) {
+            Key.UP -> ctxIdx = (ctxIdx - 1 + n) % n
+            Key.DOWN -> ctxIdx = (ctxIdx + 1) % n
+            Key.BACK, Key.LEFT, Key.MENU -> markCtx = null
+            Key.OK -> {
+                markCtx = null
+                when (items[ctxIdx.coerceIn(0, n - 1)]) {
+                    MarkAction.FROM_START -> playProgramme(m.ch, m.p, fromStart = true)
+                    MarkAction.FORGET -> {
+                        val done = m.watched >= DONE
+                        forgetMark(m.ch, m.p)
+                        showToast(if (done) "Позначку «Переглянуто» знято" else "Прибрано з «Продовжити перегляд»")
+                        afterMarkChange(m.ch)
+                    }
+                    MarkAction.DONE -> {
+                        markWatched(m.ch, m.p)
+                        showToast("Позначено переглянутим: ${m.p.title}")
+                        afterMarkChange(m.ch)
+                    }
+                }
+            }
+            else -> Unit
+        }
+    }
+
+    /** The bookmark left «Продовжити перегляд»: keep the list on something that still exists. A programme view opened
+     *  from that group moves to the same channel in «Усі канали», since its row may be gone. */
+    private fun afterMarkChange(ch: Channel) {
+        if (layer != Layer.LIST) return
+        if (groupId == "cont" || groupFor(groupId) == null) {
+            val inProgs = focus == Focus.PROGS || focus == Focus.DAYS
+            if (inProgs || groupFor("cont") == null) {
+                groupId = "all"; syncGroup(); chIdx = max(0, shown.indexOf(if (inProgs) ch else cur))
+            } else syncGroup()
+        }
+        chIdx = chIdx.coerceIn(0, max(0, (currentGroup()?.channels?.size ?: 1) - 1))
+    }
+
+    // ============================================================ keys
+
+    private var keyAt = 0L
+    /** When the key that opened the list was pressed (uptime ms): the list logs how long it took to appear. */
+    var listKeyAt = 0L; private set
+    private var holdKey: Key? = null
+    private var holdFired = false
+    private var holdStart = 0L
+
+    /** Returns true if the key was consumed. */
+    fun onKey(e: KeyEvent): Boolean {
+        val k = map(e.keyCode) ?: return false
+        lastKeyAt = SystemClock.uptimeMillis()
+        keyAt = e.eventTime
+        if (channels.isEmpty()) return false
+        // no long presses in dialogs and the player panel: OK acts on press, and holding it doesn't repeat it
+        val dialog = ctx != null || markCtx != null || sheets.isNotEmpty() || (layer == Layer.NONE && osd)
+        if (dialog && k == Key.OK && e.repeatCount > 0) return true
+        val holdable = !dialog && k == Key.OK
+        when (e.action) {
+            KeyEvent.ACTION_DOWN -> {
+                if (holdable) {
+                    if (e.repeatCount == 0) { holdKey = k; holdFired = false; holdStart = e.eventTime }
+                    else if (holdKey == k && !holdFired && (e.isLongPress || e.eventTime - holdStart >= 450)) { holdFired = true; longPress(k) }
+                    return true
+                }
+                if (k == Key.BACK && e.repeatCount > 0) return true
+                press(k, e.repeatCount)
+            }
+            KeyEvent.ACTION_UP -> if (holdKey == k) {
+                holdKey = null
+                if (!holdFired) press(k, 0)
+            }
+        }
+        return true
+    }
+
+    private fun longPress(k: Key) {
+        when (k) {
+            Key.OK -> if (layer == Layer.LIST) listLongOk() else cur?.let(::openCtx)
+            else -> Unit
+        }
+    }
+
+    private fun press(k: Key, repeat: Int) {
+        if (k == Key.PLAYPAUSE) { togglePause(); return } // media keys pause anywhere
+        if (ctx != null) { ctxKey(k); return }
+        if (markCtx != null) { markCtxKey(k); return }
+        sheets.lastOrNull()?.let { sheetKey(it, k); return }
+        if (k.ordinal >= Key.D0.ordinal) { digit(k.ordinal - Key.D0.ordinal); return }
+        if (k == Key.MENU) { openMenu(); return }
+        if (layer == Layer.LIST) { listKey(k); return }
+        if (osd) { panelKey(k, repeat); return }
+        // plain playback: the same keys in live and in the archive
+        when (k) {
+            Key.UP, Key.CHUP -> zap(1)
+            Key.DOWN, Key.CHDOWN -> zap(-1)
+            Key.LEFT -> openList()
+            Key.RIGHT -> openList(programmes = true)
+            Key.OK -> showOsd()
+            // the first step up the hierarchy: programme view › channels › groups › menu › back to playback
+            Key.BACK -> openList(programmes = true)
+            Key.RED -> cur?.let(::toggleFav)
+            Key.GREEN -> openList(programmes = true)
+            Key.YELLOW -> openRecent()
+            Key.INFO -> if (banner) banner = false else showBanner()
+            else -> Unit
+        }
+    }
+
+    /** YELLOW / LAST_CHANNEL: «Нещодавні», on the channel watched before this one. */
+    private fun openRecent() {
+        listKeyAt = keyAt
+        banner = false; osd = false
+        groupId = "recent"
+        syncGroup()
+        val chs = currentGroup()?.channels.orEmpty()
+        chIdx = if (chs.size > 1 && chs.first() == cur) 1 else 0
+        focus = Focus.CHANNELS
+        layer = Layer.LIST
+    }
+
+    private fun digit(d: Int) {
+        numBuf = (numBuf + d).takeLast(4)
+        numJob?.cancel()
+        numJob = viewModelScope.launch {
+            delay(1300)
+            val ch = channelByNum(numBuf.toIntOrNull() ?: -1)
+            numBuf = ""
+            if (ch == null) { showToast("Немає каналу з таким номером"); return@launch }
+            if (layer == Layer.LIST) {
+                groupId = "all"; syncGroup(); chIdx = shown.indexOf(ch); focus = Focus.CHANNELS
+            } else tune(ch)
+        }
+    }
+
+    fun channelByNum(n: Int) = shown.firstOrNull { it.num == n }
+
+    companion object {
+        const val DONE = .92f
+        const val RECENT_MAX = 20
+        private const val TAG = "tplay"
+        private const val OPEN = Long.MAX_VALUE
+        const val USER_AGENT = "TiviMate/5.1.6 (Android 12)"
+        private val ADULT = Regex("adult|18\\+|взросл|доросл", RegexOption.IGNORE_CASE)
+        /** Where the provider sends an archive it doesn't have (302 Location, segment names). */
+        private val STUB = Regex("noarch|/stub", RegexOption.IGNORE_CASE)
+        private const val NO_ARCHIVE = "X-Tplay-No-Archive"
+
+        fun isEpgTeam(url: String) = PlaylistInfo.hostOf(url).let { it == "epg.team" || it.endsWith(".epg.team") }
+
+        /**
+         * A buffer a 1–1.5 GB TV can afford: Media3's default keeps up to 50 s whatever the bitrate (≈30 MB of HD) on
+         * top of a ~130 MB byte target. Here it stops at a byte cap first: 16 MB / 30 s on low-RAM devices, else
+         * 24 MB / 50 s. Live HLS needs little more than a few segments; the archive refills as fast as it plays.
+         */
+        private fun loadControl(app: Application): DefaultLoadControl {
+            val am = app.getSystemService(ActivityManager::class.java)
+            val low = am.isLowRamDevice || am.memoryClass <= 128
+            Log.i(TAG, "player buffer: ${if (low) "low-RAM" else "normal"} (memoryClass ${am.memoryClass} MB)")
+            return DefaultLoadControl.Builder()
+                .setBufferDurationsMs(if (low) 15_000 else 30_000, if (low) 30_000 else 50_000, 2_500, 5_000)
+                .setTargetBufferBytes(if (low) 16 shl 20 else 24 shl 20)
+                .setPrioritizeTimeOverSizeThresholds(false)
+                .build()
+        }
+
+        fun map(code: Int): Key? = when (code) {
+            KeyEvent.KEYCODE_DPAD_UP -> Key.UP
+            KeyEvent.KEYCODE_DPAD_DOWN -> Key.DOWN
+            KeyEvent.KEYCODE_DPAD_LEFT -> Key.LEFT
+            KeyEvent.KEYCODE_DPAD_RIGHT -> Key.RIGHT
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> Key.OK
+            KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> Key.BACK
+            KeyEvent.KEYCODE_CHANNEL_UP, KeyEvent.KEYCODE_PAGE_UP -> Key.CHUP
+            KeyEvent.KEYCODE_CHANNEL_DOWN, KeyEvent.KEYCODE_PAGE_DOWN -> Key.CHDOWN
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE, KeyEvent.KEYCODE_SPACE -> Key.PLAYPAUSE
+            KeyEvent.KEYCODE_PROG_RED -> Key.RED
+            KeyEvent.KEYCODE_PROG_GREEN, KeyEvent.KEYCODE_GUIDE -> Key.GREEN
+            KeyEvent.KEYCODE_PROG_YELLOW, KeyEvent.KEYCODE_LAST_CHANNEL -> Key.YELLOW
+            KeyEvent.KEYCODE_PROG_BLUE -> Key.BLUE
+            KeyEvent.KEYCODE_INFO -> Key.INFO
+            KeyEvent.KEYCODE_MENU -> Key.MENU
+            in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> Key.entries[Key.D0.ordinal + code - KeyEvent.KEYCODE_0]
+            else -> null
+        }
+
+        fun dayStart(t: Long): Long = Calendar.getInstance().apply {
+            timeInMillis = t; set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        fun ago(ms: Long): String {
+            val m = (ms / MIN).toInt().coerceAtLeast(0)
+            return if (m < 60) "$m хв" else "${m / 60} год" + if (m % 60 != 0) " ${m % 60} хв" else ""
+        }
+    }
+}
