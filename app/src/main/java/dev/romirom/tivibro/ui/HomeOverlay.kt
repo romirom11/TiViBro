@@ -96,7 +96,7 @@ private fun HomeRows(vm: AppViewModel, rows: List<HomeRow>, active: Boolean) {
     val state = rememberLazyListState()
     val stage = LocalStage.current
     LaunchedEffect(vm.homeRowIdx, rows.size, stage) { state.scrollNear(vm.homeRowIdx, 0) }
-    LazyColumn(Modifier.fillMaxWidth().padding(top = 16.px), state = state) {
+    LazyColumn(Modifier.fillMaxWidth().padding(top = 16.px).fadeEdges(40), state = state) {
         itemsIndexed(rows, key = { _, r -> r.kind }) { i, r ->
             val focusedRow = i == vm.homeRowIdx
             if (r.kind == HomeKind.SETUP) SetupRow(focusedRow, active) else CardRow(vm, r, focusedRow, if (focusedRow) vm.homeColIdx else -1, active)

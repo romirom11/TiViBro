@@ -50,7 +50,9 @@ import dev.romirom.tivibro.data.XmltvGuide
 import dev.romirom.tivibro.data.inArchive
 import dev.romirom.tivibro.data.now
 import dev.romirom.tivibro.home.HomeCard
+import dev.romirom.tivibro.home.HomeIndex
 import dev.romirom.tivibro.home.HomeKind
+import dev.romirom.tivibro.home.HomePicks
 import dev.romirom.tivibro.home.HomeRow
 import dev.romirom.tivibro.home.HomeRows
 import dev.romirom.tivibro.ui.channelsWord
@@ -251,6 +253,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val homeChannels = HashMap<String, Set<String>>()
     /** The group Sheet.HOME_GROUP lists. */
     var homeGroup by mutableStateOf<Group?>(null); private set
+    /** Now/next of the Home sources, read from the guide in the background (see [HomeIndex]). */
+    private val homeIndex: HomeIndex = HomeIndex(viewModelScope) {
+        homeLoading = homeIndex.building && homeIndex.slots.isEmpty()
+        refreshHome()
+    }
     /** Home's guide index is being read for the first time: the rows it feeds are still to come. */
     var homeLoading by mutableStateOf(false); private set
     /** Sources are picked, nothing is loading, and still nothing to show from them. */
@@ -361,6 +368,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         homeChannels.clear()
         groupId = prefs.lastGroup ?: "all"
         markRows.clear(); marks.clear(); noArchive.clear()
+        homeIndex.clear()
         channels = emptyList(); guideChannels = emptyList(); byId = emptyMap()
         allGroups = emptyList(); groupByName = emptyMap(); providerGroups = emptyList(); shown = emptyList(); groups = emptyList()
         cur = null
@@ -550,6 +558,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (s == guideSource) return
         guideSource = s
         guide = if (s is GuideSource.Xmltv) xmlGuide else segGuide
+        homeIndex.clear() // read again from the new guide when Home next needs it
         guideError = null
         status = null
         guideVersion++
@@ -1165,6 +1174,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun onTick() {
+        // Home follows the clock: what started, what is on, what is soon; the index itself is re-read every half hour
+        if (layer == Layer.HOME && now() / 1000 % 30 == 0L) refreshHome()
+        else if (now() / 1000 % 1800 == 0L && cur != null) ensureHomeIndex()
         if (mode == Mode.ARCHIVE && pausedLiveAt == null) {
             saveMark(persist = false)
             val t = posAbs()
@@ -1627,9 +1639,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         closeSheets(); closeCtx(); markCtx = null
         banner = false; osd = false
         if (layer == Layer.HOME) return
-        listKeyAt = keyAt
+        listKeyAt = if (keyAt > 0) keyAt else SystemClock.uptimeMillis() // opened at start: timed from now
         layer = Layer.HOME
         homeCols.clear()
+        ensureHomeIndex()
         homeRows = buildHomeRows()
         homeRowIdx = 0
         homeColIdx = 0
@@ -1645,13 +1658,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val rows = ArrayList<HomeRow>()
         val cont = homeContinue()
         if (cont.isNotEmpty()) rows += HomeRow(HomeKind.CONTINUE, cont.map { HomeCard(HomeRows.continueKey(it.ch, it.p), HomeKind.CONTINUE, it.ch, it.p, it) })
-        if (homeSources().isEmpty()) rows += HomeRow(HomeKind.SETUP, emptyList())
+        val src = homeSources()
+        if (src.isEmpty()) { rows += HomeRow(HomeKind.SETUP, emptyList()); return rows }
+        val ids = src.mapTo(HashSet()) { it.id }
+        val slots = homeIndex.slots.filter { it.ch.id in ids }
+        val t = now()
+        fun add(kind: HomeKind, cards: List<HomeCard>) { if (cards.isNotEmpty()) rows += HomeRow(kind, cards) }
+        add(HomeKind.NOW, HomePicks.now(slots, t, HOME_NOW_MAX))
+        add(HomeKind.STARTED, HomePicks.started(slots, t, ::canArchive, HOME_ROW_MAX))
+        add(HomeKind.SOON, HomePicks.soon(slots, t, HOME_ROW_MAX))
         return rows
     }
 
     /** Folds what changed into the open Home without moving the focused card; [drop]: a card to remove even if focused. */
     private fun refreshHome(drop: String? = null) {
         if (layer != Layer.HOME) return
+        ensureHomeIndex()
         val focused = homeCard()?.key?.takeIf { it != drop }
         val kind = homeRows.getOrNull(homeRowIdx)?.kind
         homeRows = HomeRows.merge(homeRows, buildHomeRows(), focused)
@@ -1659,6 +1681,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         homeRowIdx = r
         val cards = homeRows.getOrNull(r)?.cards.orEmpty()
         homeColIdx = cards.indexOfFirst { it.key == focused }.takeIf { it >= 0 } ?: homeColIdx.coerceIn(0, max(0, cards.size - 1))
+    }
+
+    /** Reads the sources' now/next again when they changed or it is old; otherwise nothing. */
+    private fun ensureHomeIndex() {
+        homeIndex.ensure(homeSources(), guide)
+        homeLoading = homeIndex.building && homeIndex.slots.isEmpty()
     }
 
     /** The focused card; null on the «Налаштувати джерела» button. */
@@ -1890,6 +1918,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         const val RECENT_MAX = 20
         /** Cards per Home row at most. */
         const val HOME_ROW_MAX = 20
+        /** «Зараз в ефірі» shows more: it is one card per channel. */
+        const val HOME_NOW_MAX = 60
         /** Home reads the guide of at most this many source channels, however large the groups picked. */
         const val HOME_SOURCE_MAX = 300
         /** Settings → «Масштаб інтерфейсу»: the steps, percent; 100 is the default. */

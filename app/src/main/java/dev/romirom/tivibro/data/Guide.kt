@@ -105,6 +105,11 @@ class Guide(private val dir: File, private val onChanged: (id: String?, old: Lis
         return b.all { (d, gd) -> cg.parts[d]?.schedule == gd.schedule }
     }
 
+    override fun ready(ch: Channel, t: Long): Boolean {
+        val gd = days[Math.floorDiv(t, DAY).toInt()] ?: return true
+        return synchronized(lock) { cache[ch.epgId] }?.parts?.get(gd.day)?.schedule == gd.schedule
+    }
+
     /** The description of [p], or null while it is being read. */
     override fun desc(p: Programme): String? {
         if (p.ref < 0) return p.desc
@@ -410,6 +415,8 @@ interface ProgrammeGuide {
     val hasData: Boolean
     fun list(ch: Channel, around: Long?): List<Programme>
     fun complete(ch: Channel): Boolean
+    /** What [list] returns around [t] is decoded and current (possibly empty: the channel has nothing then). */
+    fun ready(ch: Channel, t: Long): Boolean
     fun desc(p: Programme): String?
 }
 

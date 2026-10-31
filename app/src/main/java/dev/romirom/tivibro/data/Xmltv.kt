@@ -85,6 +85,8 @@ class XmltvGuide(private val dir: File, private val onChanged: (id: String?, old
 
     override fun complete(ch: Channel) = !index.containsKey(ch.epgId) || synchronized(lock) { cache.containsKey(ch.epgId) }
 
+    override fun ready(ch: Channel, t: Long) = complete(ch)
+
     override fun desc(p: Programme): String = p.desc
 
     private fun decode(id: String) {
