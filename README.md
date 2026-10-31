@@ -16,6 +16,8 @@ The interface is in Ukrainian and English.
 - **Programme view.** Channels, days and programmes side by side, with descriptions, watched marks and progress.
 - **Favourites and hidden channels**, show or hide whole provider groups, all per playlist.
 - **Several playlists**, each with its own favourites, hidden channels, bookmarks and guide source.
+- **Adjustable interface size.** Settings > Interface size makes all text, lists and panels 90%, 100%, 110%, 125% or
+  150% of the default, for every playlist at once. The video stays full screen.
 - **Setup from your phone.** Scan a QR code and paste the playlist link on your phone instead of typing it with the
   remote. The same page is used for a custom guide link and for renaming a playlist.
 - **Light on old TVs.** A small playback buffer, a guide that downloads in the background at low priority and pauses

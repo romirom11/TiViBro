@@ -21,6 +21,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
+import kotlin.math.max
+import kotlin.math.min
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,9 +72,62 @@ object Tok {
     val Ok = Color(0xFF30D158)
 }
 
-/** Prototype pixels → dp / sp. */
+/** Prototype pixels → dp / sp. The UI scale (Settings → «Масштаб інтерфейсу») is applied once, at the root of [App],
+ *  through a scaled LocalDensity: these stay plain, and every overlay grows and shrinks together. */
 val Int.px: Dp get() = (this / 2f).dp
 val Int.tx: TextUnit get() = (this / 2f).sp
+
+/** The stage the overlays are laid out on, in prototype pixels: 1920×1080 at 100 %, 1536×864 at 125 %, 1280×720 at
+ *  150 %. Fixed-width columns size themselves from it so that nothing is pushed off screen at a large UI scale. */
+val LocalStage = staticCompositionLocalOf { IntSize(1920, 1080) }
+
+/** Caps a list's height at a whole number of [row]-tall rows (prototype px, plus [extra] for its content padding), so
+ *  that a larger UI scale shows fewer rows instead of a row cut in half at the bottom. */
+fun Modifier.wholeRows(row: Int, extra: Int = 0): Modifier = layout { m, c ->
+    val r = row.px.toPx() + 1f // + 1: each row's parts round to whole pixels on their own
+    val e = extra.px.roundToPx()
+    val h = if (c.hasBoundedHeight) max(c.minHeight, e + (((c.maxHeight - e) / r).toInt() * r).toInt()) else c.maxHeight
+    val p = m.measure(c.copy(maxHeight = h))
+    layout(p.width, p.height) { p.place(0, 0) }
+}
+
+/** Fades a scrolling list out over [edge] prototype px at the top and bottom, so a row the list is scrolled past reads
+ *  as "more this way" rather than as a row cut in half. */
+fun Modifier.fadeEdges(edge: Int = 28): Modifier = graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val f = (edge.px.toPx() / size.height).coerceIn(0f, .5f)
+        drawRect(Brush.verticalGradient(0f to Color.Transparent, f to Color.Black, 1f - f to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn)
+    }
+
+/** Scrolls so row [i] sits [lead] rows below the top, or fewer when the viewport holds fewer rows (a larger UI scale),
+ *  then, once laid out, makes sure the whole row is on screen (rows of different heights, a scale that just changed). */
+suspend fun LazyListState.scrollNear(i: Int, lead: Int) {
+    fun fit(): Int? {
+        val info = layoutInfo
+        val vis = info.visibleItemsInfo
+        if (vis.isEmpty()) return null
+        val avg = vis.sumOf { it.size } / vis.size
+        return (info.viewportEndOffset - info.viewportStartOffset) / max(1, avg)
+    }
+    scrollToItem(max(0, i - (fit()?.let { min(lead, max(0, it - 2)) } ?: lead)))
+    repeat(2) {
+        withFrameNanos { }
+        val info = layoutInfo
+        val row = info.visibleItemsInfo.firstOrNull { it.index == i }
+        when {
+            row == null -> scrollToItem(i)
+            row.offset < info.viewportStartOffset -> scrollBy((row.offset - info.viewportStartOffset).toFloat())
+            row.offset + row.size > info.viewportEndOffset -> {
+                // drop whole rows off the top until it fits, so no row is left cut in half at the top edge
+                val need = row.offset + row.size - info.viewportEndOffset
+                val first = info.visibleItemsInfo.firstOrNull { it.offset + it.size - info.viewportStartOffset >= need }
+                scrollToItem(min(i, (first?.index ?: i) + 1))
+            }
+            else -> return
+        }
+    }
+}
 
 @Composable
 fun T(

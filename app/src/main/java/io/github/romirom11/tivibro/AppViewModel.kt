@@ -76,7 +76,7 @@ enum class Focus { GROUPS, CHANNELS, DAYS, PROGS }
 /** Layers above the list / video, stacked: the menu stays visible under a settings sheet opened from it. */
 enum class Sheet { MENU, SETTINGS, GROUPS, HIDDEN, PLAYLISTS, PLAYLIST, GUIDE, LINK, LANGUAGE }
 enum class MenuItem { GROUPS, GUIDE, SETTINGS, UPDATE, EXIT }
-enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, LANGUAGE, UPDATE }
+enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, LANGUAGE, SCALE, UPDATE }
 /** Actions on one playlist (Sheet.PLAYLIST), top to bottom. */
 enum class PlaylistAction { USE, REFRESH, RENAME, DELETE }
 /** Rows of «Програма передач» (Sheet.GUIDE): the three sources, then the refresh. */
@@ -180,6 +180,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var hidden = emptySet<String>()
     /** Bumped on every show/hide change: the settings live in Prefs, so the sheets re-read them on this. */
     var cfgVersion by mutableIntStateOf(0); private set
+    /** Settings → «Масштаб інтерфейсу», percent of the design size: one of [UI_SCALES]. */
+    var uiScale by mutableIntStateOf(prefs.uiScale.takeIf { it in UI_SCALES } ?: 100); private set
     private var favs = mutableListOf<String>()
     /** Channels whose archive the server turned out not to have (it answered with its stub), this session. */
     private val noArchive = HashSet<String>()
@@ -1409,7 +1411,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Key.CHUP -> rowIdx = max(0, rowIdx - 8)
             Key.CHDOWN -> rowIdx = max(0, min(n - 1, rowIdx + 8))
             Key.BACK, Key.MENU -> pop()
-            Key.LEFT -> pop()
+            Key.LEFT, Key.RIGHT -> if (s == Sheet.SETTINGS && SettingsRow.entries[rowIdx] == SettingsRow.SCALE) {
+                stepScale(if (k == Key.RIGHT) 1 else -1, wrap = false)
+            } else if (k == Key.LEFT) pop()
             Key.OK -> when (s) {
                 Sheet.SETTINGS -> when (SettingsRow.entries[rowIdx]) {
                     SettingsRow.PLAYLISTS -> { playlists = repo.all(); openSheet(Sheet.PLAYLISTS) }
@@ -1417,6 +1421,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     SettingsRow.HIDDEN -> openSheet(Sheet.HIDDEN)
                     SettingsRow.GUIDE -> openSheet(Sheet.GUIDE)
                     SettingsRow.LANGUAGE -> openSheet(Sheet.LANGUAGE)
+                    SettingsRow.SCALE -> stepScale(1, wrap = true)
                     SettingsRow.UPDATE -> if (updater.available != null) updater.install() else updater.check(manual = true)
                 }
                 Sheet.LANGUAGE -> setLanguage(L10n.Lang.entries[rowIdx])
@@ -1445,6 +1450,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             else -> Unit
         }
+    }
+
+    /** ◀▶ move one step and stop at the ends; OK goes round (150 % → 90 %). Applies at once, saved for every playlist. */
+    private fun stepScale(d: Int, wrap: Boolean) {
+        val i = UI_SCALES.indexOf(uiScale).coerceAtLeast(0) + d
+        val next = if (wrap) UI_SCALES[(i + UI_SCALES.size) % UI_SCALES.size] else UI_SCALES[i.coerceIn(0, UI_SCALES.size - 1)]
+        if (next == uiScale) return
+        uiScale = next
+        prefs.uiScale = next
     }
 
     /** Saves the choice and recreates the activity; the sheets stay where they are (they live here). */
@@ -1651,6 +1665,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     companion object {
         const val DONE = .92f
         const val RECENT_MAX = 20
+        /** Settings → «Масштаб інтерфейсу»: the steps, percent; 100 is the default. */
+        val UI_SCALES = listOf(90, 100, 110, 125, 150)
         private const val TAG = "tivibro"
         private const val OPEN = Long.MAX_VALUE
         const val USER_AGENT = "TiviMate/5.1.6 (Android 12)"

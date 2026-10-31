@@ -27,6 +27,11 @@ class Prefs(ctx: Context) {
         get() = sp.getString("activePlaylist", null)
         set(v) = sp.edit().putString("activePlaylist", v).apply()
 
+    /** Settings → «Масштаб інтерфейсу», percent. Global: the same for every playlist. */
+    var uiScale: Int
+        get() = sp.getInt("uiScale", 100)
+        set(v) = sp.edit().putInt("uiScale", v).apply()
+
     var guideAt: Long
         get() = sp.getLong("guideAt", 0)
         set(v) = sp.edit().putLong("guideAt", v).apply()

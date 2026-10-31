@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import io.github.romirom11.tivibro.AppViewModel
 import io.github.romirom11.tivibro.AppViewModel.Companion.DONE
 import io.github.romirom11.tivibro.AppViewModel.Companion.ago
@@ -41,6 +42,10 @@ import io.github.romirom11.tivibro.data.Programme
 import io.github.romirom11.tivibro.data.inArchive
 import io.github.romirom11.tivibro.data.now
 import kotlin.math.max
+import kotlin.math.min
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 
 @Composable
 fun ListOverlay(vm: AppViewModel) {
@@ -64,8 +69,9 @@ fun ListOverlay(vm: AppViewModel) {
                 GroupsRail(vm)
                 ChannelColumn(vm)
                 val m = vm.listMark()
-                Box(Modifier.weight(1f).fillMaxHeight()) {
-                    when {
+                // what is left of the stage; too narrow for a readable detail (open rail at a large UI scale): leave it out
+                BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
+                    if (maxWidth >= MIN_DETAIL.px) when {
                         m != null -> ProgrammeDetail(vm, m.ch, m.p, Modifier.align(Alignment.BottomStart))
                         ch != null -> ChannelDetail(vm, ch, Modifier.align(Alignment.BottomStart))
                     }
@@ -77,14 +83,18 @@ fun ListOverlay(vm: AppViewModel) {
 
 // ---------------------------------------------------------------- groups + channels
 
+/** Narrowest detail column (prototype px) worth showing; below it the column is left empty. */
+private const val MIN_DETAIL = 340
+
 @Composable
 private fun GroupsRail(vm: AppViewModel) {
     val open = vm.focus == Focus.GROUPS
-    val w by animateDpAsState(if (open) 460.px else 40.px, label = "rail")
+    val stage = LocalStage.current
+    val w by animateDpAsState(if (open) min(460, stage.width * 3 / 10).px else 40.px, label = "rail")
     val state = rememberLazyListState()
-    LaunchedEffect(vm.groupIdx) { state.scrollToItem(max(0, vm.groupIdx - 5)) }
-    LazyColumn(
-        Modifier.width(w).fillMaxHeight().background(if (open) Color(0xB30A0B0E) else Color.Transparent),
+    LaunchedEffect(vm.groupIdx, stage) { state.scrollNear(vm.groupIdx, 5) }
+    Box(Modifier.width(w).fillMaxHeight().background(if (open) Color(0xB30A0B0E) else Color.Transparent)) { LazyColumn(
+        Modifier.fillMaxWidth().wholeRows(74, 96),
         state = state,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 48.px, bottom = 48.px),
     ) {
@@ -101,7 +111,7 @@ private fun GroupsRail(vm: AppViewModel) {
                 }
             }
         }
-    }
+    } }
 }
 
 /** Symbol for the built-in groups; provider groups go by name only. */
@@ -112,17 +122,19 @@ private fun groupGlyph(id: String) = when (id) {
 @Composable
 private fun ChannelColumn(vm: AppViewModel) {
     val g = vm.currentGroup() ?: return
+    val stage = LocalStage.current
     val state = rememberLazyListState()
-    LaunchedEffect(vm.chIdx, vm.groupIdx) { state.scrollToItem(max(0, vm.chIdx - 4)) }
+    LaunchedEffect(vm.chIdx, vm.groupIdx, stage) { state.scrollNear(vm.chIdx, 4) }
     // the guide for the rows on screen and around them, decoded off the main thread before they are asked for
     LaunchedEffect(vm.chIdx, vm.groupIdx) { snapshotFlow { vm.guideVersion }.collect { vm.prefetch(g.channels, vm.chIdx) } }
-    Column(Modifier.width(780.px).fillMaxHeight().padding(top = 40.px)) {
+    // 780 on the 1920 stage; at most half of a smaller one, so the detail beside it keeps room
+    Column(Modifier.width(min(780, stage.width / 2).px).fillMaxHeight().padding(top = 40.px)) {
         Row(Modifier.fillMaxWidth().padding(start = 40.px, end = 40.px, bottom = 22.px)) {
             Eyebrow(groupTitle(g.name), Modifier.weight(1f))
             if (g.channels.isNotEmpty()) Eyebrow("${vm.chIdx + 1} / ${g.channels.size}")
         }
         if (g.channels.isEmpty()) T(str(if (g.id == "fav") R.string.fav_empty else R.string.group_empty), 24, Tok.T2, modifier = Modifier.padding(horizontal = 40.px))
-        LazyColumn(state = state) {
+        LazyColumn(Modifier.wholeRows(92), state = state) {
             itemsIndexed(g.channels, key = { i, c -> c.id + i }) { i, c ->
                 val foc = i == vm.chIdx && vm.focus == Focus.CHANNELS
                 val sel = i == vm.chIdx
@@ -172,7 +184,7 @@ private fun ChannelDetail(vm: AppViewModel, ch: Channel, modifier: Modifier) {
     Column(modifier.padding(start = 40.px, end = 72.px, bottom = 40.px)) {
         Logo(ch, 96)
         T(p?.title ?: ch.name, 40, Tok.T1, FontWeight.Bold, Modifier.padding(top = 28.px, bottom = 14.px), maxLines = 2)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.px)) {
+        MetaRow {
             LivePill()
             if (p != null) { T("${hm(p.start)} – ${hm(p.end)}", 22, Tok.T2); Ticking(vm) { T(str(R.string.remaining, ago(p.end - it)), 22, Tok.T2) } }
             if (ch.hd) Pill("HD", Tok.T2, outline = true)
@@ -186,7 +198,7 @@ private fun ChannelDetail(vm: AppViewModel, ch: Channel, modifier: Modifier) {
                 val q = n ?: return@repeat
                 Row(Modifier.padding(vertical = 5.px)) {
                     T(hm(q.start), 23, Tok.T3, FontWeight.SemiBold, Modifier.width(90.px))
-                    T(q.title, 23, Tok.T1)
+                    T(q.title, 23, Tok.T1, modifier = Modifier.weight(1f))
                 }
                 n = vm.progAt(ch, q.end + 1)
             }
@@ -197,7 +209,7 @@ private fun ChannelDetail(vm: AppViewModel, ch: Channel, modifier: Modifier) {
 // ---------------------------------------------------------------- programme view: channels › days › programmes › details
 
 @Composable
-private fun ProgrammeView(vm: AppViewModel, ch: Channel, groupChannels: List<Channel>) {
+private fun androidx.compose.foundation.layout.RowScope.ProgrammeView(vm: AppViewModel, ch: Channel, groupChannels: List<Channel>) {
     val list = vm.progList(ch)
     val days = vm.progDays(ch)
     if (list.isEmpty() || days.isEmpty()) return
@@ -211,11 +223,13 @@ private fun ProgrammeView(vm: AppViewModel, ch: Channel, groupChannels: List<Cha
         max(0, dayProgs.indexOfLast { it.value.start <= tod })
     } else dayProgs.indexOfFirst { it.index == progIdx }.coerceAtLeast(0)
 
-    // channels, collapsed to logos
+    val stage = LocalStage.current
+    // channels, collapsed to logos: as many as fit above the hints (9 on the 1920×1080 stage)
     val ci = vm.chIdx
-    val top = max(0, (ci - 4).coerceAtMost(groupChannels.size - 9))
+    val rows = ((stage.height - 84 - 104) / 92).coerceIn(1, 9)
+    val top = max(0, (ci - rows / 2).coerceAtMost(groupChannels.size - rows))
     Column(Modifier.width(128.px).fillMaxHeight().padding(top = 104.px)) {
-        groupChannels.drop(top).take(9).forEachIndexed { k, c ->
+        groupChannels.drop(top).take(rows).forEachIndexed { k, c ->
             val sel = top + k == ci
             Box(
                 Modifier.padding(horizontal = 18.px, vertical = 2.px).fillMaxWidth().height(88.px)
@@ -226,10 +240,11 @@ private fun ProgrammeView(vm: AppViewModel, ch: Channel, groupChannels: List<Cha
     }
     // days (a week of archive + what's ahead can be more than fit: keep the selected one in view)
     val dayState = rememberLazyListState()
-    LaunchedEffect(dayIdx) { dayState.scrollToItem(max(0, dayIdx - 7)) }
-    Column(Modifier.width(250.px).fillMaxHeight().padding(top = 40.px)) {
+    LaunchedEffect(dayIdx, stage) { dayState.scrollNear(dayIdx, 7) }
+    val narrow = stage.width < 1400 // 150 %: a narrower days column leaves the programmes and details more room
+    Column(Modifier.width((if (narrow) 216 else 250).px).fillMaxHeight().padding(top = 40.px)) {
         Eyebrow(str(R.string.days_title), Modifier.padding(start = 34.px, bottom = 22.px))
-        LazyColumn(state = dayState) {
+        LazyColumn(Modifier.wholeRows(88), state = dayState) {
             itemsIndexed(days, key = { _, d -> d }) { i, d ->
                 val (name, date) = dayParts(d)
                 val foc = i == dayIdx && vm.focus == Focus.DAYS
@@ -244,13 +259,18 @@ private fun ProgrammeView(vm: AppViewModel, ch: Channel, groupChannels: List<Cha
     }
     // programmes of the day
     val state = rememberLazyListState()
-    LaunchedEffect(anchor, day) { state.scrollToItem(max(0, anchor - 4)) }
-    Column(Modifier.width(740.px).fillMaxHeight().padding(top = 40.px, start = 8.px, end = 8.px)) {
+    LaunchedEffect(anchor, day, stage) { state.scrollNear(anchor, 4) }
+    // 740 with the details beside it; on a smaller stage (a large UI scale) the two share what is left, and the details
+    // go when they would be too narrow to read
+    val rest = stage.width - 128 - (if (narrow) 216 else 250)
+    val progW = if (rest >= 740 + MIN_DETAIL) 740 else max(480, rest * 55 / 100)
+    val showDetail = rest - progW >= MIN_DETAIL
+    Column((if (showDetail) Modifier.width(progW.px) else Modifier.weight(1f)).fillMaxHeight().padding(top = 40.px, start = 8.px, end = 8.px)) {
         Row(Modifier.fillMaxWidth().padding(start = 22.px, end = 22.px, bottom = 22.px)) {
             Eyebrow(ch.name, Modifier.weight(1f))
             Eyebrow(plural(R.plurals.programmes, dayProgs.size))
         }
-        LazyColumn(state = state) {
+        LazyColumn(Modifier.wholeRows(72), state = state) {
             itemsIndexed(dayProgs, key = { _, it -> it.value.start }) { j, (i, p) ->
                 val foc = vm.focus == Focus.PROGS && i == progIdx
                 Plate(foc, Modifier.padding(vertical = 2.px).fillMaxWidth().height(68.px), quiet = vm.focus == Focus.DAYS && j == anchor, radius = 12, lift = 1.02f) {
@@ -261,7 +281,9 @@ private fun ProgrammeView(vm: AppViewModel, ch: Channel, groupChannels: List<Cha
     }
     // details
     val shown = dayProgs.getOrNull(anchor)?.value ?: list[progIdx]
-    Box(Modifier.fillMaxHeight().fillMaxWidth()) { ProgrammeDetail(vm, ch, shown, Modifier.align(Alignment.BottomStart)) }
+    if (showDetail) BoxWithConstraints(Modifier.fillMaxHeight().fillMaxWidth()) {
+        ProgrammeDetail(vm, ch, shown, Modifier.align(Alignment.BottomStart), compact = maxWidth < 280.dp)
+    }
 }
 
 @Composable
@@ -287,20 +309,30 @@ private fun ProgRow(vm: AppViewModel, ch: Channel, p: Programme, foc: Boolean) {
     }
 }
 
+/** Pills, times and durations under a title: wraps onto a second line in a narrow column instead of squeezing. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProgrammeDetail(vm: AppViewModel, ch: Channel, p: Programme, modifier: Modifier) {
+private fun MetaRow(content: @Composable () -> Unit) = FlowRow(
+    horizontalArrangement = Arrangement.spacedBy(16.px),
+    verticalArrangement = Arrangement.spacedBy(10.px),
+) { content() }
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ProgrammeDetail(vm: AppViewModel, ch: Channel, p: Programme, modifier: Modifier, compact: Boolean = false) {
     val w = vm.watched(ch, p)
     val done = w >= DONE
     val past = p.isPast()
     val arch = past && ch.inArchive(p)
     val resume = arch && w > 0f && !done
-    Column(modifier.padding(start = 32.px, end = 64.px, bottom = 40.px)) {
+    // compact: a narrow column (a large UI scale) gets a smaller title and less margin, not a title cut to a few letters
+    Column(modifier.padding(start = 32.px, end = (if (compact) 32 else 64).px, bottom = 40.px)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Logo(ch, 72)
+            Logo(ch, if (compact) 56 else 72)
             T(ch.name, 24, Tok.T2, FontWeight.SemiBold, Modifier.padding(start = 18.px))
         }
-        T(p.title, 40, Tok.T1, FontWeight.Bold, Modifier.padding(top = 28.px, bottom = 14.px), maxLines = 2)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.px)) {
+        T(p.title, if (compact) 32 else 40, Tok.T1, FontWeight.Bold, Modifier.padding(top = 28.px, bottom = 14.px), maxLines = if (compact) 3 else 2)
+        MetaRow {
             when {
                 p.isNow() -> LivePill()
                 !past -> Pill(str(R.string.soon), Tok.T2, outline = true)
@@ -324,7 +356,7 @@ private fun ProgrammeDetail(vm: AppViewModel, ch: Channel, p: Programme, modifie
             arch -> listOf("OK" to str(R.string.act_watch))
             else -> emptyList()
         }
-        Row(Modifier.padding(top = 28.px), horizontalArrangement = Arrangement.spacedBy(32.px)) {
+        FlowRow(Modifier.padding(top = 28.px), horizontalArrangement = Arrangement.spacedBy(32.px), verticalArrangement = Arrangement.spacedBy(12.px)) {
             for ((k, label) in acts) Row(verticalAlignment = Alignment.CenterVertically) {
                 KeyCap(k); T(label, 21, Tok.T2, modifier = Modifier.padding(start = 10.px))
             }

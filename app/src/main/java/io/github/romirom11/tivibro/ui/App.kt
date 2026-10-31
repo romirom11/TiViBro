@@ -29,6 +29,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.layout.Layout
+import kotlin.math.max
+import kotlin.math.min
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -97,41 +107,59 @@ fun Ticking(vm: AppViewModel, content: @Composable (now: Long) -> Unit) {
 
 @Composable
 fun App(vm: AppViewModel) {
+    val base = LocalDensity.current
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        if (vm.playlistUrl == null) { Setup(vm); return@Box }
-        Video(vm)
-        if (vm.channels.isEmpty()) { Loading(vm.status); return@Box }
-
-        if (vm.layer == Layer.NONE && (vm.banner || vm.osd)) { // channels draw their own logo top-right, so the clock only rides with the panels
-            Ticking(vm) { t -> T(hm(t), 34, Tok.T1, FontWeight.SemiBold, Modifier.align(Alignment.TopEnd).padding(top = 48.px, end = 72.px)) }
-        }
-        AnimatedVisibility(vm.layer == Layer.NONE && vm.banner, Modifier.align(Alignment.BottomCenter), enter = fadeIn() + slideInVertically { it / 6 }, exit = fadeOut()) { Banner(vm) }
-        AnimatedVisibility(vm.layer == Layer.NONE && vm.osd, Modifier.align(Alignment.BottomCenter), enter = fadeIn() + slideInVertically { it / 6 }, exit = fadeOut()) { Osd(vm) }
-        if (vm.layer == Layer.LIST) ListOverlay(vm)
-        if (Sheet.MENU in vm.sheets) Menu(vm)
-        vm.sheets.lastOrNull { it != Sheet.MENU }?.let { SideSheet(vm, it) }
-        vm.ctx?.let { ChannelMenu(vm, it) }
-        vm.markCtx?.let { MarkMenu(vm, it) }
-        Hints(vm, Modifier.align(Alignment.BottomStart))
-
-        if (vm.numBuf.isNotEmpty()) {
-            Column(
-                Modifier.align(Alignment.TopEnd).padding(top = 120.px, end = 72.px)
-                    .background(Tok.GlassHi, RoundedCornerShape(28.px)).padding(horizontal = 36.px, vertical = 20.px),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                T(vm.numBuf, 72, Tok.T1, FontWeight.Bold)
-                T(vm.channelByNum(vm.numBuf.toInt())?.name ?: str(R.string.no_channel), 22, Tok.T2)
+        val ready = vm.playlistUrl != null
+        if (ready) Video(vm) // full screen whatever the UI scale: only what is drawn over it is scaled
+        // Settings → «Масштаб інтерфейсу»: one factor for every overlay, through the density (dp and sp alike). The stage
+        // is worked out here from the pixel size and the scale: a BoxWithConstraints under the scaled density would not
+        // re-run on a scale change alone (its pixel constraints stay the same) and would keep the old stage.
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val d = base.density * vm.uiScale / 100f
+            val stage = IntSize((constraints.maxWidth / d * 2).toInt(), (constraints.maxHeight / d * 2).toInt())
+            CompositionLocalProvider(LocalDensity provides Density(d, base.fontScale), LocalStage provides stage) {
+                Box(Modifier.fillMaxSize()) { if (!ready) Setup(vm) else Overlays(vm) }
             }
         }
-        AnimatedVisibility(vm.toast != null, Modifier.align(Alignment.TopCenter).padding(top = 56.px), enter = fadeIn() + slideInVertically { -it / 2 }, exit = fadeOut()) {
-            Box(Modifier.background(Tok.GlassHi, RoundedCornerShape(50)).border(1.dp, Tok.Hair, RoundedCornerShape(50)).padding(horizontal = 30.px, vertical = 18.px)) {
-                T(vm.toast ?: "", 25, Tok.T1, FontWeight.Medium)
-            }
+    }
+}
+
+@Composable
+private fun BoxScope.Overlays(vm: AppViewModel) {
+    if (vm.buffering && vm.layer == Layer.NONE) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { T(str(R.string.loading), 26, Tok.T2) }
+    }
+    if (vm.channels.isEmpty()) { Loading(vm.status); return }
+
+    if (vm.layer == Layer.NONE && (vm.banner || vm.osd)) { // channels draw their own logo top-right, so the clock only rides with the panels
+        Ticking(vm) { t -> T(hm(t), 34, Tok.T1, FontWeight.SemiBold, Modifier.align(Alignment.TopEnd).padding(top = 48.px, end = 72.px)) }
+    }
+    AnimatedVisibility(vm.layer == Layer.NONE && vm.banner, Modifier.align(Alignment.BottomCenter), enter = fadeIn() + slideInVertically { it / 6 }, exit = fadeOut()) { Banner(vm) }
+    AnimatedVisibility(vm.layer == Layer.NONE && vm.osd, Modifier.align(Alignment.BottomCenter), enter = fadeIn() + slideInVertically { it / 6 }, exit = fadeOut()) { Osd(vm) }
+    if (vm.layer == Layer.LIST) ListOverlay(vm)
+    if (Sheet.MENU in vm.sheets) Menu(vm)
+    vm.sheets.lastOrNull { it != Sheet.MENU }?.let { SideSheet(vm, it) }
+    vm.ctx?.let { ChannelMenu(vm, it) }
+    vm.markCtx?.let { MarkMenu(vm, it) }
+    Hints(vm, Modifier.align(Alignment.BottomStart))
+
+    if (vm.numBuf.isNotEmpty()) {
+        Column(
+            Modifier.align(Alignment.TopEnd).padding(top = 120.px, end = 72.px)
+                .background(Tok.GlassHi, RoundedCornerShape(28.px)).padding(horizontal = 36.px, vertical = 20.px),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            T(vm.numBuf, 72, Tok.T1, FontWeight.Bold)
+            T(vm.channelByNum(vm.numBuf.toInt())?.name ?: str(R.string.no_channel), 22, Tok.T2)
         }
-        if (vm.status != null && (vm.layer == Layer.LIST || vm.sheets.isNotEmpty())) {
-            T(vm.status!!, 20, Tok.T3, modifier = Modifier.align(Alignment.TopEnd).padding(top = 16.px, end = 72.px))
+    }
+    AnimatedVisibility(vm.toast != null, Modifier.align(Alignment.TopCenter).padding(top = 56.px, start = 72.px, end = 72.px), enter = fadeIn() + slideInVertically { -it / 2 }, exit = fadeOut()) {
+        Box(Modifier.background(Tok.GlassHi, RoundedCornerShape(50)).border(1.dp, Tok.Hair, RoundedCornerShape(50)).padding(horizontal = 30.px, vertical = 18.px)) {
+            T(vm.toast ?: "", 25, Tok.T1, FontWeight.Medium)
         }
+    }
+    if (vm.status != null && (vm.layer == Layer.LIST || vm.sheets.isNotEmpty())) {
+        T(vm.status!!, 20, Tok.T3, modifier = Modifier.align(Alignment.TopEnd).padding(top = 16.px, end = 72.px))
     }
 }
 
@@ -151,9 +179,6 @@ private fun Video(vm: AppViewModel) {
         },
         modifier = Modifier.fillMaxSize(),
     )
-    if (vm.buffering && vm.layer == Layer.NONE) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { T(str(R.string.loading), 26, Tok.T2) }
-    }
 }
 
 @Composable
@@ -292,12 +317,18 @@ fun hms(ms: Long): String {
 
 @Composable
 private fun Hints(vm: AppViewModel, modifier: Modifier) {
-    fun h(key: String, @androidx.annotation.StringRes label: Int) = key to str(label)
-    val items: List<Pair<String, String>> = when {
+    fun h(key: String, @androidx.annotation.StringRes label: Int) = Hint(key, str(label), when {
+        key == "BACK" || key == "▲▼" -> 0
+        label in LONG_HINTS -> 2
+        else -> 1
+    })
+    val items: List<Hint> = when {
         vm.ctx != null || vm.markCtx != null -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_apply), h("BACK", R.string.hint_close))
         vm.sheets.isNotEmpty() -> when (vm.sheets.last()) {
             Sheet.MENU -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_open), h("▶", R.string.hint_to_channels), h("BACK", R.string.hint_close))
-            Sheet.SETTINGS -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_open), h("BACK", R.string.hint_back))
+            Sheet.SETTINGS -> if (io.github.romirom11.tivibro.SettingsRow.entries.getOrNull(vm.rowIdx) == io.github.romirom11.tivibro.SettingsRow.SCALE)
+                listOf(h("▲▼", R.string.hint_choose), h("◀▶", R.string.hint_change), h("OK", R.string.hint_change), h("BACK", R.string.hint_back))
+            else listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_open), h("BACK", R.string.hint_back))
             Sheet.GROUPS -> listOf(h("▲▼", R.string.hint_group), h("OK", R.string.hint_toggle_group), h("BACK", R.string.hint_done))
             Sheet.HIDDEN -> if (vm.hiddenChannels().isEmpty()) listOf(h("BACK", R.string.hint_back))
             else listOf(h("▲▼", R.string.hint_channel), h("OK", R.string.hint_unhide), h("BACK", R.string.hint_back))
@@ -339,15 +370,41 @@ private fun Hints(vm: AppViewModel, modifier: Modifier) {
         )
         else -> return
     }
-    Row(
-        modifier.fillMaxWidth().height(84.px).background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xB3000000))))
-            .padding(horizontal = 72.px),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(40.px),
-    ) {
-        for ((k, label) in items) Row(verticalAlignment = Alignment.CenterVertically) {
-            KeyCap(k)
-            T(label, 21, Tok.T2, FontWeight.Medium, Modifier.padding(start = 10.px))
+    HintRow(items, modifier.fillMaxWidth().height(84.px).background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xB3000000)))).padding(horizontal = 72.px))
+}
+
+/** A key and what it does. [drop]: which go first when the bar is too narrow (a large UI scale), 2 before 1; the
+ *  arrows and BACK (0) go last. */
+private class Hint(val key: String, val label: String, val drop: Int)
+
+private val LONG_HINTS = setOf(R.string.hint_long_mark, R.string.hint_long_restart, R.string.hint_long_actions, R.string.hint_long_channel_menu)
+
+/** The hints in one line: what doesn't fit is left out, least needed first, instead of running off the screen. */
+@Composable
+private fun HintRow(items: List<Hint>, modifier: Modifier) {
+    Layout(
+        content = {
+            for (it in items) Row(verticalAlignment = Alignment.CenterVertically) {
+                KeyCap(it.key)
+                T(it.label, 21, Tok.T2, FontWeight.Medium, Modifier.padding(start = 10.px))
+            }
+        },
+        modifier = modifier,
+    ) { ms, c ->
+        val gap = 40.px.roundToPx()
+        val ps = ms.map { it.measure(Constraints(maxHeight = c.maxHeight)) }
+        val keep = BooleanArray(ps.size) { true }
+        fun width() = ps.indices.filter { keep[it] }.sumOf { ps[it].width } + gap * max(0, keep.count { it } - 1)
+        for (i in items.indices.sortedWith(compareByDescending<Int> { items[it].drop }.thenByDescending { it })) {
+            if (width() <= c.maxWidth) break
+            keep[i] = false
+        }
+        layout(c.maxWidth, c.maxHeight) {
+            var x = 0
+            for (i in ps.indices) if (keep[i]) {
+                ps[i].place(x, (c.maxHeight - ps[i].height) / 2)
+                x += ps[i].width + gap
+            }
         }
     }
 }
@@ -357,16 +414,17 @@ private fun Setup(vm: AppViewModel) {
     // started before its address is read: the address only exists once the socket is open
     val address = remember(vm.setupServer) { vm.setupServer.start(); vm.setupServer.address }
     val qr = remember(address) { address?.let(::qrBitmap) }
-    Row(Modifier.fillMaxSize().background(Tok.Ink).padding(horizontal = 160.px), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            T(str(R.string.setup_title), 56, Tok.T1, FontWeight.Bold)
-            T(str(R.string.setup_steps), 26, Tok.T2, modifier = Modifier.padding(top = 32.px), maxLines = 6)
+    val stage = LocalStage.current
+    Row(Modifier.fillMaxSize().background(Tok.Ink).padding(horizontal = min(160, stage.width / 12).px), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f).padding(end = 48.px)) {
+            T(str(R.string.setup_title), 56, Tok.T1, FontWeight.Bold, maxLines = 2)
+            T(str(R.string.setup_steps), 26, Tok.T2, modifier = Modifier.padding(top = 32.px), maxLines = 10)
             if (address != null) T(str(R.string.or_open, address), 24, Tok.T3, modifier = Modifier.padding(top = 32.px))
             else T(str(R.string.no_network), 24, Tok.Live, modifier = Modifier.padding(top = 32.px))
             if (vm.status != null) T(vm.status!!, 24, Tok.Live, modifier = Modifier.padding(top = 24.px), maxLines = 3)
         }
         if (qr != null) {
-            Box(Modifier.size(420.px).background(Color.White, RoundedCornerShape(28.px)).padding(24.px)) {
+            Box(Modifier.size(min(420, stage.height * 45 / 100).px).background(Color.White, RoundedCornerShape(28.px)).padding(24.px)) {
                 Image(qr.asImageBitmap(), null, Modifier.fillMaxSize(), filterQuality = FilterQuality.None)
             }
         }

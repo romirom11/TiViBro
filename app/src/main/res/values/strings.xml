@@ -122,6 +122,7 @@
     <string name="hint_close">Закрити</string>
     <string name="hint_open">Відкрити</string>
     <string name="hint_to_channels">До каналів</string>
+    <string name="hint_change">Змінити</string>
     <string name="hint_back">Назад</string>
     <string name="hint_group">Група</string>
     <string name="hint_toggle_group">Показати / сховати</string>
@@ -204,6 +205,9 @@
     <string name="lang_uk" translatable="false">Українська</string>
     <string name="lang_en" translatable="false">English</string>
     <string name="language_sub">Мова інтерфейсу TiViBro</string>
+    <string name="row_scale">Масштаб інтерфейсу</string>
+    <string name="row_scale_desc">Розмір тексту, списків і панелей</string>
+    <string name="scale_value">%1$d %%</string>
     <string name="row_update">Перевірити оновлення</string>
     <string name="version">Версія %1$s</string>
 

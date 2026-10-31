@@ -54,6 +54,9 @@ import io.github.romirom11.tivibro.data.GuideMode
 import io.github.romirom11.tivibro.data.Mark
 import io.github.romirom11.tivibro.data.PlaylistInfo
 import kotlin.math.max
+import kotlin.math.min
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.sizeIn
 
 /** «1 канал», «3 канали», «12 каналів» (1 channel, 3 channels). */
 fun channelsWord(n: Int): String = plural(R.plurals.channels, n)
@@ -73,7 +76,8 @@ fun Menu(vm: AppViewModel) {
             Brush.horizontalGradient(0f to Color(0xFA060709), .3f to Color(0xF2060709), .62f to Color(0x40060709), 1f to Color.Transparent),
         ),
     ) {
-        Column(Modifier.width(600.px).fillMaxHeight().padding(start = 32.px, end = 32.px, top = 64.px, bottom = 84.px)) {
+        val stage = LocalStage.current
+        Column(Modifier.width(min(600, stage.width * 45 / 100).px).fillMaxHeight().padding(start = 32.px, end = 32.px, top = 64.px, bottom = 84.px)) {
             Row(Modifier.padding(start = 24.px, end = 24.px, bottom = 34.px), verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier.size(72.px).background(Brush.linearGradient(listOf(Color(0xFF4A7BD8), Color(0xFF2A3F78))), CircleShape),
@@ -84,7 +88,10 @@ fun Menu(vm: AppViewModel) {
                     T(str(R.string.menu_summary, channelsWord(vm.channels.size), vm.allGroups.count(vm::groupShown), vm.allGroups.size), 21, Tok.T2)
                 }
             }
-            vm.menuItems().forEachIndexed { i, m ->
+            val items = vm.menuItems()
+            val state = rememberLazyListState()
+            LaunchedEffect(vm.menuIdx, stage) { state.scrollNear(vm.menuIdx, vm.menuIdx) } // scrolls only when it doesn't all fit
+            LazyColumn(state = state, contentPadding = PaddingValues(vertical = 4.px)) { itemsIndexed(items) { i, m ->
                 val foc = top && i == vm.menuIdx
                 Plate(foc, Modifier.padding(bottom = 6.px).fillMaxWidth().height(78.px), quiet = !top && i == vm.menuIdx, lift = 1.025f) {
                     Row(Modifier.fillMaxSize().padding(horizontal = 26.px), verticalAlignment = Alignment.CenterVertically) {
@@ -105,7 +112,7 @@ fun Menu(vm: AppViewModel) {
                         if (small.isNotEmpty()) T(small, 21, if (foc) Tok.OnPlate2 else Tok.T2, FontWeight.Medium)
                     }
                 }
-            }
+            } }
         }
     }
 }
@@ -115,7 +122,7 @@ fun Menu(vm: AppViewModel) {
 @Composable
 fun SideSheet(vm: AppViewModel, sheet: Sheet) {
     Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0x26000000), Color(0x99000000))))) {
-        Row(Modifier.align(Alignment.TopEnd).width(900.px).fillMaxHeight()) {
+        Row(Modifier.align(Alignment.TopEnd).width(min(900, LocalStage.current.width * 7 / 10).px).fillMaxHeight()) {
             Box(Modifier.width(1.dp).fillMaxHeight().background(Tok.Hair))
             Column(Modifier.weight(1f).fillMaxHeight().background(Tok.GlassHi).padding(top = 64.px, bottom = 96.px)) {
                 when (sheet) {
@@ -138,6 +145,17 @@ fun SideSheet(vm: AppViewModel, sheet: Sheet) {
 private fun SheetTitle(title: String, sub: String) {
     T(title, 44, Tok.T1, FontWeight.Bold, Modifier.padding(start = 64.px, end = 64.px, bottom = 10.px))
     T(sub, 22, Tok.T2, modifier = Modifier.padding(start = 64.px, end = 64.px, bottom = 30.px), maxLines = 2)
+}
+
+/** A sheet's rows, scrolled only when they don't all fit (a large UI scale) so the focused one stays in view. */
+@Composable
+private fun SheetList(rowIdx: Int, count: Int, row: @Composable (Int) -> Unit) {
+    val state = rememberLazyListState()
+    val stage = LocalStage.current
+    LaunchedEffect(rowIdx, stage) { state.scrollNear(rowIdx, rowIdx) }
+    LazyColumn(Modifier.fadeEdges(), state = state, contentPadding = PaddingValues(vertical = 6.px)) {
+        items(count) { row(it) }
+    }
 }
 
 @Composable
@@ -164,7 +182,9 @@ private fun Value(text: String, foc: Boolean) = T(text, 23, if (foc) Tok.OnPlate
 private fun SettingsSheet(vm: AppViewModel) {
     vm.cfgVersion
     SheetTitle(str(R.string.settings_title), str(R.string.settings_sub))
-    SettingsRow.entries.forEachIndexed { i, r ->
+    SheetList(vm.rowIdx, SettingsRow.entries.size) { i ->
+        vm.cfgVersion
+        val r = SettingsRow.entries[i]
         val foc = vm.rowIdx == i
         when (r) {
             SettingsRow.PLAYLISTS -> {
@@ -194,6 +214,10 @@ private fun SettingsSheet(vm: AppViewModel) {
                     Value(langLabel(L10n.lang(LocalContext.current)), foc)
                 }
             }
+            SettingsRow.SCALE -> SheetRow(foc, str(R.string.row_scale), str(R.string.row_scale_desc)) {
+                val v = str(R.string.scale_value, vm.uiScale)
+                Value(if (foc) "◀  $v  ▶" else v, foc)
+            }
             SettingsRow.UPDATE -> {
                 val u = vm.updater
                 val desc = when {
@@ -213,7 +237,8 @@ private fun GroupsSheet(vm: AppViewModel) {
     vm.cfgVersion
     SheetTitle(str(R.string.menu_groups), str(R.string.groups_sub))
     val state = rememberLazyListState()
-    LaunchedEffect(vm.rowIdx) { state.scrollToItem(max(0, vm.rowIdx - 4)) }
+    val stage = LocalStage.current
+    LaunchedEffect(vm.rowIdx, stage) { state.scrollNear(vm.rowIdx, 4) }
     LazyColumn(state = state, contentPadding = PaddingValues(vertical = 6.px)) {
         itemsIndexed(vm.allGroups, key = { _, g -> g.id }) { i, g ->
             vm.cfgVersion // settings live in Prefs: strong skipping would keep the old row without this read
@@ -236,7 +261,8 @@ private fun HiddenSheet(vm: AppViewModel) {
         return
     }
     val state = rememberLazyListState()
-    LaunchedEffect(vm.rowIdx) { state.scrollToItem(max(0, vm.rowIdx - 4)) }
+    val stage = LocalStage.current
+    LaunchedEffect(vm.rowIdx, stage) { state.scrollNear(vm.rowIdx, 4) }
     LazyColumn(state = state, contentPadding = PaddingValues(vertical = 6.px)) {
         itemsIndexed(list, key = { _, c -> c.id }) { i, c ->
             val foc = i == vm.rowIdx
@@ -262,7 +288,7 @@ fun ChannelMenu(vm: AppViewModel, ch: Channel) {
     Box(Modifier.fillMaxSize().background(Color(0x80000000)), contentAlignment = Alignment.Center) {
         val shape = RoundedCornerShape(28.px)
         Column(
-            Modifier.width(680.px).shadow(40.dp, shape).background(Tok.GlassHi, shape).border(1.dp, Tok.Hair, shape)
+            Modifier.width(min(680, LocalStage.current.width * 6 / 10).px).shadow(40.dp, shape).background(Tok.GlassHi, shape).border(1.dp, Tok.Hair, shape)
                 .padding(start = 22.px, end = 22.px, top = 36.px, bottom = 22.px),
         ) {
             Eyebrow(str(R.string.ctx_channel), Modifier.padding(start = 24.px, end = 24.px, bottom = 8.px))
@@ -294,7 +320,7 @@ fun MarkMenu(vm: AppViewModel, m: Mark) {
     Box(Modifier.fillMaxSize().background(Color(0x80000000)), contentAlignment = Alignment.Center) {
         val shape = RoundedCornerShape(28.px)
         Column(
-            Modifier.width(760.px).shadow(40.dp, shape).background(Tok.GlassHi, shape).border(1.dp, Tok.Hair, shape)
+            Modifier.width(min(760, LocalStage.current.width * 6 / 10).px).shadow(40.dp, shape).background(Tok.GlassHi, shape).border(1.dp, Tok.Hair, shape)
                 .padding(start = 22.px, end = 22.px, top = 36.px, bottom = 22.px),
         ) {
             Eyebrow("${m.ch.name} · ${dayWord(m.p.start)}, ${hm(m.p.start)}", Modifier.padding(start = 24.px, end = 24.px, bottom = 8.px))
@@ -329,7 +355,8 @@ private fun updated(at: Long) = if (at > 0) str(R.string.updated_at, dayWord(at)
 private fun PlaylistsSheet(vm: AppViewModel) {
     SheetTitle(str(R.string.row_playlists), str(R.string.playlists_sub))
     val state = rememberLazyListState()
-    LaunchedEffect(vm.rowIdx) { state.scrollToItem(max(0, vm.rowIdx - 4)) }
+    val stage = LocalStage.current
+    LaunchedEffect(vm.rowIdx, stage) { state.scrollNear(vm.rowIdx, 4) }
     LazyColumn(state = state, contentPadding = PaddingValues(vertical = 6.px)) {
         itemsIndexed(vm.playlists, key = { _, p -> p.id }) { i, p ->
             val foc = i == vm.rowIdx
@@ -352,7 +379,8 @@ private fun PlaylistSheet(vm: AppViewModel) {
     val p: PlaylistInfo = vm.playlist?.takeIf { it.id == vm.sheetPlaylist?.id } ?: vm.sheetPlaylist ?: return
     val active = p.id == vm.playlist?.id
     SheetTitle(p.title, "${channelsWord(p.count)} · ${updated(p.updatedAt)}" + if (active) str(R.string.open_suffix) else "")
-    PlaylistAction.entries.forEachIndexed { i, a ->
+    SheetList(vm.rowIdx, PlaylistAction.entries.size) { i ->
+        val a = PlaylistAction.entries[i]
         val foc = vm.rowIdx == i
         when (a) {
             PlaylistAction.USE -> SheetRow(foc, str(if (active) R.string.pl_open_now else R.string.pl_open), if (active) null else str(R.string.pl_open_desc), dim = active)
@@ -394,7 +422,8 @@ private fun GuideSheet(vm: AppViewModel) {
     vm.guideVersion
     val p = vm.playlist
     SheetTitle(str(R.string.row_guide), guideStatus(vm))
-    GuideRow.entries.forEachIndexed { i, r ->
+    SheetList(vm.rowIdx, GuideRow.entries.size) { i ->
+        val r = GuideRow.entries[i]
         val foc = vm.rowIdx == i
         val mode = p?.guideMode ?: GuideMode.AUTO
         when (r) {
@@ -444,7 +473,11 @@ private fun LinkSheet(vm: AppViewModel) {
     val qr = remember(address) { address?.let(::qrBitmap) }
     Column(Modifier.fillMaxWidth().padding(horizontal = 64.px)) {
         if (qr != null) {
-            Box(Modifier.size(380.px).background(Color.White, RoundedCornerShape(28.px)).padding(22.px)) {
+            // 380 when there is room; smaller when the UI scale leaves less height under the title
+            Box(
+                Modifier.weight(1f, fill = false).sizeIn(maxWidth = 380.px, maxHeight = 380.px).aspectRatio(1f, matchHeightConstraintsFirst = true)
+                    .background(Color.White, RoundedCornerShape(28.px)).padding(22.px),
+            ) {
                 Image(qr.asImageBitmap(), null, Modifier.fillMaxSize(), filterQuality = FilterQuality.None)
             }
             T(str(R.string.or_open, address ?: ""), 24, Tok.T2, modifier = Modifier.padding(top = 28.px))
@@ -462,7 +495,8 @@ private fun LanguageSheet(vm: AppViewModel) {
     vm.cfgVersion
     val cur = L10n.lang(LocalContext.current)
     SheetTitle(str(R.string.row_language), str(R.string.language_sub))
-    L10n.Lang.entries.forEachIndexed { i, l ->
+    SheetList(vm.rowIdx, L10n.Lang.entries.size) { i ->
+        val l = L10n.Lang.entries[i]
         val foc = vm.rowIdx == i
         SheetRow(foc, langLabel(l), null) { Radio(cur == l, foc) }
     }

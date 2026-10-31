@@ -113,6 +113,7 @@
     <string name="hint_close">Close</string>
     <string name="hint_open">Open</string>
     <string name="hint_to_channels">Channels</string>
+    <string name="hint_change">Change</string>
     <string name="hint_back">Back</string>
     <string name="hint_group">Group</string>
     <string name="hint_toggle_group">Show / hide</string>
@@ -192,6 +193,9 @@
     <string name="section_app">App</string>
     <string name="lang_system">System default</string>
     <string name="language_sub">TiViBro\'s interface language</string>
+    <string name="row_scale">Interface size</string>
+    <string name="row_scale_desc">Size of text, lists and panels</string>
+    <string name="scale_value">%1$d%%</string>
     <string name="row_update">Check for updates</string>
     <string name="version">Version %1$s</string>
 
