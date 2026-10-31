@@ -297,6 +297,7 @@
     <string name="group_all_desc">Including the ones added to the group later</string>
     <string name="home_group_sub">Tick the channels for the Home page</string>
     <string name="home_now">On now</string>
+    <string name="home_watching">Now watching</string>
     <string name="home_started">Just started: watch from the beginning</string>
     <string name="home_soon">Starting soon</string>
     <string name="home_films">Movies</string>

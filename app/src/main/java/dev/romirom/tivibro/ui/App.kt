@@ -326,7 +326,10 @@ private fun Hints(vm: AppViewModel, modifier: Modifier) {
     val items: List<Hint> = when {
         vm.ctx != null || vm.markCtx != null -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_apply), h("BACK", R.string.hint_close))
         vm.sheets.isNotEmpty() -> when (vm.sheets.last()) {
-            Sheet.MENU -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_open), h("▶", R.string.hint_to_channels), h("BACK", R.string.menu_home))
+            Sheet.MENU -> listOf(
+                h("▲▼", R.string.hint_choose), h("OK", R.string.hint_open), h("▶", R.string.hint_to_channels),
+                h("BACK", if (vm.layer == Layer.HOME || vm.cur == null) R.string.menu_home else R.string.hint_to_video),
+            )
             Sheet.SETTINGS -> if (dev.romirom.tivibro.SettingsRow.entries.getOrNull(vm.rowIdx) == dev.romirom.tivibro.SettingsRow.SCALE)
                 listOf(h("▲▼", R.string.hint_choose), h("◀▶", R.string.hint_change), h("OK", R.string.hint_change), h("BACK", R.string.hint_back))
             else listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_open), h("BACK", R.string.hint_back))
@@ -343,22 +346,28 @@ private fun Hints(vm: AppViewModel, modifier: Modifier) {
         }
         vm.layer == Layer.HOME -> {
             val c = vm.homeCard()
+            // BACK leaves Home for the playback: said only when something plays
+            val back = h("BACK", R.string.hint_to_video).takeIf { vm.cur != null }
             when {
-                c == null -> listOf(h("▲▼", R.string.hint_row), h("OK", R.string.hint_open), h("BACK", R.string.hint_to_video))
-                c.mark != null -> listOf(h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_resume), h("OK", R.string.hint_long_actions), h("BACK", R.string.hint_to_video))
+                c == null -> listOfNotNull(h("▲▼", R.string.hint_row), h("OK", R.string.hint_open), back)
+                c.kind == dev.romirom.tivibro.home.HomeKind.WATCHING -> listOfNotNull(
+                    h("▲▼", R.string.hint_row), h("OK", R.string.hint_to_video), h("OK", R.string.hint_long_channel_menu), back,
+                )
+                c.mark != null -> listOfNotNull(h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_resume), h("OK", R.string.hint_long_actions), back)
                 c.kind == dev.romirom.tivibro.home.HomeKind.STARTED && c.p.isNow() && vm.canArchive(c.ch) ->
-                    listOf(h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_from_start), h("OK", R.string.hint_long_live), h("BACK", R.string.hint_to_video))
+                    listOfNotNull(h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_from_start), h("OK", R.string.hint_long_live), back)
                 c.p.isNow() -> listOfNotNull(
                     h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_watch),
-                    h("OK", R.string.hint_long_restart).takeIf { vm.canArchive(c.ch) }, h("BACK", R.string.hint_to_video),
+                    h("OK", R.string.hint_long_restart).takeIf { vm.canArchive(c.ch) }, back,
                 )
-                c.p.isPast() -> listOf(h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_watch), h("BACK", R.string.hint_to_video))
-                else -> listOf(h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_when), h("OK", R.string.hint_long_channel_menu), h("BACK", R.string.hint_to_video))
+                c.p.isPast() -> listOfNotNull(h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_watch), back)
+                else -> listOfNotNull(h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_when), h("OK", R.string.hint_long_channel_menu), back)
             }
         }
+        // ◀ walks deeper, BACK closes the whole list
         vm.layer == Layer.LIST -> when (vm.focus) {
-            Focus.GROUPS -> listOf(h("▲▼", R.string.hint_group), h("▶", R.string.hint_channels), h("BACK", R.string.hint_menu))
-            Focus.DAYS -> listOf(h("▲▼", R.string.hint_day), h("▶", R.string.hint_progs), h("BACK", R.string.hint_channels))
+            Focus.GROUPS -> listOf(h("▲▼", R.string.hint_group), h("▶", R.string.hint_channels), h("◀", R.string.hint_menu), h("BACK", R.string.hint_to_video))
+            Focus.DAYS -> listOf(h("▲▼", R.string.hint_day), h("▶", R.string.hint_progs), h("◀", R.string.hint_channels), h("BACK", R.string.hint_to_video))
             Focus.PROGS -> {
                 val ch = vm.listChannel()
                 val p = ch?.let { vm.progList(it).getOrNull(vm.progIdx) }
@@ -368,14 +377,14 @@ private fun Hints(vm: AppViewModel, modifier: Modifier) {
                     p.isNow() && vm.canArchive(ch) -> h("OK", R.string.hint_long_restart)
                     else -> null
                 }
-                listOfNotNull(h("▲▼", R.string.hint_programme), h("OK", R.string.hint_watch), long, h("◀", R.string.hint_days), h("BACK", R.string.hint_channels))
+                listOfNotNull(h("▲▼", R.string.hint_programme), h("OK", R.string.hint_watch), long, h("◀", R.string.hint_days), h("BACK", R.string.hint_to_video))
             }
             Focus.CHANNELS -> if (vm.listMark() != null) listOf(
                 h("▲▼", R.string.hint_programme), h("OK", R.string.hint_resume), h("OK", R.string.hint_long_actions),
-                h("▶", R.string.hint_channel_guide), h("BACK", R.string.hint_groups),
+                h("▶", R.string.hint_channel_guide), h("◀", R.string.hint_groups), h("BACK", R.string.hint_to_video),
             ) else listOf(
                 h("▲▼", R.string.hint_channel), h("OK", R.string.hint_watch), h("▶", R.string.hint_guide),
-                h("OK", R.string.hint_long_channel_menu), h("BACK", R.string.hint_groups),
+                h("OK", R.string.hint_long_channel_menu), h("◀", R.string.hint_groups), h("BACK", R.string.hint_to_video),
             )
         }
         vm.osd && !vm.osdOnButtons -> listOf(
@@ -385,7 +394,7 @@ private fun Hints(vm: AppViewModel, modifier: Modifier) {
         vm.osd -> listOf(h("◀▶", R.string.hint_choose), h("OK", R.string.hint_run), h("▲", R.string.hint_timeline), h("BACK", R.string.hint_hide))
         vm.banner -> listOf(
             h("▲▼", R.string.hint_channels), h("◀", R.string.hint_list), h("▶", R.string.hint_guide),
-            h("OK", R.string.hint_controls), h("OK", R.string.hint_long_channel_menu),
+            h("OK", R.string.hint_controls), h("OK", R.string.hint_long_channel_menu), h("BACK", R.string.menu_home),
         )
         else -> return
     }

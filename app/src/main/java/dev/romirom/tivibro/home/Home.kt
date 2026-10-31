@@ -4,8 +4,11 @@ import dev.romirom.tivibro.data.Channel
 import dev.romirom.tivibro.data.Mark
 import dev.romirom.tivibro.data.Programme
 
-/** The rows of the Home page, top to bottom. [SETUP] is the «Налаштувати джерела» button shown without sources. */
-enum class HomeKind { CONTINUE, NOW, STARTED, SOON, FILMS, SERIES, SETUP }
+/**
+ * The rows of the Home page, top to bottom. [WATCHING] is «Зараз дивитесь», the one card of what is playing (only on
+ * screen, never on the launcher's rows); [SETUP] is the «Налаштувати джерела» button shown without sources.
+ */
+enum class HomeKind { WATCHING, CONTINUE, NOW, STARTED, SOON, FILMS, SERIES, SETUP }
 
 /**
  * One card on Home. [key] names "the same thing" across recomputations (a bookmark, a channel's live slot, one
@@ -16,6 +19,10 @@ data class HomeCard(val key: String, val kind: HomeKind, val ch: Channel, val p:
 data class HomeRow(val kind: HomeKind, val cards: List<HomeCard>)
 
 object HomeRows {
+    /** One key whatever plays: a new channel or programme updates the card in place, focus stays on it. */
+    const val WATCHING_KEY = "w"
+    /** The [HomeKind.WATCHING] card's programme when the guide has nothing at the playing position. */
+    val NO_PROGRAMME = Programme(0, 0, "", "")
     fun continueKey(ch: Channel, p: Programme) = "c:${ch.id}:${p.start}"
     fun nowKey(ch: Channel) = "n:${ch.id}"
     fun progKey(kind: HomeKind, ch: Channel, p: Programme) = "${kind.ordinal}:${ch.id}:${p.start}"

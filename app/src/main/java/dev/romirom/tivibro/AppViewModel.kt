@@ -282,7 +282,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Home's guide index is being read for the first time: the rows it feeds are still to come. */
     var homeLoading by mutableStateOf(false); private set
     /** Sources are picked, nothing is loading, and still nothing to show from them. */
-    val homeEmpty: Boolean get() { cfgVersion; return !homeLoading && homeRows.none { it.kind != HomeKind.CONTINUE } && (homeGroups.isNotEmpty() || homeChannels.isNotEmpty()) }
+    val homeEmpty: Boolean get() { cfgVersion; return !homeLoading && homeRows.none { it.kind != HomeKind.CONTINUE && it.kind != HomeKind.WATCHING } && (homeGroups.isNotEmpty() || homeChannels.isNotEmpty()) }
 
     // ---------- menu, settings sheets, channel context menu ----------
     var sheets by mutableStateOf<List<Sheet>>(emptyList()); private set
@@ -1209,7 +1209,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun onTick() {
         // Home follows the clock: what started, what is on, what is soon; the index itself is re-read every half hour
-        if (layer == Layer.HOME && now() / 1000 % 30 == 0L) refreshHome()
+        if (layer == Layer.HOME && (now() / 1000 % 30 == 0L || watchingStale())) refreshHome()
         else if (now() / 1000 % 1800 == 0L && cur != null) ensureHomeIndex()
         if (mode == Mode.ARCHIVE && pausedLiveAt == null) {
             saveMark(persist = false)
@@ -1324,6 +1324,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun isFav(ch: Channel) = ch.id in favs
 
+    /** ◀ walks on deeper, the same way everywhere: programmes › days, channels › groups › menu. BACK, whatever has the
+     *  focus, closes the whole list back to playback. */
     private fun listKey(k: Key) {
         val g = currentGroup() ?: return
         when (focus) {
@@ -1331,7 +1333,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 Key.UP -> { groupIdx = (groupIdx - 1 + groups.size) % groups.size; chIdx = 0 }
                 Key.DOWN -> { groupIdx = (groupIdx + 1) % groups.size; chIdx = 0 }
                 Key.RIGHT, Key.OK -> focus = Focus.CHANNELS
-                Key.LEFT, Key.BACK -> openMenu()
+                Key.LEFT -> openMenu()
+                Key.BACK -> closeLayers()
                 else -> Unit
             }.also { groupIdx = groupIdx.coerceIn(0, groups.size - 1); groupId = groups[groupIdx].id; if (zapsBy(groupId)) prefs.lastGroup = groupId }
 
@@ -1342,7 +1345,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     Key.UP, Key.CHUP, Key.YELLOW -> dayIdx = max(0, dayIdx - 1)
                     Key.DOWN, Key.CHDOWN, Key.BLUE -> dayIdx = min(days.size - 1, dayIdx + 1)
                     Key.RIGHT, Key.OK -> days.getOrNull(dayIdx)?.let { progIdx = sameTimeOn(progList(ch), it); focus = Focus.PROGS }
-                    Key.LEFT, Key.BACK -> focus = Focus.CHANNELS
+                    Key.LEFT -> focus = Focus.CHANNELS
+                    Key.BACK -> closeLayers()
                     else -> Unit
                 }
             }
@@ -1360,7 +1364,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         if (d in days.indices) progIdx = sameTimeOn(list, days[d])
                     }
                     Key.LEFT -> { dayIdx = progDays(ch).indexOf(dayStart(list[progIdx].start)).coerceAtLeast(0); focus = Focus.DAYS }
-                    Key.BACK -> focus = Focus.CHANNELS
+                    Key.BACK -> closeLayers()
                     Key.OK -> playProgramme(ch, list[progIdx])
                     else -> Unit
                 }
@@ -1374,7 +1378,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     Key.DOWN -> if (n > 0) chIdx = (chIdx + 1) % n
                     Key.CHUP -> chIdx = max(0, chIdx - 9)
                     Key.CHDOWN -> chIdx = min(n - 1, chIdx + 9)
-                    Key.LEFT, Key.BACK -> focus = Focus.GROUPS
+                    Key.LEFT -> focus = Focus.GROUPS
+                    Key.BACK -> closeLayers()
                     Key.RIGHT -> openSchedule(m?.p)
                     Key.OK -> {
                         if (m != null) { playProgramme(m.ch, m.p); return }
@@ -1456,7 +1461,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The side menu's rows, top to bottom. */
     fun menuItems(): List<MenuItem> = MenuItem.entries.filter { it != MenuItem.UPDATE || updater.available != null }
 
-    /** ▲▼ choose, OK opens, ▶ back to the list under it; BACK goes on up to Home, MENU closes back to playback. */
+    /** ▲▼ choose, OK opens, ▶ back to what is under it; BACK back to where the menu was opened from (Home if from
+     *  Home, else playback; Home also when nothing plays yet), MENU closes back to playback. */
     private fun menuKey(k: Key) {
         val items = menuItems()
         val n = items.size
@@ -1473,7 +1479,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 MenuItem.EXIT -> exitApp()
             }
             Key.RIGHT -> pop()
-            Key.BACK -> openHome() // the last step up the hierarchy: playback › programmes › channels › groups › menu › Home
+            Key.BACK -> if (layer == Layer.HOME || cur == null) openHome() else { closeSheets(); closeLayers() } // openHome keeps Home's focus
             Key.MENU -> { closeSheets(); closeLayers() }
             else -> Unit
         }
@@ -1694,8 +1700,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun homeContinue(): List<Mark> =
         marks.values.filter { it.watched < DONE && it.ch.inArchive(it.p) }.sortedByDescending { it.at }.take(HOME_ROW_MAX)
 
+    /** «Зараз дивитесь»: what plays, with the programme at the playing position (live or archive); none when nothing plays. */
+    private fun watchingCard(): HomeCard? {
+        val ch = cur ?: return null
+        return HomeCard(HomeRows.WATCHING_KEY, HomeKind.WATCHING, ch, playingProgramme() ?: HomeRows.NO_PROGRAMME)
+    }
+
+    /** The playing position moved on to another programme (or the guide for it came in) since Home last built the card. */
+    private fun watchingStale(): Boolean {
+        val shown = homeRows.firstOrNull()?.takeIf { it.kind == HomeKind.WATCHING }?.cards?.firstOrNull()
+        val fresh = watchingCard()
+        return shown?.ch != fresh?.ch || shown?.p != fresh?.p
+    }
+
     private fun buildHomeRows(): List<HomeRow> {
         val rows = ArrayList<HomeRow>()
+        watchingCard()?.let { rows += HomeRow(HomeKind.WATCHING, listOf(it)) }
         val cont = homeContinue()
         if (cont.isNotEmpty()) rows += HomeRow(HomeKind.CONTINUE, cont.map { HomeCard(HomeRows.continueKey(it.ch, it.p), HomeKind.CONTINUE, it.ch, it.p, it) })
         val src = homeSources()
@@ -1767,14 +1787,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** What TMDB matched for [p], if it was looked up; never asks (see [tmdbRows], [homeFocused]). */
     fun tmdbInfo(p: Programme): TmdbInfo? {
         tmdbVersion
-        return if (tmdbActive) tmdb.get(p.title) else null
+        return if (tmdbActive && p.title.isNotBlank()) tmdb.get(p.title) else null
     }
 
     /** The focused card's programme is looked up first, whatever row it is in. */
     private fun homeFocused() {
         if (!tmdbActive) return
         val c = homeCard() ?: return
-        if (c.mark == null && Filler.isFiller(c.p.title)) return
+        if (c.p.title.isBlank() || (c.mark == null && Filler.isFiller(c.p.title))) return
         tmdb.want(listOf(Tmdb.Ask(c.p.title, (c.p.duration / MIN).toInt())), first = true)
     }
 
@@ -1823,8 +1843,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The focused card; null on the «Налаштувати джерела» button. */
     fun homeCard(): HomeCard? = homeRows.getOrNull(homeRowIdx)?.cards?.getOrNull(homeColIdx)
 
-    /** ◀▶ cards, ▲▼ rows (each row remembers its card), OK acts, BACK back to playback; ◀ on a row's first card opens
-     *  the menu, the way ◀ on the groups does in the list. */
+    /** ◀▶ cards, ▲▼ rows (each row remembers its card), OK acts, BACK back to playback (with nothing playing yet, it
+     *  just leaves Home); ◀ on a row's first card opens the menu, the way ◀ on the groups does in the list. Focus
+     *  starts on «Зараз дивитесь» when something plays. */
     private fun homeKey(k: Key) {
         val row = homeRows.getOrNull(homeRowIdx)
         val n = if (row?.kind == HomeKind.SETUP) 1 else row?.cards?.size ?: 0
@@ -1850,11 +1871,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (k == Key.UP || k == Key.DOWN || k == Key.LEFT || k == Key.RIGHT || k == Key.CHUP || k == Key.CHDOWN) homeFocused()
     }
 
-    /** OK on a card: the bookmark resumes, «Щойно почалось» starts from the beginning, a live programme plays live, a
-     *  past one from the archive; one still to come only says when it starts. */
+    /** OK on a card: «Зараз дивитесь» goes back to the playback as it is, the bookmark resumes, «Щойно почалось»
+     *  starts from the beginning, a live programme plays live, a past one from the archive; one still to come only says
+     *  when it starts. */
     private fun homeOk(c: HomeCard) {
         val p = c.p
         when {
+            c.kind == HomeKind.WATCHING -> closeHome()
             c.kind == HomeKind.STARTED && p.isNow() && canArchive(c.ch) -> playProgramme(c.ch, p, fromStart = true)
             p.isNow() || p.isPast() -> playProgramme(c.ch, p)
             else -> showToast(str(R.string.home_starts_at, dayWord(p.start).lowercase(), hm(p.start), c.ch.name))
@@ -1862,10 +1885,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Long OK: the bookmark menu where there is a bookmark; on a «Щойно почалось» card, the broadcast instead; on a
-     *  live programme, from the start; on one to come, the channel menu. */
+     *  live programme, from the start; on «Зараз дивитесь» and on one to come, the channel menu. */
     private fun homeLongOk() {
         val c = homeCard() ?: return
         when {
+            c.kind == HomeKind.WATCHING -> openCtx(c.ch)
             c.mark != null -> openMarkCtx(c.mark)
             c.kind == HomeKind.STARTED && c.p.isNow() -> playProgramme(c.ch, c.p)
             c.p.isNow() || c.p.isPast() -> longOkProgramme(c.ch, c.p)
@@ -2089,8 +2113,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Key.LEFT -> openList()
             Key.RIGHT -> openList(programmes = true)
             Key.OK -> showOsd()
-            // the first step up the hierarchy: programme view › channels › groups › menu › back to playback
-            Key.BACK -> openList(programmes = true)
+            Key.BACK -> openHome() // and BACK there comes back here: BACK always leads back to playback
             Key.RED -> cur?.let(::toggleFav)
             Key.GREEN -> openList(programmes = true)
             Key.YELLOW -> openRecent()

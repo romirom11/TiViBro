@@ -52,7 +52,7 @@ back to English.
   </tr>
   <tr>
     <td><a href="docs/screenshots/player.png"><img src="docs/screenshots/player.png" alt="Player panel"></a><br>Player panel: timeline, restart, previous and next programme, back to live</td>
-    <td><a href="docs/screenshots/main-menu.png"><img src="docs/screenshots/main-menu.png" alt="Main menu"></a><br>Main menu, with Home first; BACK here opens Home</td>
+    <td><a href="docs/screenshots/main-menu.png"><img src="docs/screenshots/main-menu.png" alt="Main menu"></a><br>Main menu, with Home first</td>
   </tr>
   <tr>
     <td><a href="docs/screenshots/settings.png"><img src="docs/screenshots/settings.png" alt="Settings"></a><br>Settings, with interface size and language</td>
@@ -116,9 +116,13 @@ Downloads are throttled and pause while you use the remote or while the stream i
 
 ## Home
 
-Home is a layer over the video, which keeps playing behind it. Open it from the main menu ("Home", the first item), or
-press BACK in the main menu. Its rows, top to bottom (a row with nothing in it is left out):
+Home is a layer over the video, which keeps playing behind it. Open it with BACK from playback, or from the main menu
+("Home", the first item). BACK or OK on Now watching closes it back to the playback. Its rows, top to bottom (a row
+with nothing in it is left out):
 
+- **Now watching**: the channel playing, its programme and how far along it is (for an archive programme, where the
+  playback is in it). Focus starts here; OK goes back to the playback as it is, without re-tuning. Shown only while
+  something plays, and only in the app, never on the Android TV home screen.
 - **Continue watching**: archive programmes you stopped in, on any channel of the playlist, newest first, while they are
   still in the archive.
 - **On now**: what is on the Home sources now.
@@ -165,14 +169,13 @@ The links it uses can also be opened by other apps: `tivibro://home`, `tivibro:/
 
 ## Remote control
 
-BACK always goes one level up, in the same order everywhere:
+BACK always leads back to playback. From playback it opens Home, and BACK on Home closes it again. In the channel list
+and the programme view BACK closes the whole list in one press, wherever the focus is; ◀ walks deeper (programmes >
+days, channels > groups > main menu). The main menu goes back with BACK to where it was opened from: Home if it was
+opened from Home, otherwise playback.
 
-```
-playback  >  programme view  >  channel list  >  groups  >  main menu  >  Home  >  playback
-```
-
-Sheets and dialogs close back to the level they were opened from. BACK on the player panel only hides the panel.
-"Exit" in the main menu closes the app.
+Settings sheets go back one sheet at a time, dialogs close back to where they were opened from, and BACK on the player
+panel only hides the panel. "Exit" in the main menu closes the app.
 
 ### Home
 
@@ -180,8 +183,8 @@ Sheets and dialogs close back to the level they were opened from. BACK on the pl
 | --- | --- |
 | ◀ ▶ | Previous / next card (◀ on the first card opens the main menu) |
 | ▲ ▼ | Previous / next row; each row remembers its card. CH+ / CH- jump to the first / last row |
-| OK | Watch, resume, or from the beginning (Just started); a programme still to come says when it starts |
-| Hold OK | Watch options of a bookmark; from the beginning of a live programme; channel menu of one to come |
+| OK | Now watching: back to the playback. Otherwise watch, resume, or from the beginning (Just started); a programme still to come says when it starts |
+| Hold OK | Watch options of a bookmark; from the beginning of a live programme; channel menu of Now watching and of one to come |
 | RED | Favourite |
 | MENU | Main menu |
 | BACK | Back to playback |
@@ -192,7 +195,8 @@ Sheets and dialogs close back to the level they were opened from. BACK on the pl
 | --- | --- |
 | ▲ / CH+, ▼ / CH- | Next / previous channel |
 | ◀ | Channel list |
-| ▶, GREEN, BACK | Programme view of the current channel, on the programme being played |
+| ▶, GREEN | Programme view of the current channel, on the programme being played |
+| BACK | Home |
 | OK | Player panel |
 | Hold OK | Channel menu (favourite, hide) |
 | 0-9 | Channel by number |
@@ -222,9 +226,11 @@ Sheets and dialogs close back to the level they were opened from. BACK on the pl
 | Hold OK | Channel menu; on a Continue watching item: From the start, Remove from Continue watching, Mark as watched |
 | ▶ | Programme view of the channel |
 | RED | Favourite |
-| ◀, BACK | Groups |
+| ◀ | Groups |
+| BACK | Back to playback |
 
-In the groups rail, ▲ ▼ choose a group, ▶ or OK go back to the channels, and ◀ or BACK open the main menu.
+In the groups rail, ▲ ▼ choose a group, ▶ or OK go back to the channels, ◀ opens the main menu and BACK goes back to
+playback.
 
 ### Programme view
 
@@ -235,7 +241,7 @@ In the groups rail, ▲ ▼ choose a group, ▶ or OK go back to the channels, a
 | ◀ | Days column (▲ ▼ day, ▶ or OK back to the programmes) |
 | OK | Watch: live for the programme on air, the archive for past ones, resume where you stopped |
 | Hold OK | On air: from the start. Watched archive programme: watch options |
-| BACK | Channel list |
+| BACK | Back to playback |
 
 ## Building from source
 

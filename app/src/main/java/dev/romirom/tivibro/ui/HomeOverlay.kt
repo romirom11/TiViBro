@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import dev.romirom.tivibro.AppViewModel
 import dev.romirom.tivibro.AppViewModel.Companion.DONE
 import dev.romirom.tivibro.AppViewModel.Companion.ago
+import dev.romirom.tivibro.Mode
 import dev.romirom.tivibro.R
 import dev.romirom.tivibro.data.MIN
 import dev.romirom.tivibro.data.inArchive
@@ -114,6 +115,7 @@ private fun HomeRows(vm: AppViewModel, rows: List<HomeRow>, active: Boolean) {
 }
 
 fun rowTitle(k: HomeKind): String = when (k) {
+    HomeKind.WATCHING -> str(R.string.home_watching)
     HomeKind.CONTINUE -> str(R.string.group_cont)
     HomeKind.NOW -> str(R.string.home_now)
     HomeKind.STARTED -> str(R.string.home_started)
@@ -130,7 +132,7 @@ private fun CardRow(vm: AppViewModel, r: HomeRow, focusedRow: Boolean, col: Int,
     Column(Modifier.fillMaxWidth().height(ROW_H.px)) {
         Row(Modifier.padding(start = 96.px, end = 72.px, top = 8.px), verticalAlignment = Alignment.CenterVertically) {
             T(rowTitle(r.kind), 26, if (focusedRow) Tok.T1 else Tok.T2, FontWeight.SemiBold)
-            T("  ${r.cards.size}", 20, Tok.T3, FontWeight.Medium)
+            if (r.kind != HomeKind.WATCHING) T("  ${r.cards.size}", 20, Tok.T3, FontWeight.Medium)
         }
         LazyRow(
             state = state,
@@ -178,11 +180,16 @@ private fun BoxScope.PictureCard(vm: AppViewModel, c: HomeCard, info: TmdbInfo, 
         Logo(c.ch, 52)
         Spacer(Modifier.weight(1f))
         T(c.p.title, 29, Tok.T1, FontWeight.SemiBold, maxLines = 2)
-        Ticking(vm) { t -> CardMeta(c, false, t) }
+        Ticking(vm) { t -> CardMeta(vm, c, false, t) }
     }
     Ticking(vm) { t ->
-        val f = cardProgress(c, t)
-        if (f != null) Progress(f, Modifier.align(Alignment.BottomStart).fillMaxWidth(), if (c.mark != null) Tok.Arch else Tok.Live, Color(0x33FFFFFF), 5)
+        val f = cardProgress(vm, c, t)
+        // inside the focused card's white frame, which would cover it
+        val inset = if (foc) 4 else 0
+        if (f != null) Progress(
+            f, Modifier.align(Alignment.BottomStart).padding(start = inset.px, end = inset.px, bottom = inset.px).fillMaxWidth(),
+            if (archived(vm, c)) Tok.Arch else Tok.Live, Color(0x33FFFFFF), 5,
+        )
     }
 }
 
@@ -195,35 +202,44 @@ private fun BoxScope.TypeCard(vm: AppViewModel, c: HomeCard, foc: Boolean) {
             T(c.ch.name, 19, if (foc) Tok.OnPlate2 else Tok.T2, FontWeight.Medium, Modifier.weight(1f).padding(start = 14.px))
         }
         Spacer(Modifier.weight(1f))
-        T(c.p.title, 29, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold, maxLines = 2)
-        Ticking(vm) { t -> CardMeta(c, foc, t) }
+        T(cardTitle(c), 29, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold, maxLines = 2)
+        Ticking(vm) { t -> CardMeta(vm, c, foc, t) }
     }
     Ticking(vm) { t ->
-        val f = cardProgress(c, t)
+        val f = cardProgress(vm, c, t)
         if (f != null) Progress(
             f, Modifier.align(Alignment.BottomStart).fillMaxWidth(),
-            if (c.mark != null) (if (foc) Tok.ArchOnPlate else Tok.Arch) else if (foc) Tok.LiveOnPlate else Tok.Live,
+            if (archived(vm, c)) (if (foc) Tok.ArchOnPlate else Tok.Arch) else if (foc) Tok.LiveOnPlate else Tok.Live,
             if (foc) Color(0x1F000000) else Color(0x24FFFFFF), 5,
         )
     }
 }
 
 @Composable
-private fun CardMeta(c: HomeCard, foc: Boolean, t: Long) {
+private fun CardMeta(vm: AppViewModel, c: HomeCard, foc: Boolean, t: Long) {
     Row(Modifier.padding(top = 6.px), verticalAlignment = Alignment.CenterVertically) {
-        val (text, color) = badge(c, t, foc)
+        val (text, color) = badge(vm, c, t, foc)
         T(text, 19, color, FontWeight.Bold)
-        T("  ${hm(c.p.start)} – ${hm(c.p.end)}", 19, if (foc) Tok.OnPlate2 else Tok.T2)
+        if (hasProg(c)) T("  ${hm(c.p.start)} – ${hm(c.p.end)}", 19, if (foc) Tok.OnPlate2 else Tok.T2)
     }
 }
 
+/** The guide had a programme for the card (only «Зараз дивитесь» can be without one). */
+private fun hasProg(c: HomeCard) = c.p.duration > 0
+
+private fun cardTitle(c: HomeCard) = if (hasProg(c)) c.p.title else str(R.string.no_programme)
+
+/** Shown in the archive's colour: a bookmark, or «Зараз дивитесь» playing from the archive. */
+private fun archived(vm: AppViewModel, c: HomeCard) = c.mark != null || (c.kind == HomeKind.WATCHING && vm.mode == Mode.ARCHIVE)
+
 /** «Ефір», «Через 12 хв», «З початку −18 хв», «Архів», «О 21:30». */
-private fun badge(c: HomeCard, t: Long, foc: Boolean): Pair<String, Color> {
+private fun badge(vm: AppViewModel, c: HomeCard, t: Long, foc: Boolean): Pair<String, Color> {
     val p = c.p
     val live = if (foc) Tok.LiveOnPlate else Tok.Live
     val arch = if (foc) Tok.ArchOnPlate else Tok.Arch
     val plain = if (foc) Tok.OnPlate else Tok.T1
     return when {
+        c.kind == HomeKind.WATCHING -> if (archived(vm, c)) str(R.string.archive) to arch else str(R.string.badge_live) to live
         c.mark != null || p.isPast(t) -> str(R.string.archive) to arch
         p.isNow(t) && c.kind == HomeKind.STARTED -> str(R.string.badge_started, ago(t - p.start)) to arch
         p.isNow(t) -> str(R.string.badge_live) to live
@@ -232,8 +248,10 @@ private fun badge(c: HomeCard, t: Long, foc: Boolean): Pair<String, Color> {
     }
 }
 
-/** How far along: the bookmark's position, the broadcast's; nothing for what hasn't started. */
-private fun cardProgress(c: HomeCard, t: Long): Float? = when {
+/** How far along: the playing position on «Зараз дивитесь», the bookmark's, the broadcast's; nothing for what hasn't
+ *  started. */
+private fun cardProgress(vm: AppViewModel, c: HomeCard, t: Long): Float? = when {
+    c.kind == HomeKind.WATCHING -> if (hasProg(c)) ((vm.posAbs() - c.p.start).toFloat() / c.p.duration).coerceIn(0f, 1f) else null
     c.mark != null -> c.mark.watched
     c.p.isNow(t) -> (t - c.p.start).toFloat() / c.p.duration
     else -> null
@@ -257,22 +275,30 @@ private fun HomeDetails(vm: AppViewModel, c: HomeCard, modifier: Modifier) {
             Logo(c.ch, 56)
             T(c.ch.name, 24, Tok.T2, FontWeight.SemiBold, Modifier.padding(start = 18.px))
         }
-        T(p.title, 50, Tok.T1, FontWeight.Bold, Modifier.padding(top = 20.px, bottom = 12.px), maxLines = 2)
+        T(cardTitle(c), 50, Tok.T1, FontWeight.Bold, Modifier.padding(top = 20.px, bottom = 12.px), maxLines = 2)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(16.px), verticalArrangement = Arrangement.spacedBy(10.px)) {
             Ticking(vm) { t ->
-                val (text, _) = badge(c, t, false)
+                val (text, _) = badge(vm, c, t, false)
                 when {
+                    c.kind == HomeKind.WATCHING -> if (archived(vm, c)) Pill(text, Tok.Arch, Color(0x29FFB340)) else LivePill()
                     p.isNow(t) && c.kind != HomeKind.STARTED && c.mark == null -> LivePill()
                     c.mark != null || p.isPast(t) || c.kind == HomeKind.STARTED -> Pill(text, Tok.Arch, Color(0x29FFB340))
                     else -> Pill(text, Tok.T2, outline = true)
                 }
             }
-            T("${dayWord(p.start)}, ${hm(p.start)} – ${hm(p.end)}", 22, Tok.T2)
-            T(str(R.string.dur_min, (p.duration / 60_000).toInt()), 22, Tok.T2)
+            if (hasProg(c)) {
+                T("${dayWord(p.start)}, ${hm(p.start)} – ${hm(p.end)}", 22, Tok.T2)
+                T(str(R.string.dur_min, (p.duration / 60_000).toInt()), 22, Tok.T2)
+            }
+            // «Зараз дивитесь»: where the playback is, in the archive programme or in the broadcast
+            if (c.kind == HomeKind.WATCHING && hasProg(c)) Ticking(vm) { t ->
+                if (archived(vm, c)) T(str(R.string.watched_of, ago(vm.posAbs() - p.start), ago(p.duration)), 22, Tok.Arch)
+                else T(str(R.string.remaining, ago(p.end - t)), 22, Tok.T2)
+            }
             if (info != null) TmdbMeta(info)
         }
         // a film is best told by TMDB's overview; a show's episode by the guide's own description
-        val guide = vm.desc(p)
+        val guide = if (hasProg(c)) vm.desc(p) else null
         val d = if (info?.type == "movie") info.overview.ifBlank { guide.orEmpty() } else guide?.ifBlank { info?.overview.orEmpty() } ?: info?.overview.orEmpty()
         T(d, 23, Tok.T2, modifier = Modifier.padding(top = 14.px).heightIn(min = 62.px), maxLines = 2)
         FlowRow(Modifier.padding(top = 16.px), horizontalArrangement = Arrangement.spacedBy(32.px), verticalArrangement = Arrangement.spacedBy(12.px)) {
@@ -303,6 +329,7 @@ private fun homeActions(vm: AppViewModel, c: HomeCard): List<Pair<String, String
     val long = str(R.string.key_ok_long)
     val w = vm.watched(c.ch, p)
     return when {
+        c.kind == HomeKind.WATCHING -> listOf("OK" to str(R.string.hint_to_video), long to str(R.string.ctx_channel))
         c.mark != null -> listOf("OK" to str(R.string.act_resume, ago((w * p.duration).toLong())), long to str(R.string.act_mark_menu))
         c.kind == HomeKind.STARTED && p.isNow() && vm.canArchive(c.ch) -> listOf("OK" to str(R.string.act_from_start_prog), long to str(R.string.act_live))
         p.isNow() -> listOfNotNull("OK" to str(R.string.act_live), (long to str(R.string.act_from_start_prog)).takeIf { vm.canArchive(c.ch) })

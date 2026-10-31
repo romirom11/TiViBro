@@ -104,4 +104,14 @@ class HomeTest {
         assertEquals(listOf("b"), HomeRows.merge(old, emptyList(), keep = "STARTED:b").single().cards.map { it.ch.id })
         assertTrue(HomeRows.merge(old, emptyList(), keep = null).isEmpty())
     }
+
+    @Test fun mergeUpdatesNowWatchingInPlaceOnTop() {
+        fun w(id: String, title: String) = HomeCard(HomeRows.WATCHING_KEY, HomeKind.WATCHING, ch(id), p(0, 30, title))
+        val old = listOf(HomeRow(HomeKind.WATCHING, listOf(w("a", "A"))), HomeRow(HomeKind.NOW, listOf(card(HomeKind.NOW, "x"))))
+        // the next programme, focus on the card: still one card, the new one, and the row stays first
+        val new = listOf(HomeRow(HomeKind.NOW, listOf(card(HomeKind.NOW, "x"))), HomeRow(HomeKind.WATCHING, listOf(w("a", "B"))))
+        val m = HomeRows.merge(old, new, keep = HomeRows.WATCHING_KEY)
+        assertEquals(listOf(HomeKind.WATCHING, HomeKind.NOW), m.map { it.kind })
+        assertEquals(listOf("B"), m[0].cards.map { it.p.title })
+    }
 }

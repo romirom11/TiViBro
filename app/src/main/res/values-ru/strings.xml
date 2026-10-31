@@ -304,6 +304,7 @@
     <string name="group_all_desc">Вместе с теми, что появятся в группе позже</string>
     <string name="home_group_sub">Отметьте каналы для главной страницы</string>
     <string name="home_now">Сейчас в эфире</string>
+    <string name="home_watching">Сейчас смотрите</string>
     <string name="home_started">Только началось, смотри с начала</string>
     <string name="home_soon">Скоро</string>
     <string name="home_films">Фильмы</string>
