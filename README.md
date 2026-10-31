@@ -46,9 +46,10 @@ back in time: pause, rewind and play any past programme from the archive, all wi
 
 TiViBro works on Android TV and Google TV devices with Android 6.0 or newer.
 
-1. Get the latest `TiViBro-vX.Y.Z.apk` from the [Releases](https://github.com/romirom11/TiViBro/releases) page onto
-   your TV. Two easy ways:
-   - install the **Downloader** app from the Play Store on your TV and open the Releases page in it, or
+1. Open the [latest release](https://github.com/romirom11/TiViBro/releases/latest) and download the APK file
+   attached to it (there is only one). Two easy ways to get it onto your TV:
+   - install the **Downloader** app from the Play Store on your TV and open
+     `github.com/romirom11/TiViBro/releases/latest` in it, or
    - download the APK on a computer, copy it to a USB stick and open it with a file manager on the TV.
 2. When Android asks, allow that app (Downloader or the file manager) to install unknown apps.
 3. Install, then open TiViBro from your apps.
