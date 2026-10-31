@@ -98,7 +98,7 @@ object M3u {
             id = tvgId ?: urlId ?: (UNNAMED + epgName(full)),
             num = num,
             name = noCountry.replace(QUALITY, "").trim().ifEmpty { full },
-            group = (attr("group-title") ?: extgrp).replace(GROUP_NUM, "").ifBlank { "Інше" },
+            group = (attr("group-title") ?: extgrp).replace(GROUP_NUM, "").ifBlank { OTHER_GROUP },
             logo = attr("tvg-logo"),
             archiveDays = depth.coerceAtLeast(0),
             url = url,

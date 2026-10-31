@@ -64,5 +64,8 @@ fun urlChannelId(url: String): String? = URL_CH.find(url)?.groupValues?.get(1)
 fun Channel.epgKeys(): List<String> =
     listOfNotNull(id.takeUnless { it.startsWith(UNNAMED) }, epgId, urlChannelId(url), epgName(name).takeIf { it.isNotEmpty() }).distinct()
 
+/** The group of entries without one. Stored and keyed by this name; shown translated (see ui.groupTitle). */
+const val OTHER_GROUP = "Інше"
+
 /** Prefix of ids made up for entries without tvg-id or /chNNN/: never a guide key. */
 const val UNNAMED = "n:"

@@ -1,3 +1,281 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">TiViBro</string>
+    <string name="app_name" translatable="false">TiViBro</string>
+
+    <!-- common -->
+    <string name="loading">Завантаження…</string>
+    <string name="loading_list">Завантажую…</string>
+    <string name="playlist_fallback">Плейлист</string>
+    <string name="dur_min">%1$d хв</string>
+    <string name="dur_hours">%1$d год</string>
+    <string name="dur_hours_min">%1$d год %2$d хв</string>
+    <string name="today">Сьогодні</string>
+    <string name="yesterday">Вчора</string>
+    <string name="tomorrow">Завтра</string>
+    <!-- «пт, 30 жов»: %1$s day of week, %2$d day of month, %3$s month -->
+    <string name="day_fmt">%1$s, %2$d %3$s</string>
+    <string name="date_fmt">%1$d %2$s</string>
+    <string-array name="dow_short">
+        <item>нд</item><item>пн</item><item>вт</item><item>ср</item><item>чт</item><item>пт</item><item>сб</item>
+    </string-array>
+    <string-array name="mon_short">
+        <item>січ</item><item>лют</item><item>бер</item><item>кві</item><item>тра</item><item>чер</item>
+        <item>лип</item><item>сер</item><item>вер</item><item>жов</item><item>лис</item><item>гру</item>
+    </string-array>
+    <plurals name="channels">
+        <item quantity="one">%d канал</item>
+        <item quantity="few">%d канали</item>
+        <item quantity="many">%d каналів</item>
+        <item quantity="other">%d каналу</item>
+    </plurals>
+    <plurals name="days">
+        <item quantity="one">%d день</item>
+        <item quantity="few">%d дні</item>
+        <item quantity="many">%d днів</item>
+        <item quantity="other">%d дня</item>
+    </plurals>
+    <plurals name="programmes">
+        <item quantity="one">%d передача</item>
+        <item quantity="few">%d передачі</item>
+        <item quantity="many">%d передач</item>
+        <item quantity="other">%d передачі</item>
+    </plurals>
+
+    <!-- groups -->
+    <string name="group_cont">Продовжити перегляд</string>
+    <string name="group_fav">Обране</string>
+    <string name="group_recent">Нещодавні</string>
+    <string name="group_all">Усі канали</string>
+    <string name="group_other">Інше</string>
+    <string name="group_empty">Порожньо</string>
+    <string name="fav_empty">Утримайте OK на каналі → «Додати в обране»</string>
+
+    <!-- toasts and status -->
+    <string name="err_play">Не вдалося відтворити: %1$s</string>
+    <string name="loading_channels">Завантажую канали…</string>
+    <string name="playlist_load_failed">Не вдалося завантажити плейлист: %1$s</string>
+    <string name="playlist_exists">Цей плейлист уже є · %1$s</string>
+    <string name="playlist_added">Плейлист додано · %1$s</string>
+    <string name="playlist_already_open">Цей плейлист уже відкритий</string>
+    <string name="playlist_switched">Плейлист: %1$s</string>
+    <string name="playlist_refreshed">Плейлист оновлено · %1$s</string>
+    <string name="refresh_failed">Не вдалося оновити: %1$s</string>
+    <string name="delete_confirm">Натисніть OK ще раз, щоб видалити «%1$s»</string>
+    <string name="playlist_deleted">Плейлист «%1$s» видалено</string>
+    <string name="renamed">Назву змінено: %1$s</string>
+    <string name="guide_custom_set">Програма передач: власне посилання</string>
+    <string name="guide_custom_again">Програма передач: власне посилання · OK ще раз, щоб змінити</string>
+    <string name="guide_no_tvg">У плейлисті немає посилання на програму (url-tvg)</string>
+    <string name="guide_auto_set">Програма передач: авто</string>
+    <string name="guide_playlist_set">Програма передач: з плейлиста</string>
+    <string name="guide_busy">Програма передач уже оновлюється</string>
+    <string name="guide_updating">Оновлюю програму передач</string>
+    <string name="guide_failed">Програма передач не оновилась: %1$s</string>
+    <string name="guide_up_to_date">Програма передач актуальна</string>
+    <string name="guide_updated">Програма передач оновлена · %1$s</string>
+    <string name="guide_dl_today">Програма передач: завантажую сьогоднішню… %1$d%%</string>
+    <string name="guide_dl_more">Програма передач: сьогодні готово, завантажую ще %1$s… %2$d%%</string>
+    <string name="guide_dl_mb">Програма передач: завантажую… %1$d МБ</string>
+    <string name="guide_not_loaded">Програма передач ще не завантажена</string>
+    <string name="guide_loading">Програма ще завантажується</string>
+    <string name="no_guide_for_channel">Для цього каналу немає програми</string>
+    <string name="no_archive">На цьому каналі немає архіву</string>
+    <string name="back_live">Повернулися в ефір</string>
+    <string name="from_start_toast">З початку · %1$s</string>
+    <string name="no_other_audio">Інших звукових доріжок немає</string>
+    <string name="audio_track">Звук: %1$s (%2$d з %3$d)</string>
+    <string name="audio_track_n">доріжка %1$d</string>
+    <string name="out_of_archive">Ця передача вже поза архівом</string>
+    <string name="resuming">Продовжуємо з %1$s · %2$s</string>
+    <string name="not_started">Передача ще не почалася</string>
+    <string name="fav_removed">%1$s: прибрано з обраного</string>
+    <string name="fav_added">%1$s → Обране</string>
+    <string name="channel_back">%1$s знову у списку</string>
+    <string name="channel_hidden">%1$s приховано · повернути можна в налаштуваннях</string>
+    <string name="mark_unwatched_toast">Позначку «Переглянуто» знято</string>
+    <string name="mark_forgotten_toast">Прибрано з «Продовжити перегляд»</string>
+    <string name="mark_done_toast">Позначено переглянутим: %1$s</string>
+    <string name="no_such_number">Немає каналу з таким номером</string>
+    <string name="no_channel">немає каналу</string>
+    <string name="err_playlist_deleted">плейлист видалено</string>
+    <string name="err_playlist_empty">плейлист порожній або не M3U</string>
+
+    <!-- playback -->
+    <string name="no_programme">Немає програми</string>
+    <string name="remaining">ще %1$s</string>
+    <string name="next_prog">Далі %1$s · %2$s</string>
+    <string name="archive_days">Архів %1$d дн</string>
+    <string name="live">НАЖИВО</string>
+    <string name="paused">❚❚ Пауза</string>
+    <string name="behind_live">−%1$s від ефіру</string>
+    <string name="archive">Архів</string>
+    <string name="osd_restart">⟲  З початку</string>
+    <string name="osd_prev">⏮  Попередня</string>
+    <string name="osd_next">⏭  Наступна</string>
+    <string name="osd_live">●  Наживо</string>
+    <string name="osd_audio">Звук</string>
+
+    <!-- hints -->
+    <string name="key_ok_long">OK довго</string>
+    <string name="hint_choose">Вибір</string>
+    <string name="hint_apply">Застосувати</string>
+    <string name="hint_close">Закрити</string>
+    <string name="hint_open">Відкрити</string>
+    <string name="hint_to_channels">До каналів</string>
+    <string name="hint_back">Назад</string>
+    <string name="hint_group">Група</string>
+    <string name="hint_toggle_group">Показати / сховати</string>
+    <string name="hint_done">Готово</string>
+    <string name="hint_channel">Канал</string>
+    <string name="hint_unhide">Повернути у список</string>
+    <string name="hint_playlist">Плейлист</string>
+    <string name="hint_action">Дія</string>
+    <string name="hint_run">Виконати</string>
+    <string name="hint_cancel">Скасувати</string>
+    <string name="hint_channels">Канали</string>
+    <string name="hint_menu">Меню</string>
+    <string name="hint_day">День</string>
+    <string name="hint_progs">Передачі</string>
+    <string name="hint_programme">Передача</string>
+    <string name="hint_watch">Дивитися</string>
+    <string name="hint_long_mark">довго: дії з переглядом</string>
+    <string name="hint_long_restart">довго: з початку</string>
+    <string name="hint_days">Дні</string>
+    <string name="hint_resume">Продовжити</string>
+    <string name="hint_long_actions">довго: дії</string>
+    <string name="hint_channel_guide">Програма каналу</string>
+    <string name="hint_groups">Групи</string>
+    <string name="hint_guide">Програма</string>
+    <string name="hint_long_channel_menu">довго: меню каналу</string>
+    <string name="hint_seek">Перемотка</string>
+    <string name="hint_play">Відтворити</string>
+    <string name="hint_pause">Пауза</string>
+    <string name="hint_buttons">Кнопки</string>
+    <string name="hint_hide">Сховати</string>
+    <string name="hint_timeline">Шкала</string>
+    <string name="hint_list">Список</string>
+    <string name="hint_controls">Керування</string>
+
+    <!-- first run -->
+    <string name="setup_title">Підключімо ваш плейлист</string>
+    <string name="setup_steps">1. Відскануйте QR-код телефоном (той самий Wi-Fi).\n2. Скопіюйте посилання на M3U-плейлист у кабінеті свого провайдера.\n3. Вставте його на сторінці й натисніть «Надіслати».</string>
+    <string name="or_open">Або відкрийте %1$s</string>
+    <string name="no_network">Немає мережі: підключіть телевізор до Wi-Fi</string>
+
+    <!-- list and programme view -->
+    <string name="days_title">Дні</string>
+    <string name="soon">Незабаром</string>
+    <string name="out_archive">Поза архівом</string>
+    <string name="watched_pill">✓ Переглянуто</string>
+    <string name="watched_of">Переглянуто %1$s з %2$s</string>
+    <string name="no_desc">Опису немає</string>
+    <string name="act_live">Наживо</string>
+    <string name="act_from_start_prog">З початку передачі</string>
+    <string name="act_resume">Продовжити з %1$s</string>
+    <string name="act_mark_menu">Дії з переглядом</string>
+    <string name="act_rewatch">Переглянути ще раз</string>
+    <string name="act_watch">Дивитися</string>
+
+    <!-- menu -->
+    <string name="menu_summary">%1$s · показано груп: %2$d з %3$d</string>
+    <string name="menu_groups">Групи каналів</string>
+    <string name="menu_guide">Оновити програму передач</string>
+    <string name="menu_settings">Налаштування</string>
+    <string name="menu_exit">Вихід</string>
+    <string name="menu_update">Оновити до %1$s</string>
+
+    <!-- settings -->
+    <string name="settings_title">Налаштування</string>
+    <string name="settings_sub">Плейлисти, які групи й канали показувати, програма передач, мова</string>
+    <string name="section_playlist">Плейлист</string>
+    <string name="row_playlists">Плейлисти</string>
+    <string name="now_playlist">Зараз: %1$s</string>
+    <string name="section_channels">Канали</string>
+    <string name="row_groups_desc">Які групи показувати у списку</string>
+    <string name="x_of_y">%1$d з %2$d</string>
+    <string name="row_hidden">Приховані канали</string>
+    <string name="row_hidden_desc">Повернути канали, які ви приховали</string>
+    <string name="none">немає</string>
+    <string name="section_guide">Програма передач</string>
+    <string name="row_guide">Програма передач</string>
+    <string name="section_app">Застосунок</string>
+    <string name="row_language" translatable="false">Мова / Language</string>
+    <string name="lang_system">Як у системі</string>
+    <string name="lang_uk" translatable="false">Українська</string>
+    <string name="lang_en" translatable="false">English</string>
+    <string name="language_sub">Мова інтерфейсу TiViBro</string>
+    <string name="row_update">Перевірити оновлення</string>
+    <string name="version">Версія %1$s</string>
+
+    <string name="groups_sub">OK: показати або сховати групу. Сховані групи зникають зі списку і з перемикання</string>
+    <string name="hidden_suffix"> · прихована</string>
+    <string name="hidden_sub_empty">Утримайте OK на каналі → «Приховати канал»</string>
+    <string name="hidden_sub">OK: повернути канал у список</string>
+    <string name="hidden_none">Прихованих каналів немає</string>
+    <string name="show">Показати</string>
+
+    <!-- context menus -->
+    <string name="ctx_channel">Канал</string>
+    <string name="fav_remove">Прибрати з обраного</string>
+    <string name="fav_add">Додати в обране</string>
+    <string name="ch_show">Показати канал</string>
+    <string name="ch_hide">Приховати канал</string>
+    <string name="mark_from_start">З початку</string>
+    <string name="mark_unwatch">Позначити непереглянутим</string>
+    <string name="mark_forget">Прибрати з «Продовжити перегляд»</string>
+    <string name="mark_watched">Позначити переглянутим</string>
+
+    <!-- playlists -->
+    <string name="updated_at">оновлено %1$s, %2$s</string>
+    <string name="not_loaded">ще не завантажений</string>
+    <string name="playlists_sub">OK: відкрити, оновити, перейменувати або видалити. В кожного плейлиста своє обране й приховані канали</string>
+    <string name="playlist_open_mark">✓ Відкритий</string>
+    <string name="add_playlist">＋  Додати плейлист</string>
+    <string name="adding_playlist">Завантажую новий плейлист…</string>
+    <string name="add_playlist_desc">Посилання: з телефону, через QR-код</string>
+    <string name="open_suffix"> · відкритий</string>
+    <string name="pl_open_now">Відкритий зараз</string>
+    <string name="pl_open">Відкрити</string>
+    <string name="pl_open_desc">Перейти на канали цього плейлиста</string>
+    <string name="pl_refresh">Оновити</string>
+    <string name="pl_refresh_desc">Завантажити список каналів заново</string>
+    <string name="pl_rename">Перейменувати</string>
+    <string name="pl_rename_desc">Назва з плейлиста: %1$s</string>
+    <string name="pl_delete">Видалити</string>
+    <string name="pl_delete_desc">Разом з його обраним, прихованими каналами й закладками</string>
+
+    <!-- guide source -->
+    <string name="src_auto">Авто</string>
+    <string name="src_playlist">З плейлиста</string>
+    <string name="src_custom">Власне посилання</string>
+    <string name="guide_error">%1$s · помилка: %2$s</string>
+    <string name="guide_never">%1$s · ще не завантажена</string>
+    <string name="section_source">Джерело</string>
+    <string name="auto_epgteam">epg.team: швидко, частинами за днями</string>
+    <string name="auto_playlist">З плейлиста: %1$s</string>
+    <string name="tvg_desc">XMLTV з url-tvg: %1$s</string>
+    <string name="no_tvg">У плейлисті немає посилання на програму</string>
+    <string name="custom_none">Надіслати посилання з телефону</string>
+    <string name="section_update">Оновлення</string>
+    <string name="refresh_now">Оновити зараз</string>
+
+    <!-- QR / LAN page -->
+    <string name="link_add_title">Додати плейлист</string>
+    <string name="link_add_sub">Відскануйте QR-код телефоном (той самий Wi-Fi) і вставте посилання на M3U-плейлист</string>
+    <string name="link_guide_title">Власна програма передач</string>
+    <string name="link_guide_sub">Відскануйте QR-код телефоном і вставте посилання на XMLTV (.xml або .xml.gz)</string>
+    <string name="link_rename_title">Перейменувати плейлист</string>
+    <string name="link_rename_sub">Відскануйте QR-код телефоном і введіть нову назву</string>
+    <string name="loading_playlist">Завантажую плейлист…</string>
+    <string name="page_playlist_title">Посилання на плейлист</string>
+    <string name="page_playlist_hint">Скопіюйте посилання на M3U-плейлист у кабінеті свого провайдера (для tv.team: Playlists → «Tivimate» → Copy) і вставте сюди.</string>
+    <string name="page_guide_title">Програма передач (XMLTV)</string>
+    <string name="page_guide_hint">Вставте посилання на XMLTV-файл (.xml або .xml.gz).</string>
+    <string name="page_name_title">Назва плейлиста</string>
+    <string name="page_name_hint">Як цей плейлист називатиметься в списку.</string>
+    <string name="page_send">Надіслати на телевізор</string>
+    <string name="page_save">Зберегти</string>
+    <string name="page_empty">Поле порожнє.</string>
+    <string name="page_not_link">Це не схоже на посилання.</string>
+    <string name="page_done">Готово. Дивіться на телевізор.</string>
 </resources>

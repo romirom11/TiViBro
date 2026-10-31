@@ -1,5 +1,11 @@
 package io.github.romirom11.tivibro.ui
 
+import androidx.compose.ui.platform.LocalContext
+import io.github.romirom11.tivibro.L10n
+import io.github.romirom11.tivibro.R
+import io.github.romirom11.tivibro.plural
+import io.github.romirom11.tivibro.str
+import io.github.romirom11.tivibro.data.OTHER_GROUP
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -48,16 +54,11 @@ import io.github.romirom11.tivibro.data.Mark
 import io.github.romirom11.tivibro.data.PlaylistInfo
 import kotlin.math.max
 
-/** «1 канал», «3 канали», «12 каналів». */
-fun channelsWord(n: Int): String {
-    val a = n % 10
-    val b = n % 100
-    return "$n " + when {
-        a == 1 && b != 11 -> "канал"
-        a in 2..4 && b !in 12..14 -> "канали"
-        else -> "каналів"
-    }
-}
+/** «1 канал», «3 канали», «12 каналів» (1 channel, 3 channels). */
+fun channelsWord(n: Int): String = plural(R.plurals.channels, n)
+
+/** A provider group's name as shown: the made-up group of entries without one is translated. */
+fun groupTitle(name: String): String = if (name == OTHER_GROUP) str(R.string.group_other) else name
 
 // ---------------------------------------------------------------- side menu (prototype #menu)
 
@@ -79,7 +80,7 @@ fun Menu(vm: AppViewModel) {
                 ) { T((vm.playlist?.title ?: "TiViBro").take(1).uppercase(), 30, Tok.T1, FontWeight.Bold) }
                 Column(Modifier.padding(start = 20.px)) {
                     T(vm.playlist?.title ?: "TiViBro", 28, Tok.T1, FontWeight.SemiBold)
-                    T("${channelsWord(vm.channels.size)} · показано ${vm.allGroups.count(vm::groupShown)} груп з ${vm.allGroups.size}", 21, Tok.T2)
+                    T(str(R.string.menu_summary, channelsWord(vm.channels.size), vm.allGroups.count(vm::groupShown), vm.allGroups.size), 21, Tok.T2)
                 }
             }
             vm.menuItems().forEachIndexed { i, m ->
@@ -87,10 +88,10 @@ fun Menu(vm: AppViewModel) {
                 Plate(foc, Modifier.padding(bottom = 6.px).fillMaxWidth().height(78.px), quiet = !top && i == vm.menuIdx, lift = 1.025f) {
                     Row(Modifier.fillMaxSize().padding(horizontal = 26.px), verticalAlignment = Alignment.CenterVertically) {
                         val (glyph, title) = when (m) {
-                            MenuItem.GROUPS -> "☰" to "Групи каналів"
-                            MenuItem.GUIDE -> "↻" to "Оновити програму передач"
-                            MenuItem.SETTINGS -> "⚙︎" to "Налаштування"
-                            MenuItem.EXIT -> "⏻" to "Вихід"
+                            MenuItem.GROUPS -> "☰" to str(R.string.menu_groups)
+                            MenuItem.GUIDE -> "↻" to str(R.string.menu_guide)
+                            MenuItem.SETTINGS -> "⚙︎" to str(R.string.menu_settings)
+                            MenuItem.EXIT -> "⏻" to str(R.string.menu_exit)
                         }
                         T(glyph, 30, if (foc) Tok.OnPlate else Tok.T2, modifier = Modifier.width(54.px))
                         T(title, 28, if (foc) Tok.OnPlate else Tok.T1, FontWeight.Medium, Modifier.weight(1f))
@@ -122,6 +123,7 @@ fun SideSheet(vm: AppViewModel, sheet: Sheet) {
                     Sheet.PLAYLIST -> PlaylistSheet(vm)
                     Sheet.GUIDE -> GuideSheet(vm)
                     Sheet.LINK -> LinkSheet(vm)
+                    Sheet.LANGUAGE -> LanguageSheet(vm)
                     Sheet.MENU -> Unit
                 }
             }
@@ -158,29 +160,35 @@ private fun Value(text: String, foc: Boolean) = T(text, 23, if (foc) Tok.OnPlate
 @Composable
 private fun SettingsSheet(vm: AppViewModel) {
     vm.cfgVersion
-    SheetTitle("Налаштування", "Плейлисти, які групи й канали показувати, програма передач")
+    SheetTitle(str(R.string.settings_title), str(R.string.settings_sub))
     SettingsRow.entries.forEachIndexed { i, r ->
         val foc = vm.rowIdx == i
         when (r) {
             SettingsRow.PLAYLISTS -> {
-                Section("Плейлист")
-                SheetRow(foc, "Плейлисти", vm.playlist?.let { "Зараз: ${it.title}" }) {
+                Section(str(R.string.section_playlist))
+                SheetRow(foc, str(R.string.row_playlists), vm.playlist?.let { str(R.string.now_playlist, it.title) }) {
                     Value(vm.playlists.size.toString(), foc)
                 }
             }
             SettingsRow.GROUPS -> {
-                Section("Канали")
-                SheetRow(foc, "Групи каналів", "Які групи показувати у списку") {
-                    Value("${vm.allGroups.count(vm::groupShown)} з ${vm.allGroups.size}", foc)
+                Section(str(R.string.section_channels))
+                SheetRow(foc, str(R.string.menu_groups), str(R.string.row_groups_desc)) {
+                    Value(str(R.string.x_of_y, vm.allGroups.count(vm::groupShown), vm.allGroups.size), foc)
                 }
             }
-            SettingsRow.HIDDEN -> SheetRow(foc, "Приховані канали", "Повернути канали, які ви приховали") {
-                Value(vm.hiddenChannels().size.takeIf { it > 0 }?.toString() ?: "немає", foc)
+            SettingsRow.HIDDEN -> SheetRow(foc, str(R.string.row_hidden), str(R.string.row_hidden_desc)) {
+                Value(vm.hiddenChannels().size.takeIf { it > 0 }?.toString() ?: str(R.string.none), foc)
             }
             SettingsRow.GUIDE -> {
-                Section("Програма передач")
-                SheetRow(foc, "Програма передач", guideStatus(vm)) {
+                Section(str(R.string.section_guide))
+                SheetRow(foc, str(R.string.row_guide), guideStatus(vm)) {
                     Value(sourceLabel(vm.playlist?.guideMode ?: GuideMode.AUTO), foc)
+                }
+            }
+            SettingsRow.LANGUAGE -> {
+                Section(str(R.string.section_app))
+                SheetRow(foc, str(R.string.row_language), null) {
+                    Value(langLabel(L10n.lang(LocalContext.current)), foc)
                 }
             }
         }
@@ -190,7 +198,7 @@ private fun SettingsSheet(vm: AppViewModel) {
 @Composable
 private fun GroupsSheet(vm: AppViewModel) {
     vm.cfgVersion
-    SheetTitle("Групи каналів", "OK — показати або сховати групу. Сховані групи зникають зі списку і з перемикання")
+    SheetTitle(str(R.string.menu_groups), str(R.string.groups_sub))
     val state = rememberLazyListState()
     LaunchedEffect(vm.rowIdx) { state.scrollToItem(max(0, vm.rowIdx - 4)) }
     LazyColumn(state = state, contentPadding = PaddingValues(vertical = 6.px)) {
@@ -198,7 +206,7 @@ private fun GroupsSheet(vm: AppViewModel) {
             vm.cfgVersion // settings live in Prefs: strong skipping would keep the old row without this read
             val foc = i == vm.rowIdx
             val show = vm.groupShown(g)
-            SheetRow(foc, g.name, channelsWord(g.channels.size) + if (show) "" else " · прихована", dim = !show) {
+            SheetRow(foc, groupTitle(g.name), channelsWord(g.channels.size) + if (show) "" else str(R.string.hidden_suffix), dim = !show) {
                 Switch(show, onPlate = foc, modifier = Modifier.padding(start = 24.px))
             }
         }
@@ -209,9 +217,9 @@ private fun GroupsSheet(vm: AppViewModel) {
 private fun HiddenSheet(vm: AppViewModel) {
     vm.cfgVersion
     val list = vm.hiddenChannels()
-    SheetTitle("Приховані канали", if (list.isEmpty()) "Утримайте OK на каналі → «Приховати канал»" else "OK — повернути канал у список")
+    SheetTitle(str(R.string.row_hidden), str(if (list.isEmpty()) R.string.hidden_sub_empty else R.string.hidden_sub))
     if (list.isEmpty()) {
-        T("Прихованих каналів немає", 26, Tok.T2, modifier = Modifier.padding(start = 64.px, top = 12.px))
+        T(str(R.string.hidden_none), 26, Tok.T2, modifier = Modifier.padding(start = 64.px, top = 12.px))
         return
     }
     val state = rememberLazyListState()
@@ -224,9 +232,9 @@ private fun HiddenSheet(vm: AppViewModel) {
                     Logo(c, 56)
                     Column(Modifier.weight(1f).padding(start = 22.px)) {
                         T("${c.num}  ${c.name}", 26, if (foc) Tok.OnPlate else Tok.T1, FontWeight.Medium)
-                        T(c.group, 20, if (foc) Tok.OnPlate2 else Tok.T3, modifier = Modifier.padding(top = 4.px))
+                        T(groupTitle(c.group), 20, if (foc) Tok.OnPlate2 else Tok.T3, modifier = Modifier.padding(top = 4.px))
                     }
-                    if (foc) Value("Показати", true)
+                    if (foc) Value(str(R.string.show), true)
                 }
             }
         }
@@ -244,7 +252,7 @@ fun ChannelMenu(vm: AppViewModel, ch: Channel) {
             Modifier.width(680.px).shadow(40.dp, shape).background(Tok.GlassHi, shape).border(1.dp, Tok.Hair, shape)
                 .padding(start = 22.px, end = 22.px, top = 36.px, bottom = 22.px),
         ) {
-            Eyebrow("Канал", Modifier.padding(start = 24.px, end = 24.px, bottom = 8.px))
+            Eyebrow(str(R.string.ctx_channel), Modifier.padding(start = 24.px, end = 24.px, bottom = 8.px))
             Row(Modifier.padding(start = 24.px, end = 24.px, bottom = 22.px), verticalAlignment = Alignment.CenterVertically) {
                 Logo(ch, 56)
                 T("${ch.num} · ${ch.name}", 32, Tok.T1, FontWeight.Bold, Modifier.padding(start = 18.px))
@@ -252,8 +260,8 @@ fun ChannelMenu(vm: AppViewModel, ch: Channel) {
             CtxItem.entries.forEachIndexed { i, item ->
                 val foc = i == vm.ctxIdx
                 val (glyph, label) = when (item) {
-                    CtxItem.FAV -> if (vm.isFav(ch)) "★" to "Прибрати з обраного" else "☆" to "Додати в обране"
-                    CtxItem.HIDE -> if (vm.isHidden(ch)) "◉" to "Показати канал" else "⊘" to "Приховати канал"
+                    CtxItem.FAV -> if (vm.isFav(ch)) "★" to str(R.string.fav_remove) else "☆" to str(R.string.fav_add)
+                    CtxItem.HIDE -> if (vm.isHidden(ch)) "◉" to str(R.string.ch_show) else "⊘" to str(R.string.ch_hide)
                 }
                 Plate(foc, Modifier.padding(bottom = 4.px).fillMaxWidth().height(72.px), lift = 1.02f) {
                     Row(Modifier.fillMaxSize().padding(horizontal = 24.px), verticalAlignment = Alignment.CenterVertically) {
@@ -284,9 +292,9 @@ fun MarkMenu(vm: AppViewModel, m: Mark) {
             vm.markActions(m).forEachIndexed { i, a ->
                 val foc = i == vm.ctxIdx
                 val (glyph, label) = when (a) {
-                    MarkAction.FROM_START -> "⟲" to "З початку"
-                    MarkAction.FORGET -> if (m.watched >= AppViewModel.DONE) "○" to "Позначити непереглянутим" else "✕" to "Прибрати з «Продовжити перегляд»"
-                    MarkAction.DONE -> "✓" to "Позначити переглянутим"
+                    MarkAction.FROM_START -> "⟲" to str(R.string.mark_from_start)
+                    MarkAction.FORGET -> if (m.watched >= AppViewModel.DONE) "○" to str(R.string.mark_unwatch) else "✕" to str(R.string.mark_forget)
+                    MarkAction.DONE -> "✓" to str(R.string.mark_watched)
                 }
                 Plate(foc, Modifier.padding(bottom = 4.px).fillMaxWidth().height(72.px), lift = 1.02f) {
                     Row(Modifier.fillMaxSize().padding(horizontal = 24.px), verticalAlignment = Alignment.CenterVertically) {
@@ -302,11 +310,11 @@ fun MarkMenu(vm: AppViewModel, m: Mark) {
 // ---------------------------------------------------------------- playlists
 
 /** «оновлено сьогодні, 14:05». */
-private fun updated(at: Long) = if (at > 0) "оновлено ${dayWord(at).lowercase()}, ${hm(at)}" else "ще не завантажений"
+private fun updated(at: Long) = if (at > 0) str(R.string.updated_at, dayWord(at).lowercase(), hm(at)) else str(R.string.not_loaded)
 
 @Composable
 private fun PlaylistsSheet(vm: AppViewModel) {
-    SheetTitle("Плейлисти", "OK — відкрити, оновити, перейменувати або видалити. В кожного плейлиста своє обране й приховані канали")
+    SheetTitle(str(R.string.row_playlists), str(R.string.playlists_sub))
     val state = rememberLazyListState()
     LaunchedEffect(vm.rowIdx) { state.scrollToItem(max(0, vm.rowIdx - 4)) }
     LazyColumn(state = state, contentPadding = PaddingValues(vertical = 6.px)) {
@@ -314,14 +322,14 @@ private fun PlaylistsSheet(vm: AppViewModel) {
             val foc = i == vm.rowIdx
             val active = p.id == vm.playlist?.id
             val loading = vm.loadingPlaylist == p.id
-            SheetRow(foc, p.title, if (loading) "Завантажую…" else "${channelsWord(p.count)} · ${updated(p.updatedAt)}") {
-                if (active) Value("✓ Відкритий", foc)
+            SheetRow(foc, p.title, if (loading) str(R.string.loading_list) else "${channelsWord(p.count)} · ${updated(p.updatedAt)}") {
+                if (active) Value(str(R.string.playlist_open_mark), foc)
             }
         }
         item(key = "add") {
             val foc = vm.rowIdx == vm.playlists.size
             val adding = vm.loadingPlaylist != null && vm.playlists.none { it.id == vm.loadingPlaylist && it.updatedAt > 0 }
-            SheetRow(foc, "＋  Додати плейлист", if (adding) "Завантажую новий плейлист…" else "Посилання — з телефону, через QR-код")
+            SheetRow(foc, str(R.string.add_playlist), str(if (adding) R.string.adding_playlist else R.string.add_playlist_desc))
         }
     }
 }
@@ -330,14 +338,14 @@ private fun PlaylistsSheet(vm: AppViewModel) {
 private fun PlaylistSheet(vm: AppViewModel) {
     val p: PlaylistInfo = vm.playlist?.takeIf { it.id == vm.sheetPlaylist?.id } ?: vm.sheetPlaylist ?: return
     val active = p.id == vm.playlist?.id
-    SheetTitle(p.title, "${channelsWord(p.count)} · ${updated(p.updatedAt)}" + if (active) " · відкритий" else "")
+    SheetTitle(p.title, "${channelsWord(p.count)} · ${updated(p.updatedAt)}" + if (active) str(R.string.open_suffix) else "")
     PlaylistAction.entries.forEachIndexed { i, a ->
         val foc = vm.rowIdx == i
         when (a) {
-            PlaylistAction.USE -> SheetRow(foc, if (active) "Відкритий зараз" else "Відкрити", if (active) null else "Перейти на канали цього плейлиста", dim = active)
-            PlaylistAction.REFRESH -> SheetRow(foc, "Оновити", if (vm.loadingPlaylist == p.id) "Завантажую…" else "Завантажити список каналів заново")
-            PlaylistAction.RENAME -> SheetRow(foc, "Перейменувати", "Назва з плейлиста: ${p.autoName}")
-            PlaylistAction.DELETE -> SheetRow(foc, "Видалити", "Разом з його обраним, прихованими каналами й закладками")
+            PlaylistAction.USE -> SheetRow(foc, str(if (active) R.string.pl_open_now else R.string.pl_open), if (active) null else str(R.string.pl_open_desc), dim = active)
+            PlaylistAction.REFRESH -> SheetRow(foc, str(R.string.pl_refresh), str(if (vm.loadingPlaylist == p.id) R.string.loading_list else R.string.pl_refresh_desc))
+            PlaylistAction.RENAME -> SheetRow(foc, str(R.string.pl_rename), str(R.string.pl_rename_desc, p.autoName))
+            PlaylistAction.DELETE -> SheetRow(foc, str(R.string.pl_delete), str(R.string.pl_delete_desc))
         }
     }
 }
@@ -345,9 +353,15 @@ private fun PlaylistSheet(vm: AppViewModel) {
 // ---------------------------------------------------------------- guide source
 
 private fun sourceLabel(m: GuideMode) = when (m) {
-    GuideMode.AUTO -> "Авто"
-    GuideMode.PLAYLIST -> "З плейлиста"
-    GuideMode.CUSTOM -> "Власне посилання"
+    GuideMode.AUTO -> str(R.string.src_auto)
+    GuideMode.PLAYLIST -> str(R.string.src_playlist)
+    GuideMode.CUSTOM -> str(R.string.src_custom)
+}
+
+private fun langLabel(l: L10n.Lang) = when (l) {
+    L10n.Lang.SYSTEM -> str(R.string.lang_system)
+    L10n.Lang.UK -> str(R.string.lang_uk)
+    L10n.Lang.EN -> str(R.string.lang_en)
 }
 
 /** What the guide is doing: progress, the last error, or when it was last updated and from where. */
@@ -357,39 +371,39 @@ private fun guideStatus(vm: AppViewModel): String {
         GuideSource.Segmented -> "epg.team"
         is GuideSource.Xmltv -> "XMLTV · " + PlaylistInfo.hostOf(s.url) + (vm.xmltvChannels()?.let { " · " + channelsWord(it) } ?: "")
     }
-    vm.guideError?.let { return "$from · помилка: $it" }
+    vm.guideError?.let { return str(R.string.guide_error, from, it) }
     val at = vm.guideAt()
-    return if (at > 0) "$from · ${updated(at)}" else "$from · ще не завантажена"
+    return if (at > 0) "$from · ${updated(at)}" else str(R.string.guide_never, from)
 }
 
 @Composable
 private fun GuideSheet(vm: AppViewModel) {
     vm.guideVersion
     val p = vm.playlist
-    SheetTitle("Програма передач", guideStatus(vm))
+    SheetTitle(str(R.string.row_guide), guideStatus(vm))
     GuideRow.entries.forEachIndexed { i, r ->
         val foc = vm.rowIdx == i
         val mode = p?.guideMode ?: GuideMode.AUTO
         when (r) {
             GuideRow.AUTO -> {
-                Section("Джерело")
+                Section(str(R.string.section_source))
                 val tvg = p?.tvgUrl
-                SheetRow(foc, "Авто", if (tvg == null || AppViewModel.isEpgTeam(tvg)) "epg.team — швидко, частинами за днями" else "З плейлиста: ${PlaylistInfo.hostOf(tvg)}") {
+                SheetRow(foc, str(R.string.src_auto), if (tvg == null || AppViewModel.isEpgTeam(tvg)) str(R.string.auto_epgteam) else str(R.string.auto_playlist, PlaylistInfo.hostOf(tvg))) {
                     Radio(mode == GuideMode.AUTO, foc)
                 }
             }
             GuideRow.PLAYLIST -> SheetRow(
-                foc, "З плейлиста",
-                p?.tvgUrl?.let { "XMLTV з url-tvg: " + PlaylistInfo.hostOf(it) } ?: "У плейлисті немає посилання на програму",
+                foc, str(R.string.src_playlist),
+                p?.tvgUrl?.let { str(R.string.tvg_desc, PlaylistInfo.hostOf(it)) } ?: str(R.string.no_tvg),
                 dim = p?.tvgUrl == null,
             ) { Radio(mode == GuideMode.PLAYLIST, foc) }
             GuideRow.CUSTOM -> SheetRow(
-                foc, "Власне посилання",
-                p?.guideUrl?.let { "XMLTV: " + PlaylistInfo.hostOf(it) } ?: "Надіслати посилання з телефону",
+                foc, str(R.string.src_custom),
+                p?.guideUrl?.let { "XMLTV: " + PlaylistInfo.hostOf(it) } ?: str(R.string.custom_none),
             ) { Radio(mode == GuideMode.CUSTOM, foc) }
             GuideRow.REFRESH -> {
-                Section("Оновлення")
-                SheetRow(foc, "Оновити зараз", null)
+                Section(str(R.string.section_update))
+                SheetRow(foc, str(R.string.refresh_now), null)
             }
         }
     }
@@ -408,9 +422,9 @@ private fun Radio(on: Boolean, foc: Boolean) {
 @Composable
 private fun LinkSheet(vm: AppViewModel) {
     val (title, sub) = when (vm.linkPurpose) {
-        LinkPurpose.ADD_PLAYLIST -> "Додати плейлист" to "Відскануйте QR-код телефоном (той самий Wi-Fi) і вставте посилання на M3U-плейлист"
-        LinkPurpose.GUIDE_URL -> "Власна програма передач" to "Відскануйте QR-код телефоном і вставте посилання на XMLTV (.xml або .xml.gz)"
-        LinkPurpose.RENAME -> "Перейменувати плейлист" to "Відскануйте QR-код телефоном і введіть нову назву"
+        LinkPurpose.ADD_PLAYLIST -> str(R.string.link_add_title) to str(R.string.link_add_sub)
+        LinkPurpose.GUIDE_URL -> str(R.string.link_guide_title) to str(R.string.link_guide_sub)
+        LinkPurpose.RENAME -> str(R.string.link_rename_title) to str(R.string.link_rename_sub)
     }
     SheetTitle(title, sub)
     val address = vm.setupServer.address
@@ -420,10 +434,23 @@ private fun LinkSheet(vm: AppViewModel) {
             Box(Modifier.size(380.px).background(Color.White, RoundedCornerShape(28.px)).padding(22.px)) {
                 Image(qr.asImageBitmap(), null, Modifier.fillMaxSize(), filterQuality = FilterQuality.None)
             }
-            T("Або відкрийте $address", 24, Tok.T2, modifier = Modifier.padding(top = 28.px))
-        } else T("Немає мережі: підключіть телевізор до Wi-Fi", 26, Tok.Live)
+            T(str(R.string.or_open, address ?: ""), 24, Tok.T2, modifier = Modifier.padding(top = 28.px))
+        } else T(str(R.string.no_network), 26, Tok.Live)
         if (vm.loadingPlaylist != null && vm.linkPurpose == LinkPurpose.ADD_PLAYLIST) {
-            T("Завантажую плейлист…", 24, Tok.T1, FontWeight.Medium, Modifier.padding(top = 20.px))
+            T(str(R.string.loading_playlist), 24, Tok.T1, FontWeight.Medium, Modifier.padding(top = 20.px))
         }
+    }
+}
+
+// ---------------------------------------------------------------- language
+
+@Composable
+private fun LanguageSheet(vm: AppViewModel) {
+    vm.cfgVersion
+    val cur = L10n.lang(LocalContext.current)
+    SheetTitle(str(R.string.row_language), str(R.string.language_sub))
+    L10n.Lang.entries.forEachIndexed { i, l ->
+        val foc = vm.rowIdx == i
+        SheetRow(foc, langLabel(l), null) { Radio(cur == l, foc) }
     }
 }

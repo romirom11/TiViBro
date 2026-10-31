@@ -1,5 +1,7 @@
 package io.github.romirom11.tivibro.ui
 
+import io.github.romirom11.tivibro.R
+import io.github.romirom11.tivibro.str
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -127,7 +129,7 @@ fun LivePill(onPlate: Boolean = false) {
     val c = if (onPlate) Tok.LiveOnPlate else Tok.Live
     androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(10.px).background(c, CircleShape))
-        T("НАЖИВО", 19, c, FontWeight.Bold, Modifier.padding(start = 8.px), letterSpacing = 0.6.sp)
+        T(str(R.string.live), 19, c, FontWeight.Bold, Modifier.padding(start = 8.px), letterSpacing = 0.6.sp)
     }
 }
 

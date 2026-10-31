@@ -1,5 +1,7 @@
 package io.github.romirom11.tivibro.data
 
+import io.github.romirom11.tivibro.R
+import io.github.romirom11.tivibro.str
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
@@ -210,7 +212,7 @@ class XmltvGuide(private val dir: File, private val onChanged: (id: String?, old
             val raw = BufferedInputStream(pacer.wrap(resp.body!!.byteStream()) { n ->
                 bytesIn += n
                 val t = SystemClock.elapsedRealtime()
-                if (t - lastStatus > 1000) { lastStatus = t; onStatus("Програма передач: завантажую… ${bytesIn shr 20} МБ") }
+                if (t - lastStatus > 1000) { lastStatus = t; onStatus(str(R.string.guide_dl_mb, (bytesIn shr 20).toInt())) }
             }, 64 * 1024)
             raw.mark(2)
             val gz = raw.read() == 0x1f && raw.read() == 0x8b

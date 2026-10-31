@@ -1,5 +1,8 @@
 package io.github.romirom11.tivibro.ui
 
+import io.github.romirom11.tivibro.R
+import io.github.romirom11.tivibro.plural
+import io.github.romirom11.tivibro.str
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -92,7 +95,7 @@ private fun GroupsRail(vm: AppViewModel) {
                     val c = if (open && sel) Tok.OnPlate else if (sel) Tok.T1 else Tok.T2
                     if (open) {
                         T(groupGlyph(x.id), 26, c, FontWeight.SemiBold, Modifier.width(44.px))
-                        T(x.name, 26, c, FontWeight.Medium, Modifier.weight(1f).padding(start = 12.px))
+                        T(groupTitle(x.name), 26, c, FontWeight.Medium, Modifier.weight(1f).padding(start = 12.px))
                         T("${x.channels.size}", 20, if (sel) Tok.OnPlate2 else Tok.T3)
                     }
                 }
@@ -115,10 +118,10 @@ private fun ChannelColumn(vm: AppViewModel) {
     LaunchedEffect(vm.chIdx, vm.groupIdx) { snapshotFlow { vm.guideVersion }.collect { vm.prefetch(g.channels, vm.chIdx) } }
     Column(Modifier.width(780.px).fillMaxHeight().padding(top = 40.px)) {
         Row(Modifier.fillMaxWidth().padding(start = 40.px, end = 40.px, bottom = 22.px)) {
-            Eyebrow(g.name, Modifier.weight(1f))
+            Eyebrow(groupTitle(g.name), Modifier.weight(1f))
             if (g.channels.isNotEmpty()) Eyebrow("${vm.chIdx + 1} / ${g.channels.size}")
         }
-        if (g.channels.isEmpty()) T(if (g.id == "fav") "Утримайте OK на каналі → «Додати в обране»" else "Порожньо", 24, Tok.T2, modifier = Modifier.padding(horizontal = 40.px))
+        if (g.channels.isEmpty()) T(str(if (g.id == "fav") R.string.fav_empty else R.string.group_empty), 24, Tok.T2, modifier = Modifier.padding(horizontal = 40.px))
         LazyColumn(state = state) {
             itemsIndexed(g.channels, key = { i, c -> c.id + i }) { i, c ->
                 val foc = i == vm.chIdx && vm.focus == Focus.CHANNELS
@@ -156,7 +159,7 @@ private fun ContinueRow(vm: AppViewModel, m: Mark, foc: Boolean) {
         Logo(m.ch, 64)
         Column(Modifier.weight(1f).padding(start = 22.px)) {
             T(m.p.title, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold)
-            T("${m.ch.name} · ${dayWord(m.p.start)}, ${hm(m.p.start)} · ще ${ago(m.p.end - m.pos)}", 21, if (foc) Tok.OnPlate2 else Tok.T2, modifier = Modifier.padding(top = 2.px, bottom = 6.px))
+            T("${m.ch.name} · ${dayWord(m.p.start)}, ${hm(m.p.start)} · " + str(R.string.remaining, ago(m.p.end - m.pos)), 21, if (foc) Tok.OnPlate2 else Tok.T2, modifier = Modifier.padding(top = 2.px, bottom = 6.px))
             Progress(m.watched, Modifier.fillMaxWidth(), if (foc) Tok.ArchOnPlate else Tok.Arch, if (foc) Color(0x1F000000) else Color(0x24FFFFFF), 3)
         }
     }
@@ -171,9 +174,9 @@ private fun ChannelDetail(vm: AppViewModel, ch: Channel, modifier: Modifier) {
         T(p?.title ?: ch.name, 40, Tok.T1, FontWeight.Bold, Modifier.padding(top = 28.px, bottom = 14.px), maxLines = 2)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.px)) {
             LivePill()
-            if (p != null) { T("${hm(p.start)} – ${hm(p.end)}", 22, Tok.T2); Ticking(vm) { T("ще ${ago(p.end - it)}", 22, Tok.T2) } }
+            if (p != null) { T("${hm(p.start)} – ${hm(p.end)}", 22, Tok.T2); Ticking(vm) { T(str(R.string.remaining, ago(p.end - it)), 22, Tok.T2) } }
             if (ch.hd) Pill("HD", Tok.T2, outline = true)
-            if (ch.archiveDays > 0) Pill("Архів ${ch.archiveDays} дн", Tok.T2, outline = true)
+            if (ch.archiveDays > 0) Pill(str(R.string.archive_days, ch.archiveDays), Tok.T2, outline = true)
         }
         val d = p?.let(vm::desc)
         if (!d.isNullOrBlank()) T(d, 23, Tok.T2, modifier = Modifier.padding(top = 18.px), maxLines = 3)
@@ -225,7 +228,7 @@ private fun ProgrammeView(vm: AppViewModel, ch: Channel, groupChannels: List<Cha
     val dayState = rememberLazyListState()
     LaunchedEffect(dayIdx) { dayState.scrollToItem(max(0, dayIdx - 7)) }
     Column(Modifier.width(250.px).fillMaxHeight().padding(top = 40.px)) {
-        Eyebrow("Дні", Modifier.padding(start = 34.px, bottom = 22.px))
+        Eyebrow(str(R.string.days_title), Modifier.padding(start = 34.px, bottom = 22.px))
         LazyColumn(state = dayState) {
             itemsIndexed(days, key = { _, d -> d }) { i, d ->
                 val (name, date) = dayParts(d)
@@ -245,7 +248,7 @@ private fun ProgrammeView(vm: AppViewModel, ch: Channel, groupChannels: List<Cha
     Column(Modifier.width(740.px).fillMaxHeight().padding(top = 40.px, start = 8.px, end = 8.px)) {
         Row(Modifier.fillMaxWidth().padding(start = 22.px, end = 22.px, bottom = 22.px)) {
             Eyebrow(ch.name, Modifier.weight(1f))
-            Eyebrow("${dayProgs.size} передач")
+            Eyebrow(plural(R.plurals.programmes, dayProgs.size))
         }
         LazyColumn(state = state) {
             itemsIndexed(dayProgs, key = { _, it -> it.value.start }) { j, (i, p) ->
@@ -272,7 +275,7 @@ private fun ProgRow(vm: AppViewModel, ch: Channel, p: Programme, foc: Boolean) {
             T(p.title, 24, if (foc) Tok.OnPlate else if (done) Tok.T3 else if (p.isPast()) Tok.T2 else Tok.T1, modifier = Modifier.weight(1f))
             when {
                 now -> LivePill(foc)
-                else -> T("${p.duration / 60_000} хв", 20, if (foc) Tok.OnPlate2 else Tok.T3, modifier = Modifier.padding(start = 16.px))
+                else -> T(str(R.string.dur_min, (p.duration / 60_000).toInt()), 20, if (foc) Tok.OnPlate2 else Tok.T3, modifier = Modifier.padding(start = 16.px))
             }
             if (done) T("  ✓", 22, if (foc) Tok.OnPlate2 else Tok.T3)
         }
@@ -300,25 +303,25 @@ private fun ProgrammeDetail(vm: AppViewModel, ch: Channel, p: Programme, modifie
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.px)) {
             when {
                 p.isNow() -> LivePill()
-                !past -> Pill("Незабаром", Tok.T2, outline = true)
-                !arch -> Pill("Поза архівом", Tok.T2, outline = true)
-                done -> Pill("✓ Переглянуто", Tok.T2, outline = true)
-                else -> Pill("Архів", Tok.Arch, Color(0x29FFB340))
+                !past -> Pill(str(R.string.soon), Tok.T2, outline = true)
+                !arch -> Pill(str(R.string.out_archive), Tok.T2, outline = true)
+                done -> Pill(str(R.string.watched_pill), Tok.T2, outline = true)
+                else -> Pill(str(R.string.archive), Tok.Arch, Color(0x29FFB340))
             }
             T("${dayWord(p.start)}, ${hm(p.start)} – ${hm(p.end)}", 22, Tok.T2)
-            T("${p.duration / 60_000} хв", 22, Tok.T2)
+            T(str(R.string.dur_min, (p.duration / 60_000).toInt()), 22, Tok.T2)
         }
         if (resume) Row(Modifier.padding(top = 16.px), verticalAlignment = Alignment.CenterVertically) {
             Progress(w, Modifier.width(200.px), Tok.Arch)
-            T("Переглянуто ${ago((w * p.duration).toLong())} з ${ago(p.duration)}", 21, Tok.T2, modifier = Modifier.padding(start = 18.px))
+            T(str(R.string.watched_of, ago((w * p.duration).toLong()), ago(p.duration)), 21, Tok.T2, modifier = Modifier.padding(start = 18.px))
         }
         val d = vm.desc(p) // null while it is being read: leave the space blank rather than flash «Опису немає»
-        T(d?.ifBlank { "Опису немає" } ?: "", 23, if (d.isNullOrBlank()) Tok.T3 else Tok.T2, modifier = Modifier.padding(top = 18.px), maxLines = 4)
+        T(d?.ifBlank { str(R.string.no_desc) } ?: "", 23, if (d.isNullOrBlank()) Tok.T3 else Tok.T2, modifier = Modifier.padding(top = 18.px), maxLines = 4)
         val acts = when {
-            p.isNow() -> listOf("OK" to "Наживо", "OK довго" to "З початку передачі")
-            resume -> listOf("OK" to "Продовжити з ${ago((w * p.duration).toLong())}", "OK довго" to "Дії з переглядом")
-            arch && done -> listOf("OK" to "Переглянути ще раз", "OK довго" to "Дії з переглядом")
-            arch -> listOf("OK" to "Дивитися")
+            p.isNow() -> listOf("OK" to str(R.string.act_live), str(R.string.key_ok_long) to str(R.string.act_from_start_prog))
+            resume -> listOf("OK" to str(R.string.act_resume, ago((w * p.duration).toLong())), str(R.string.key_ok_long) to str(R.string.act_mark_menu))
+            arch && done -> listOf("OK" to str(R.string.act_rewatch), str(R.string.key_ok_long) to str(R.string.act_mark_menu))
+            arch -> listOf("OK" to str(R.string.act_watch))
             else -> emptyList()
         }
         Row(Modifier.padding(top = 28.px), horizontalArrangement = Arrangement.spacedBy(32.px)) {

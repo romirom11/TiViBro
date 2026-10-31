@@ -1,5 +1,8 @@
 package io.github.romirom11.tivibro.data
 
+import io.github.romirom11.tivibro.R
+import io.github.romirom11.tivibro.plural
+import io.github.romirom11.tivibro.str
 import android.os.SystemClock
 import android.util.Log
 import okhttp3.OkHttpClient
@@ -75,9 +78,9 @@ class GuideSync(
             val pct = if (total > 0) (done * 100 / total).toInt() else 100
             val n = left()
             onStatus(
-                if (days[today] == null) "Програма передач: завантажую сьогоднішню… $pct%"
+                if (days[today] == null) str(R.string.guide_dl_today, pct)
                 else if (n == 0) null
-                else "Програма передач: сьогодні готово, завантажую ще ${daysWord(n)}… $pct%",
+                else str(R.string.guide_dl_more, daysWord(n), pct),
             )
         }
         Log.i(TAG, "guide: manifest rev $revision ${js.getString("currentDate")}: ${missing.size} of ${plan.size} files to fetch, ${total / 1024} KB")
@@ -225,15 +228,7 @@ class GuideSync(
         const val DAYS_AHEAD = 2
 
         /** 1 день, 2 дні, 5 днів. */
-        fun daysWord(n: Int): String {
-            val w = when {
-                n % 100 in 11..14 -> "днів"
-                n % 10 == 1 -> "день"
-                n % 10 in 2..4 -> "дні"
-                else -> "днів"
-            }
-            return "$n $w"
-        }
+        fun daysWord(n: Int): String = plural(R.plurals.days, n)
     }
 }
 

@@ -1,5 +1,8 @@
 package io.github.romirom11.tivibro.data
 
+import io.github.romirom11.tivibro.L10n
+import io.github.romirom11.tivibro.R
+import io.github.romirom11.tivibro.str
 import android.content.Context
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -44,7 +47,7 @@ data class PlaylistInfo(
         )
 
         fun hostOf(url: String) = url.substringAfter("://").substringBefore('/').substringBefore('?').substringBefore(':')
-            .removePrefix("www.").ifBlank { "Плейлист" }
+            .removePrefix("www.").ifBlank { L10n.strOr(R.string.playlist_fallback, "Playlist") }
     }
 }
 
@@ -102,13 +105,13 @@ class PlaylistRepo(private val ctx: Context, private val http: OkHttpClient, pri
 
     /** Downloads [id]'s playlist, keeps it on disk and updates its entry. Throws when it can't be had or is empty. */
     fun download(id: String): ParsedPlaylist {
-        val info = get(id) ?: error("плейлист видалено")
+        val info = get(id) ?: error(str(R.string.err_playlist_deleted))
         val body = http.newCall(Request.Builder().url(info.url).build()).execute().use { r ->
             check(r.isSuccessful) { "HTTP ${r.code}" }
             r.body!!.string()
         }
         val parsed = M3u.parse(body)
-        check(parsed.channels.isNotEmpty()) { "плейлист порожній або не M3U" }
+        check(parsed.channels.isNotEmpty()) { str(R.string.err_playlist_empty) }
         val tmp = File(dir, "$id.m3u.tmp")
         tmp.writeText(body)
         tmp.renameTo(file(id))

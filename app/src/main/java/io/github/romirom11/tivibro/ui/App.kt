@@ -1,5 +1,8 @@
 package io.github.romirom11.tivibro.ui
 
+import io.github.romirom11.tivibro.L10n
+import io.github.romirom11.tivibro.R
+import io.github.romirom11.tivibro.str
 import android.graphics.Bitmap
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
@@ -61,28 +64,28 @@ import java.util.Locale
 private val HM = SimpleDateFormat("HH:mm", Locale.US)
 fun hm(t: Long): String = HM.format(Date(t))
 
-private val DOW = arrayOf("нд", "пн", "вт", "ср", "чт", "пт", "сб")
-private val MON = arrayOf("січ", "лют", "бер", "кві", "тра", "чер", "лип", "сер", "вер", "жов", "лис", "гру")
 private fun cal(t: Long) = java.util.Calendar.getInstance().apply { timeInMillis = t }
+private fun dow(c: java.util.Calendar) = L10n.array(R.array.dow_short)[c.get(java.util.Calendar.DAY_OF_WEEK) - 1]
+private fun mon(c: java.util.Calendar) = L10n.array(R.array.mon_short)[c.get(java.util.Calendar.MONTH)]
+private fun relDay(diff: Int): String? = when (diff) {
+    0 -> str(R.string.today); -1 -> str(R.string.yesterday); 1 -> str(R.string.tomorrow); else -> null
+}
 
-/** «Сьогодні», «Вчора», «Завтра» or «пт, 30 жов». */
+/** «Сьогодні», «Вчора», «Завтра» or «пт, 30 жов» (Today, Yesterday, Tomorrow or Fri, Oct 30). */
 fun dayWord(t: Long): String {
     val diff = Math.round((dayStart(t) - dayStart(now())).toDouble() / DAY).toInt()
     val c = cal(t)
-    return when (diff) {
-        0 -> "Сьогодні"; -1 -> "Вчора"; 1 -> "Завтра"
-        else -> "${DOW[c.get(java.util.Calendar.DAY_OF_WEEK) - 1]}, ${c.get(java.util.Calendar.DAY_OF_MONTH)} ${MON[c.get(java.util.Calendar.MONTH)]}"
-    }
+    return relDay(diff) ?: str(R.string.day_fmt, dow(c), c.get(java.util.Calendar.DAY_OF_MONTH), mon(c))
 }
 
 /** For the days column: big name + small date. */
 fun dayParts(d: Long): Pair<String, String> {
     val diff = Math.round((d - dayStart(now())).toDouble() / DAY).toInt()
     val c = cal(d)
-    val dow = DOW[c.get(java.util.Calendar.DAY_OF_WEEK) - 1]
-    val date = "${c.get(java.util.Calendar.DAY_OF_MONTH)} ${MON[c.get(java.util.Calendar.MONTH)]}"
-    val name = when (diff) { 0 -> "Сьогодні"; -1 -> "Вчора"; 1 -> "Завтра"; else -> dow.replaceFirstChar { it.uppercase() } }
-    return name to if (diff in -1..1) "$dow, $date" else date
+    val dow = dow(c)
+    val date = str(R.string.date_fmt, c.get(java.util.Calendar.DAY_OF_MONTH), mon(c))
+    val name = relDay(diff) ?: dow.replaceFirstChar { it.uppercase() }
+    return name to if (diff in -1..1) str(R.string.day_fmt, dow, c.get(java.util.Calendar.DAY_OF_MONTH), mon(c)) else date
 }
 
 /** Runs [content] with the current time and re-runs just it on every VM tick (1 s). Wrap only what moves with the
@@ -119,7 +122,7 @@ fun App(vm: AppViewModel) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 T(vm.numBuf, 72, Tok.T1, FontWeight.Bold)
-                T(vm.channelByNum(vm.numBuf.toInt())?.name ?: "—", 22, Tok.T2)
+                T(vm.channelByNum(vm.numBuf.toInt())?.name ?: str(R.string.no_channel), 22, Tok.T2)
             }
         }
         AnimatedVisibility(vm.toast != null, Modifier.align(Alignment.TopCenter).padding(top = 56.px), enter = fadeIn() + slideInVertically { -it / 2 }, exit = fadeOut()) {
@@ -150,14 +153,14 @@ private fun Video(vm: AppViewModel) {
         modifier = Modifier.fillMaxSize(),
     )
     if (vm.buffering && vm.layer == Layer.NONE) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { T("Завантаження…", 26, Tok.T2) }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { T(str(R.string.loading), 26, Tok.T2) }
     }
 }
 
 @Composable
 private fun Loading(status: String?) {
     Box(Modifier.fillMaxSize().background(Tok.Ink), contentAlignment = Alignment.Center) {
-        T(status ?: "Завантажую…", 28, Tok.T2)
+        T(status ?: str(R.string.loading_list), 28, Tok.T2)
     }
 }
 
@@ -179,23 +182,23 @@ private fun Banner(vm: AppViewModel) {
                 T(ch.name, 24, Tok.T2, FontWeight.SemiBold, Modifier.padding(start = 14.px))
                 if (vm.isFav(ch)) T("★", 22, Color(0xFFFFD60A), modifier = Modifier.padding(start = 12.px))
             }
-            T(p?.title ?: "Немає програми", 46, Tok.T1, FontWeight.Bold, Modifier.padding(top = 8.px))
+            T(p?.title ?: str(R.string.no_programme), 46, Tok.T1, FontWeight.Bold, Modifier.padding(top = 8.px))
             if (p != null) {
                 Row(Modifier.padding(top = 16.px), verticalAlignment = Alignment.CenterVertically) {
                     T("${hm(p.start)} – ${hm(p.end)}", 22, Tok.T2)
                     Ticking(vm) { t ->
                         Progress((t - p.start).toFloat() / p.duration, Modifier.padding(horizontal = 20.px).width(280.px))
-                        T("ще ${ago(p.end - t)}", 22, Tok.T2)
+                        T(str(R.string.remaining, ago(p.end - t)), 22, Tok.T2)
                     }
                 }
             }
-            if (next != null) T("Далі ${hm(next.start)} · ${next.title}", 22, Tok.T2, modifier = Modifier.padding(top = 12.px))
+            if (next != null) T(str(R.string.next_prog, hm(next.start), next.title), 22, Tok.T2, modifier = Modifier.padding(top = 12.px))
         }
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.px)) {
             LivePill()
             Row(horizontalArrangement = Arrangement.spacedBy(10.px)) {
                 if (ch.hd) Pill("HD", Tok.T2, outline = true)
-                if (ch.archiveDays > 0) Pill("Архів ${ch.archiveDays} дн", Tok.T2, outline = true)
+                if (ch.archiveDays > 0) Pill(str(R.string.archive_days, ch.archiveDays), Tok.T2, outline = true)
             }
         }
     }
@@ -233,10 +236,10 @@ private fun Osd(vm: AppViewModel) {
                     T(" · ${ch.name}", 24, Tok.T2, FontWeight.Medium)
                 }
                 when {
-                    vm.paused -> Pill("❚❚ Пауза", Tok.Arch, Color(0x29FFB340))
+                    vm.paused -> Pill(str(R.string.paused), Tok.Arch, Color(0x29FFB340))
                     live -> LivePill()
-                    behind < 3 * HOUR -> Pill("−${ago(behind)} від ефіру", Tok.Arch, Color(0x29FFB340))
-                    else -> Pill("Архів", Tok.Arch, Color(0x29FFB340))
+                    behind < 3 * HOUR -> Pill(str(R.string.behind_live, ago(behind)), Tok.Arch, Color(0x29FFB340))
+                    else -> Pill(str(R.string.archive), Tok.Arch, Color(0x29FFB340))
                 }
             }
             // timeline; focused = the scrubber gets a ring and the track lights up
@@ -264,11 +267,11 @@ private fun Osd(vm: AppViewModel) {
                     val on = vm.osdEnabled(b)
                     val foc = vm.osdOnButtons && vm.osdBtn == b && on
                     val label = when (b) {
-                        OsdButton.RESTART -> "⟲  З початку"
-                        OsdButton.PREV -> "⏮  Попередня"
-                        OsdButton.NEXT -> "⏭  Наступна"
-                        OsdButton.LIVE -> "●  Наживо"
-                        OsdButton.AUDIO -> "Звук" + if (vm.audioTracks > 1) " · ${vm.audioTracks}" else ""
+                        OsdButton.RESTART -> str(R.string.osd_restart)
+                        OsdButton.PREV -> str(R.string.osd_prev)
+                        OsdButton.NEXT -> str(R.string.osd_next)
+                        OsdButton.LIVE -> str(R.string.osd_live)
+                        OsdButton.AUDIO -> str(R.string.osd_audio) + if (vm.audioTracks > 1) " · ${vm.audioTracks}" else ""
                     }
                     Plate(foc, Modifier.height(64.px).alpha(if (on) 1f else 0.35f), quiet = on && !foc, radius = 16, lift = 1.05f) {
                         T(
@@ -290,38 +293,51 @@ fun hms(ms: Long): String {
 
 @Composable
 private fun Hints(vm: AppViewModel, modifier: Modifier) {
+    fun h(key: String, @androidx.annotation.StringRes label: Int) = key to str(label)
     val items: List<Pair<String, String>> = when {
-        vm.ctx != null || vm.markCtx != null -> listOf("▲▼" to "Вибір", "OK" to "Застосувати", "BACK" to "Закрити")
+        vm.ctx != null || vm.markCtx != null -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_apply), h("BACK", R.string.hint_close))
         vm.sheets.isNotEmpty() -> when (vm.sheets.last()) {
-            Sheet.MENU -> listOf("▲▼" to "Вибір", "OK" to "Відкрити", "▶" to "До каналів", "BACK" to "Закрити")
-            Sheet.SETTINGS -> listOf("▲▼" to "Вибір", "OK" to "Відкрити", "BACK" to "Назад")
-            Sheet.GROUPS -> listOf("▲▼" to "Група", "OK" to "Показати / сховати", "BACK" to "Готово")
-            Sheet.HIDDEN -> if (vm.hiddenChannels().isEmpty()) listOf("BACK" to "Назад") else listOf("▲▼" to "Канал", "OK" to "Повернути у список", "BACK" to "Назад")
-            Sheet.PLAYLISTS -> listOf("▲▼" to "Плейлист", "OK" to "Відкрити", "BACK" to "Назад")
-            Sheet.PLAYLIST -> listOf("▲▼" to "Дія", "OK" to "Виконати", "BACK" to "Назад")
-            Sheet.GUIDE -> listOf("▲▼" to "Вибір", "OK" to "Застосувати", "BACK" to "Назад")
-            Sheet.LINK -> listOf("BACK" to "Скасувати")
+            Sheet.MENU -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_open), h("▶", R.string.hint_to_channels), h("BACK", R.string.hint_close))
+            Sheet.SETTINGS -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_open), h("BACK", R.string.hint_back))
+            Sheet.GROUPS -> listOf(h("▲▼", R.string.hint_group), h("OK", R.string.hint_toggle_group), h("BACK", R.string.hint_done))
+            Sheet.HIDDEN -> if (vm.hiddenChannels().isEmpty()) listOf(h("BACK", R.string.hint_back))
+            else listOf(h("▲▼", R.string.hint_channel), h("OK", R.string.hint_unhide), h("BACK", R.string.hint_back))
+            Sheet.PLAYLISTS -> listOf(h("▲▼", R.string.hint_playlist), h("OK", R.string.hint_open), h("BACK", R.string.hint_back))
+            Sheet.PLAYLIST -> listOf(h("▲▼", R.string.hint_action), h("OK", R.string.hint_run), h("BACK", R.string.hint_back))
+            Sheet.GUIDE, Sheet.LANGUAGE -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_apply), h("BACK", R.string.hint_back))
+            Sheet.LINK -> listOf(h("BACK", R.string.hint_cancel))
         }
         vm.layer == Layer.LIST -> when (vm.focus) {
-            Focus.GROUPS -> listOf("▲▼" to "Група", "▶" to "Канали", "BACK" to "Меню")
-            Focus.DAYS -> listOf("▲▼" to "День", "▶" to "Передачі", "BACK" to "Канали")
+            Focus.GROUPS -> listOf(h("▲▼", R.string.hint_group), h("▶", R.string.hint_channels), h("BACK", R.string.hint_menu))
+            Focus.DAYS -> listOf(h("▲▼", R.string.hint_day), h("▶", R.string.hint_progs), h("BACK", R.string.hint_channels))
             Focus.PROGS -> {
                 val ch = vm.listChannel()
                 val p = ch?.let { vm.progList(it).getOrNull(vm.progIdx) }
                 val long = when {
                     ch == null || p == null -> null
-                    vm.hasMarkMenu(ch, p) -> "довго: дії з переглядом"
-                    p.isNow() && vm.canArchive(ch) -> "довго: з початку"
+                    vm.hasMarkMenu(ch, p) -> h("OK", R.string.hint_long_mark)
+                    p.isNow() && vm.canArchive(ch) -> h("OK", R.string.hint_long_restart)
                     else -> null
                 }
-                listOfNotNull("▲▼" to "Передача", "OK" to "Дивитися", long?.let { "OK" to it }, "◀" to "Дні", "BACK" to "Канали")
+                listOfNotNull(h("▲▼", R.string.hint_programme), h("OK", R.string.hint_watch), long, h("◀", R.string.hint_days), h("BACK", R.string.hint_channels))
             }
-            Focus.CHANNELS -> if (vm.listMark() != null) listOf("▲▼" to "Передача", "OK" to "Продовжити", "OK" to "довго: дії", "▶" to "Програма каналу", "BACK" to "Групи")
-            else listOf("▲▼" to "Канал", "OK" to "Дивитися", "▶" to "Програма", "OK" to "довго: меню каналу", "BACK" to "Групи")
+            Focus.CHANNELS -> if (vm.listMark() != null) listOf(
+                h("▲▼", R.string.hint_programme), h("OK", R.string.hint_resume), h("OK", R.string.hint_long_actions),
+                h("▶", R.string.hint_channel_guide), h("BACK", R.string.hint_groups),
+            ) else listOf(
+                h("▲▼", R.string.hint_channel), h("OK", R.string.hint_watch), h("▶", R.string.hint_guide),
+                h("OK", R.string.hint_long_channel_menu), h("BACK", R.string.hint_groups),
+            )
         }
-        vm.osd && !vm.osdOnButtons -> listOf("◀▶" to "Перемотка", "OK" to if (vm.paused) "Відтворити" else "Пауза", "▼" to "Кнопки", "BACK" to "Сховати")
-        vm.osd -> listOf("◀▶" to "Вибір", "OK" to "Виконати", "▲" to "Шкала", "BACK" to "Сховати")
-        vm.banner -> listOf("▲▼" to "Канали", "◀" to "Список", "▶" to "Програма", "OK" to "Керування", "OK" to "довго: меню каналу")
+        vm.osd && !vm.osdOnButtons -> listOf(
+            h("◀▶", R.string.hint_seek), h("OK", if (vm.paused) R.string.hint_play else R.string.hint_pause),
+            h("▼", R.string.hint_buttons), h("BACK", R.string.hint_hide),
+        )
+        vm.osd -> listOf(h("◀▶", R.string.hint_choose), h("OK", R.string.hint_run), h("▲", R.string.hint_timeline), h("BACK", R.string.hint_hide))
+        vm.banner -> listOf(
+            h("▲▼", R.string.hint_channels), h("◀", R.string.hint_list), h("▶", R.string.hint_guide),
+            h("OK", R.string.hint_controls), h("OK", R.string.hint_long_channel_menu),
+        )
         else -> return
     }
     Row(
@@ -347,12 +363,10 @@ private fun Setup(vm: AppViewModel) {
     val qr = remember(address) { address?.let(::qrBitmap) }
     Row(Modifier.fillMaxSize().background(Tok.Ink).padding(horizontal = 160.px), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            T("Підключімо ваш плейлист", 56, Tok.T1, FontWeight.Bold)
-            T(
-                "1. Відскануйте QR-код телефоном (той самий Wi-Fi).\n2. Скопіюйте посилання на M3U-плейлист у кабінеті свого провайдера.\n3. Вставте його на сторінці й натисніть «Надіслати».",
-                26, Tok.T2, modifier = Modifier.padding(top = 32.px), maxLines = 6,
-            )
-            if (address != null) T("Або відкрийте $address", 24, Tok.T3, modifier = Modifier.padding(top = 32.px))
+            T(str(R.string.setup_title), 56, Tok.T1, FontWeight.Bold)
+            T(str(R.string.setup_steps), 26, Tok.T2, modifier = Modifier.padding(top = 32.px), maxLines = 6)
+            if (address != null) T(str(R.string.or_open, address), 24, Tok.T3, modifier = Modifier.padding(top = 32.px))
+            else T(str(R.string.no_network), 24, Tok.Live, modifier = Modifier.padding(top = 32.px))
             if (vm.status != null) T(vm.status!!, 24, Tok.Live, modifier = Modifier.padding(top = 24.px), maxLines = 3)
         }
         if (qr != null) {

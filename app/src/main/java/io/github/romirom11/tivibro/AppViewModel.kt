@@ -73,9 +73,9 @@ enum class Mode { LIVE, ARCHIVE }
 enum class Layer { NONE, LIST }
 enum class Focus { GROUPS, CHANNELS, DAYS, PROGS }
 /** Layers above the list / video, stacked: the menu stays visible under a settings sheet opened from it. */
-enum class Sheet { MENU, SETTINGS, GROUPS, HIDDEN, PLAYLISTS, PLAYLIST, GUIDE, LINK }
+enum class Sheet { MENU, SETTINGS, GROUPS, HIDDEN, PLAYLISTS, PLAYLIST, GUIDE, LINK, LANGUAGE }
 enum class MenuItem { GROUPS, GUIDE, SETTINGS, EXIT }
-enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE }
+enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, LANGUAGE }
 /** Actions on one playlist (Sheet.PLAYLIST), top to bottom. */
 enum class PlaylistAction { USE, REFRESH, RENAME, DELETE }
 /** Rows of «Програма передач» (Sheet.GUIDE): the three sources, then the refresh. */
@@ -242,6 +242,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var sheetPlaylist by mutableStateOf<PlaylistInfo?>(null); private set
     private var deleteArmed = 0L
     var onExit: () -> Unit = {}
+    /** Recreates the activity: a new language takes effect at once. */
+    var onRecreate: () -> Unit = {}
 
     private var bannerJob: Job? = null
     private var osdJob: Job? = null
@@ -276,7 +278,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 if (error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
                     player.seekToDefaultPosition(); player.prepare(); return // fell behind the live window: rejoin live
                 }
-                showToast("Не вдалося відтворити: ${error.errorCodeName.removePrefix("ERROR_CODE_").lowercase()}")
+                showToast(str(R.string.err_play, error.errorCodeName.removePrefix("ERROR_CODE_").lowercase()))
             }
         })
         if (BuildConfig.DEBUG) player.addAnalyticsListener(androidx.media3.exoplayer.util.EventLogger())
@@ -339,14 +341,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val cached = withContext(Dispatchers.IO) { runCatching { repo.cached(id) }.getOrNull() }
         if (cached != null && cached.channels.isNotEmpty()) applyChannels(cached.channels)
         if (!download && channels.isNotEmpty()) { applyGuideSource(); refreshGuide(force = false); return }
-        status = if (channels.isEmpty()) "Завантажую канали…" else null
+        status = if (channels.isEmpty()) str(R.string.loading_channels) else null
         val fresh = withContext(Dispatchers.IO) { runCatching { repo.download(id) } }
         if (playlist?.id != id) return
         playlists = repo.all()
         repo.get(id)?.let { playlist = it }
         // usually identical to the cached copy: re-applying it would rebuild every list on the main thread for nothing
         fresh.onSuccess { if (it.channels != channels) applyChannels(it.channels) }.onFailure {
-            if (channels.isEmpty()) status = "Не вдалося завантажити плейлист: ${it.message}"
+            if (channels.isEmpty()) status = str(R.string.playlist_load_failed, it.message.orEmpty())
         }
         if (channels.isNotEmpty()) {
             status = null
@@ -377,11 +379,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 playlists = repo.all()
                 closeSheets()
                 openPlaylist(repo.get(info.id) ?: return@launch, download = false)
-                showToast(if (existing != null) "Цей плейлист уже є · ${channelsWord(parsed.channels.size)}" else "Плейлист додано · ${channelsWord(parsed.channels.size)}")
+                showToast(str(if (existing != null) R.string.playlist_exists else R.string.playlist_added, channelsWord(parsed.channels.size)))
             }.onFailure {
                 if (existing == null) repo.remove(info.id)
                 playlists = repo.all()
-                showToast("Не вдалося завантажити плейлист: ${it.message}")
+                showToast(str(R.string.playlist_load_failed, it.message.orEmpty()))
             }
         }
     }
@@ -391,10 +393,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (a != PlaylistAction.DELETE) deleteArmed = 0
         when (a) {
             PlaylistAction.USE -> {
-                if (p.id == playlist?.id) { showToast("Цей плейлист уже відкритий"); return }
+                if (p.id == playlist?.id) { showToast(str(R.string.playlist_already_open)); return }
                 closeSheets()
                 openPlaylist(p, download = true)
-                showToast("Плейлист: ${p.title}")
+                showToast(str(R.string.playlist_switched, p.title))
             }
             PlaylistAction.REFRESH -> {
                 if (loadingPlaylist != null) return
@@ -410,13 +412,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                             if (it.channels != channels) applyChannels(it.channels)
                             applyGuideSource()
                         }
-                        showToast("Плейлист оновлено · ${channelsWord(it.channels.size)}")
-                    }.onFailure { showToast("Не вдалося оновити: ${it.message}") }
+                        showToast(str(R.string.playlist_refreshed, channelsWord(it.channels.size)))
+                    }.onFailure { showToast(str(R.string.refresh_failed, it.message.orEmpty())) }
                 }
             }
             PlaylistAction.RENAME -> openLink(LinkPurpose.RENAME, p)
             PlaylistAction.DELETE -> {
-                if (now() - deleteArmed > 3000) { deleteArmed = now(); showToast("Натисніть OK ще раз, щоб видалити «${p.title}»"); return }
+                if (now() - deleteArmed > 3000) { deleteArmed = now(); showToast(str(R.string.delete_confirm, p.title)); return }
                 deleteArmed = 0
                 deletePlaylist(p)
             }
@@ -428,7 +430,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prefs.forget(p.id)
         viewModelScope.launch(dbIo) { db.deleteMarks(p.id) }
         playlists = repo.all()
-        showToast("Плейлист «${p.title}» видалено")
+        showToast(str(R.string.playlist_deleted, p.title))
         if (p.id != playlist?.id) { pop(); return }
         closeSheets()
         val next = playlists.firstOrNull()
@@ -447,13 +449,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         linkPurpose = purpose
         linkTarget = target?.id
         setupServer.page = when (purpose) {
-            LinkPurpose.ADD_PLAYLIST -> SetupServer.PLAYLIST
+            LinkPurpose.ADD_PLAYLIST -> SetupServer.playlistPage()
             LinkPurpose.GUIDE_URL -> SetupServer.Page(
-                "Програма передач (XMLTV)", "Вставте посилання на XMLTV-файл (.xml або .xml.gz).", "Надіслати на телевізор",
+                str(R.string.page_guide_title), str(R.string.page_guide_hint), str(R.string.page_send),
                 value = target?.guideUrl.orEmpty(),
             )
             LinkPurpose.RENAME -> SetupServer.Page(
-                "Назва плейлиста", "Як цей плейлист називатиметься в списку.", "Зберегти", link = false, value = target?.title.orEmpty(),
+                str(R.string.page_name_title), str(R.string.page_name_hint), str(R.string.page_save), link = false, value = target?.title.orEmpty(),
             )
         }
         setupServer.onSubmit = { v -> viewModelScope.launch { onLinkAnswer(purpose, v) } }
@@ -470,13 +472,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val p = repo.update(id ?: return) { it.copy(name = v.trim().take(60)) } ?: return
                 afterPlaylistEdit(p)
                 pop()
-                showToast("Назву змінено: ${p.title}")
+                showToast(str(R.string.renamed, p.title))
             }
             LinkPurpose.GUIDE_URL -> {
                 val p = repo.update(id ?: return) { it.copy(guideMode = GuideMode.CUSTOM, guideUrl = v.trim()) } ?: return
                 afterPlaylistEdit(p)
                 pop()
-                showToast("Програма передач: власне посилання")
+                showToast(str(R.string.guide_custom_set))
                 refreshGuide(force = true)
             }
         }
@@ -517,10 +519,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun setGuideMode(m: GuideMode) {
         val p = playlist ?: return
         if (m == GuideMode.CUSTOM) { openLink(LinkPurpose.GUIDE_URL, p); return }
-        if (m == GuideMode.PLAYLIST && p.tvgUrl == null) { showToast("У плейлисті немає посилання на програму (url-tvg)"); return }
+        if (m == GuideMode.PLAYLIST && p.tvgUrl == null) { showToast(str(R.string.guide_no_tvg)); return }
         if (p.guideMode == m) return
         afterPlaylistEdit(repo.update(p.id) { it.copy(guideMode = m) } ?: return)
-        showToast(if (m == GuideMode.AUTO) "Програма передач: авто" else "Програма передач: з плейлиста")
+        showToast(str(if (m == GuideMode.AUTO) R.string.guide_auto_set else R.string.guide_playlist_set))
     }
 
     private fun applyChannels(list: List<Channel>) {
@@ -560,10 +562,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun rebuildGroups() {
         val g = ArrayList<Group>()
         val cont = resumeList()
-        if (cont.isNotEmpty()) g += Group("cont", "Продовжити перегляд", cont.map { it.ch }, cont)
-        g += Group("fav", "Обране", favs.mapNotNull(byId::get).filter(::isShown))
-        g += Group("recent", "Нещодавні", recent.mapNotNull(byId::get).filter(::isShown))
-        g += Group("all", "Усі канали", shown)
+        if (cont.isNotEmpty()) g += Group("cont", str(R.string.group_cont), cont.map { it.ch }, cont)
+        g += Group("fav", str(R.string.group_fav), favs.mapNotNull(byId::get).filter(::isShown))
+        g += Group("recent", str(R.string.group_recent), recent.mapNotNull(byId::get).filter(::isShown))
+        g += Group("all", str(R.string.group_all), shown)
         g += providerGroups
         groups = g
     }
@@ -608,8 +610,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun refreshGuide(force: Boolean) {
         if (force) {
-            if (guideSyncing) { showToast("Програма передач уже оновлюється"); return }
-            showToast("Оновлюю програму передач")
+            if (guideSyncing) { showToast(str(R.string.guide_busy)); return }
+            showToast(str(R.string.guide_updating))
             guideForced = true
             guideWake.trySend(Unit)
         }
@@ -629,7 +631,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         Log.e(TAG, "guide sync failed", e)
                         guideError = e.message ?: e.javaClass.simpleName
                         status = null
-                        if (forced) showToast("Програма передач не оновилась: ${guideError}")
+                        if (forced) showToast(str(R.string.guide_failed, guideError.orEmpty()))
                     }
                 }
                 val toMidnight = DAY - Math.floorMod(now(), DAY) + 15 * MIN
@@ -650,7 +652,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     Log.i(TAG, "guide: rev ${it.revision}: fetched ${it.bytes / 1024} KB in ${it.millis / 1000} s, today bound after ${it.todayMillis} ms, blobs on disk ${disk / 1024} KB")
                     return null
                 }
-                return "Програма передач актуальна"
+                return str(R.string.guide_up_to_date)
             }
             is GuideSource.Xmltv -> {
                 val pl = playlist?.id ?: return null
@@ -661,7 +663,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     viewModelScope.launch(Dispatchers.Main) { if (guideSourceNow == src) status = s }
                 }
                 Log.i(TAG, "xmltv: ${r.channels} channels, ${r.programmes} programmes from ${r.bytes / 1024} KB in ${r.millis / 1000} s")
-                return "Програма передач оновлена · ${channelsWord(r.channels)}"
+                return str(R.string.guide_updated, channelsWord(r.channels))
             }
         }
     }
@@ -932,7 +934,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun onNoArchive() {
         val ch = cur ?: return
         noArchive += ch.id
-        showToast("На цьому каналі немає архіву")
+        showToast(str(R.string.no_archive))
         mode = Mode.LIVE; paused = false; pausedLiveAt = null; pendingAbs = null
         play(ch.url)
         hideOsd()
@@ -962,14 +964,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         play(ch.url)
         hideOsd()
         showBanner()
-        showToast("Повернулися в ефір")
+        showToast(str(R.string.back_live))
     }
 
     private fun togglePause() {
         val ch = cur ?: return
         when {
             mode == Mode.LIVE -> {
-                if (!canArchive(ch)) { showToast("На цьому каналі немає архіву"); return }
+                if (!canArchive(ch)) { showToast(str(R.string.no_archive)); return }
                 pausedLiveAt = livePos(); mode = Mode.ARCHIVE; paused = true; player.pause()
             }
             pausedLiveAt != null -> playArchive(ch, pausedLiveAt!!)
@@ -982,7 +984,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val seekSteps = longArrayOf(10, 30, 60, 300)
     private fun seek(dir: Int, repeat: Int) {
         val ch = cur ?: return
-        if (!canArchive(ch)) { showToast("На цьому каналі немає архіву"); return }
+        if (!canArchive(ch)) { showToast(str(R.string.no_archive)); return }
         if (dir > 0 && mode == Mode.LIVE) return // already at the live edge
         if (repeat == 0) { seekRun = if (now() - lastSeekAt < 1200) seekRun + 1 else 0 }
         lastSeekAt = now()
@@ -1021,7 +1023,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val ch = cur ?: return
         val p = playingProgramme()
         when (b) {
-            OsdButton.RESTART -> if (p != null) { saveMark(); seekAbs(p.start); showToast("З початку · ${p.title}") }
+            OsdButton.RESTART -> if (p != null) { saveMark(); seekAbs(p.start); showToast(str(R.string.from_start_toast, p.title)) }
             OsdButton.PREV -> p?.let { progAt(ch, it.start - 1) }?.let { q -> saveMark(); seekAbs(q.start); showToast(q.title) }
             OsdButton.NEXT -> {
                 saveMark()
@@ -1040,13 +1042,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun cycleAudio() {
         val gs = audioGroups()
-        if (gs.size < 2) { showToast("Інших звукових доріжок немає"); return }
+        if (gs.size < 2) { showToast(str(R.string.no_other_audio)); return }
         val i = (gs.indexOfFirst { it.isSelected } + 1) % gs.size
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
             .setOverrideForType(androidx.media3.common.TrackSelectionOverride(gs[i].mediaTrackGroup, 0)).build()
         val f = gs[i].getTrackFormat(0)
-        val name = f.label ?: f.language?.let { java.util.Locale(it).getDisplayLanguage(java.util.Locale("uk")).replaceFirstChar(Char::uppercase) }
-        showToast("Звук: ${name ?: "доріжка ${i + 1}"} (${i + 1} з ${gs.size})")
+        val name = f.label ?: f.language?.let { java.util.Locale(it).getDisplayLanguage(L10n.locale).replaceFirstChar(Char::uppercase) }
+        showToast(str(R.string.audio_track, name ?: str(R.string.audio_track_n, i + 1), i + 1, gs.size))
     }
 
     /** Timeline: ◀▶ seek, OK pause, ▼ buttons. Buttons: ◀▶ choose, OK run, ▲ timeline. BACK closes; any key keeps it up. */
@@ -1094,18 +1096,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (BuildConfig.DEBUG) android.util.Log.d("tivibro", "playProgramme ${ch.id} ${p.start} past=${p.isPast()} now=${p.isNow()}")
         closeLayers()
         when {
-            p.isNow() && fromStart && !canArchive(ch) -> { showToast("На цьому каналі немає архіву"); tune(ch) }
+            p.isNow() && fromStart && !canArchive(ch) -> { showToast(str(R.string.no_archive)); tune(ch) }
             p.isNow() && fromStart -> tune(ch, p.start)
             p.isNow() -> tune(ch)
             p.isPast() -> {
-                if (!canArchive(ch)) { showToast("На цьому каналі немає архіву"); return }
-                if (!ch.inArchive(p)) { showToast("Ця передача вже поза архівом"); return }
+                if (!canArchive(ch)) { showToast(str(R.string.no_archive)); return }
+                if (!ch.inArchive(p)) { showToast(str(R.string.out_of_archive)); return }
                 val m = marks[markKey(ch, p)]
                 val resume = !fromStart && m != null && m.watched < DONE
                 tune(ch, if (resume) m!!.pos else p.start)
-                showToast(if (resume) "Продовжуємо з ${ago(m!!.pos - p.start)} · ${p.title}" else p.title)
+                showToast(if (resume) str(R.string.resuming, ago(m!!.pos - p.start), p.title) else p.title)
             }
-            else -> showToast("Передача ще не почалася")
+            else -> showToast(str(R.string.not_started))
         }
     }
 
@@ -1198,9 +1200,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (list.isEmpty()) {
             showToast(
                 when {
-                    !guide.hasData && !guideSyncing -> "Програма передач ще не завантажена"
-                    !guide.hasData || !guide.complete(ch) -> "Програма ще завантажується"
-                    else -> "Для цього каналу немає програми"
+                    !guide.hasData && !guideSyncing -> str(R.string.guide_not_loaded)
+                    !guide.hasData || !guide.complete(ch) -> str(R.string.guide_loading)
+                    else -> str(R.string.no_guide_for_channel)
                 },
             )
             return
@@ -1210,8 +1212,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun toggleFav(ch: Channel) {
-        if (ch.id in favs) { favs.remove(ch.id); showToast("${ch.name} — прибрано з обраного") }
-        else { favs.add(ch.id); showToast("${ch.name} → Обране") }
+        if (ch.id in favs) { favs.remove(ch.id); showToast(str(R.string.fav_removed, ch.name)) }
+        else { favs.add(ch.id); showToast(str(R.string.fav_added, ch.name)) }
         prefs.favorites = favs
         rebuildGroups()
         syncGroup()
@@ -1326,7 +1328,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The LAN page goes back to what the first-run screen expects, and stops. */
     private fun stopLink() {
         setupServer.stop()
-        setupServer.page = SetupServer.PLAYLIST
+        setupServer.page = null
         setupServer.onSubmit = { link -> viewModelScope.launch { usePlaylist(link) } }
     }
 
@@ -1342,6 +1344,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         rowIdx = when (s) {
             Sheet.PLAYLISTS -> max(0, playlists.indexOfFirst { it.id == playlist?.id })
             Sheet.GUIDE -> playlist?.guideMode?.ordinal ?: 0
+            Sheet.LANGUAGE -> L10n.lang(getApplication()).ordinal
             else -> 0
         }
     }
@@ -1379,6 +1382,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Sheet.PLAYLIST -> PlaylistAction.entries.size
             Sheet.GUIDE -> GuideRow.entries.size
             Sheet.LINK -> 0
+            Sheet.LANGUAGE -> L10n.Lang.entries.size
             Sheet.MENU -> return menuKey(k)
         }
         when (k) {
@@ -1394,7 +1398,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     SettingsRow.GROUPS -> openSheet(Sheet.GROUPS)
                     SettingsRow.HIDDEN -> openSheet(Sheet.HIDDEN)
                     SettingsRow.GUIDE -> openSheet(Sheet.GUIDE)
+                    SettingsRow.LANGUAGE -> openSheet(Sheet.LANGUAGE)
                 }
+                Sheet.LANGUAGE -> setLanguage(L10n.Lang.entries[rowIdx])
                 Sheet.PLAYLISTS -> playlists.getOrNull(rowIdx)?.let(::openPlaylistSheet) ?: openLink(LinkPurpose.ADD_PLAYLIST, null)
                 Sheet.PLAYLIST -> playlistAction(PlaylistAction.entries[rowIdx])
                 Sheet.GUIDE -> when (GuideRow.entries[rowIdx]) {
@@ -1404,7 +1410,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         val p = playlist
                         if (p?.guideUrl != null && p.guideMode != GuideMode.CUSTOM) {
                             afterPlaylistEdit(repo.update(p.id) { it.copy(guideMode = GuideMode.CUSTOM) } ?: return)
-                            showToast("Програма передач: власне посилання · OK ще раз — змінити")
+                            showToast(str(R.string.guide_custom_again))
                         } else setGuideMode(GuideMode.CUSTOM)
                     }
                     GuideRow.REFRESH -> refreshGuide(force = true)
@@ -1413,13 +1419,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 Sheet.GROUPS -> allGroups.getOrNull(rowIdx)?.let(::toggleGroupShown)
                 Sheet.HIDDEN -> hiddenChannels().getOrNull(rowIdx)?.let { ch ->
                     setHidden(ch, false)
-                    showToast("${ch.name} — знову у списку")
+                    showToast(str(R.string.channel_back, ch.name))
                     rowIdx = rowIdx.coerceAtMost(max(0, n - 2))
                 }
                 Sheet.MENU -> Unit
             }
             else -> Unit
         }
+    }
+
+    /** Saves the choice and recreates the activity; the sheets stay where they are (they live here). */
+    private fun setLanguage(l: L10n.Lang) {
+        val app = getApplication<Application>()
+        if (L10n.lang(app) == l) return
+        L10n.setLang(app, l)
+        rebuildGroups()
+        cfgVersion++
+        onRecreate()
     }
 
     private fun openCtx(ch: Channel) {
@@ -1443,7 +1459,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     closeCtx()
                     val hide = !isHidden(ch) // the playing channel can already be hidden: then this brings it back
                     setHidden(ch, hide)
-                    showToast(if (hide) "${ch.name} приховано · повернути можна в налаштуваннях" else "${ch.name} — знову у списку")
+                    showToast(str(if (hide) R.string.channel_hidden else R.string.channel_back, ch.name))
                 }
             }
             else -> Unit
@@ -1488,12 +1504,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     MarkAction.FORGET -> {
                         val done = m.watched >= DONE
                         forgetMark(m.ch, m.p)
-                        showToast(if (done) "Позначку «Переглянуто» знято" else "Прибрано з «Продовжити перегляд»")
+                        showToast(str(if (done) R.string.mark_unwatched_toast else R.string.mark_forgotten_toast))
                         afterMarkChange(m.ch)
                     }
                     MarkAction.DONE -> {
                         markWatched(m.ch, m.p)
-                        showToast("Позначено переглянутим: ${m.p.title}")
+                        showToast(str(R.string.mark_done_toast, m.p.title))
                         afterMarkChange(m.ch)
                     }
                 }
@@ -1604,7 +1620,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             delay(1300)
             val ch = channelByNum(numBuf.toIntOrNull() ?: -1)
             numBuf = ""
-            if (ch == null) { showToast("Немає каналу з таким номером"); return@launch }
+            if (ch == null) { showToast(str(R.string.no_such_number)); return@launch }
             if (layer == Layer.LIST) {
                 groupId = "all"; syncGroup(); chIdx = shown.indexOf(ch); focus = Focus.CHANNELS
             } else tune(ch)
@@ -1668,7 +1684,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
         fun ago(ms: Long): String {
             val m = (ms / MIN).toInt().coerceAtLeast(0)
-            return if (m < 60) "$m хв" else "${m / 60} год" + if (m % 60 != 0) " ${m % 60} хв" else ""
+            return if (m < 60) str(R.string.dur_min, m) else if (m % 60 == 0) str(R.string.dur_hours, m / 60) else str(R.string.dur_hours_min, m / 60, m % 60)
         }
     }
 }

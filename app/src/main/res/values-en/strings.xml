@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- common -->
+    <string name="loading">Loading…</string>
+    <string name="loading_list">Loading…</string>
+    <string name="playlist_fallback">Playlist</string>
+    <string name="dur_min">%1$d min</string>
+    <string name="dur_hours">%1$d h</string>
+    <string name="dur_hours_min">%1$d h %2$d min</string>
+    <string name="today">Today</string>
+    <string name="yesterday">Yesterday</string>
+    <string name="tomorrow">Tomorrow</string>
+    <string name="day_fmt">%1$s, %3$s %2$d</string>
+    <string name="date_fmt">%2$s %1$d</string>
+    <string-array name="dow_short">
+        <item>Sun</item><item>Mon</item><item>Tue</item><item>Wed</item><item>Thu</item><item>Fri</item><item>Sat</item>
+    </string-array>
+    <string-array name="mon_short">
+        <item>Jan</item><item>Feb</item><item>Mar</item><item>Apr</item><item>May</item><item>Jun</item>
+        <item>Jul</item><item>Aug</item><item>Sep</item><item>Oct</item><item>Nov</item><item>Dec</item>
+    </string-array>
+    <plurals name="channels">
+        <item quantity="one">%d channel</item>
+        <item quantity="other">%d channels</item>
+    </plurals>
+    <plurals name="days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <plurals name="programmes">
+        <item quantity="one">%d programme</item>
+        <item quantity="other">%d programmes</item>
+    </plurals>
+
+    <!-- groups -->
+    <string name="group_cont">Continue watching</string>
+    <string name="group_fav">Favourites</string>
+    <string name="group_recent">Recent</string>
+    <string name="group_all">All channels</string>
+    <string name="group_other">Other</string>
+    <string name="group_empty">Nothing here</string>
+    <string name="fav_empty">Hold OK on a channel → “Add to Favourites”</string>
+
+    <!-- toasts and status -->
+    <string name="err_play">Can\'t play this: %1$s</string>
+    <string name="loading_channels">Loading channels…</string>
+    <string name="playlist_load_failed">Couldn\'t load the playlist: %1$s</string>
+    <string name="playlist_exists">You already have this playlist · %1$s</string>
+    <string name="playlist_added">Playlist added · %1$s</string>
+    <string name="playlist_already_open">This playlist is already open</string>
+    <string name="playlist_switched">Playlist: %1$s</string>
+    <string name="playlist_refreshed">Playlist updated · %1$s</string>
+    <string name="refresh_failed">Couldn\'t update: %1$s</string>
+    <string name="delete_confirm">Press OK again to delete “%1$s”</string>
+    <string name="playlist_deleted">Deleted “%1$s”</string>
+    <string name="renamed">Renamed to %1$s</string>
+    <string name="guide_custom_set">TV guide: custom link</string>
+    <string name="guide_custom_again">TV guide: custom link · press OK again to change it</string>
+    <string name="guide_no_tvg">This playlist has no guide link (url-tvg)</string>
+    <string name="guide_auto_set">TV guide: automatic</string>
+    <string name="guide_playlist_set">TV guide: from the playlist</string>
+    <string name="guide_busy">The TV guide is already updating</string>
+    <string name="guide_updating">Updating the TV guide</string>
+    <string name="guide_failed">The TV guide didn\'t update: %1$s</string>
+    <string name="guide_up_to_date">The TV guide is up to date</string>
+    <string name="guide_updated">TV guide updated · %1$s</string>
+    <string name="guide_dl_today">TV guide: getting today… %1$d%%</string>
+    <string name="guide_dl_more">TV guide: today is ready, getting %1$s more… %2$d%%</string>
+    <string name="guide_dl_mb">TV guide: downloading… %1$d MB</string>
+    <string name="guide_not_loaded">The TV guide hasn\'t loaded yet</string>
+    <string name="guide_loading">The guide is still loading</string>
+    <string name="no_guide_for_channel">No guide for this channel</string>
+    <string name="no_archive">This channel has no archive</string>
+    <string name="back_live">Back to live</string>
+    <string name="from_start_toast">From the start · %1$s</string>
+    <string name="no_other_audio">No other audio tracks</string>
+    <string name="audio_track">Audio: %1$s (%2$d of %3$d)</string>
+    <string name="audio_track_n">track %1$d</string>
+    <string name="out_of_archive">This programme has left the archive</string>
+    <string name="resuming">Resuming at %1$s · %2$s</string>
+    <string name="not_started">This programme hasn\'t started yet</string>
+    <string name="fav_removed">%1$s removed from Favourites</string>
+    <string name="fav_added">%1$s added to Favourites</string>
+    <string name="channel_back">%1$s is back in the list</string>
+    <string name="channel_hidden">%1$s hidden · you can bring it back in Settings</string>
+    <string name="mark_unwatched_toast">No longer marked as watched</string>
+    <string name="mark_forgotten_toast">Removed from Continue watching</string>
+    <string name="mark_done_toast">Marked as watched: %1$s</string>
+    <string name="no_such_number">No channel with that number</string>
+    <string name="no_channel">no channel</string>
+    <string name="err_playlist_deleted">the playlist was deleted</string>
+    <string name="err_playlist_empty">the playlist is empty or not M3U</string>
+
+    <!-- playback -->
+    <string name="no_programme">No guide data</string>
+    <string name="remaining">%1$s left</string>
+    <string name="next_prog">Next %1$s · %2$s</string>
+    <string name="archive_days">%1$d-day archive</string>
+    <string name="live">LIVE</string>
+    <string name="paused">❚❚ Paused</string>
+    <string name="behind_live">−%1$s behind live</string>
+    <string name="archive">Archive</string>
+    <string name="osd_restart">⟲  Restart</string>
+    <string name="osd_prev">⏮  Previous</string>
+    <string name="osd_next">⏭  Next</string>
+    <string name="osd_live">●  Live</string>
+    <string name="osd_audio">Audio</string>
+
+    <!-- hints -->
+    <string name="key_ok_long">Hold OK</string>
+    <string name="hint_choose">Select</string>
+    <string name="hint_apply">Apply</string>
+    <string name="hint_close">Close</string>
+    <string name="hint_open">Open</string>
+    <string name="hint_to_channels">Channels</string>
+    <string name="hint_back">Back</string>
+    <string name="hint_group">Group</string>
+    <string name="hint_toggle_group">Show / hide</string>
+    <string name="hint_done">Done</string>
+    <string name="hint_channel">Channel</string>
+    <string name="hint_unhide">Show again</string>
+    <string name="hint_playlist">Playlist</string>
+    <string name="hint_action">Action</string>
+    <string name="hint_run">Go</string>
+    <string name="hint_cancel">Cancel</string>
+    <string name="hint_channels">Channels</string>
+    <string name="hint_menu">Menu</string>
+    <string name="hint_day">Day</string>
+    <string name="hint_progs">Programmes</string>
+    <string name="hint_programme">Programme</string>
+    <string name="hint_watch">Watch</string>
+    <string name="hint_long_mark">hold: watch options</string>
+    <string name="hint_long_restart">hold: from the start</string>
+    <string name="hint_days">Days</string>
+    <string name="hint_resume">Resume</string>
+    <string name="hint_long_actions">hold: options</string>
+    <string name="hint_channel_guide">Channel guide</string>
+    <string name="hint_groups">Groups</string>
+    <string name="hint_guide">Guide</string>
+    <string name="hint_long_channel_menu">hold: channel menu</string>
+    <string name="hint_seek">Seek</string>
+    <string name="hint_play">Play</string>
+    <string name="hint_pause">Pause</string>
+    <string name="hint_buttons">Buttons</string>
+    <string name="hint_hide">Hide</string>
+    <string name="hint_timeline">Timeline</string>
+    <string name="hint_list">List</string>
+    <string name="hint_controls">Controls</string>
+
+    <!-- first run -->
+    <string name="setup_title">Let\'s add your playlist</string>
+    <string name="setup_steps">1. Scan the QR code with your phone (on the same Wi-Fi).\n2. Copy your M3U playlist link from your provider\'s account page.\n3. Paste it on the page and tap “Send”.</string>
+    <string name="or_open">Or open %1$s</string>
+    <string name="no_network">No network: connect the TV to Wi-Fi</string>
+
+    <!-- list and programme view -->
+    <string name="days_title">Days</string>
+    <string name="soon">Upcoming</string>
+    <string name="out_archive">Not in archive</string>
+    <string name="watched_pill">✓ Watched</string>
+    <string name="watched_of">Watched %1$s of %2$s</string>
+    <string name="no_desc">No description</string>
+    <string name="act_live">Live</string>
+    <string name="act_from_start_prog">From the start</string>
+    <string name="act_resume">Resume at %1$s</string>
+    <string name="act_mark_menu">Watch options</string>
+    <string name="act_rewatch">Watch again</string>
+    <string name="act_watch">Watch</string>
+
+    <!-- menu -->
+    <string name="menu_summary">%1$s · %2$d of %3$d groups shown</string>
+    <string name="menu_groups">Channel groups</string>
+    <string name="menu_guide">Update TV guide</string>
+    <string name="menu_settings">Settings</string>
+    <string name="menu_exit">Exit</string>
+    <string name="menu_update">Update to %1$s</string>
+
+    <!-- settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_sub">Playlists, which groups and channels to show, TV guide, language</string>
+    <string name="section_playlist">Playlist</string>
+    <string name="row_playlists">Playlists</string>
+    <string name="now_playlist">Current: %1$s</string>
+    <string name="section_channels">Channels</string>
+    <string name="row_groups_desc">Which groups appear in the list</string>
+    <string name="x_of_y">%1$d of %2$d</string>
+    <string name="row_hidden">Hidden channels</string>
+    <string name="row_hidden_desc">Bring back channels you\'ve hidden</string>
+    <string name="none">none</string>
+    <string name="section_guide">TV guide</string>
+    <string name="row_guide">TV guide</string>
+    <string name="section_app">App</string>
+    <string name="lang_system">System default</string>
+    <string name="language_sub">TiViBro\'s interface language</string>
+    <string name="row_update">Check for updates</string>
+    <string name="version">Version %1$s</string>
+
+    <string name="groups_sub">OK shows or hides a group. Hidden groups leave the list and channel switching</string>
+    <string name="hidden_suffix"> · hidden</string>
+    <string name="hidden_sub_empty">Hold OK on a channel → “Hide channel”</string>
+    <string name="hidden_sub">OK puts a channel back in the list</string>
+    <string name="hidden_none">No hidden channels</string>
+    <string name="show">Show</string>
+
+    <!-- context menus -->
+    <string name="ctx_channel">Channel</string>
+    <string name="fav_remove">Remove from Favourites</string>
+    <string name="fav_add">Add to Favourites</string>
+    <string name="ch_show">Show channel</string>
+    <string name="ch_hide">Hide channel</string>
+    <string name="mark_from_start">From the start</string>
+    <string name="mark_unwatch">Mark as unwatched</string>
+    <string name="mark_forget">Remove from Continue watching</string>
+    <string name="mark_watched">Mark as watched</string>
+
+    <!-- playlists -->
+    <string name="updated_at">updated %1$s, %2$s</string>
+    <string name="not_loaded">not loaded yet</string>
+    <string name="playlists_sub">OK to open, update, rename or delete. Each playlist keeps its own favourites and hidden channels</string>
+    <string name="playlist_open_mark">✓ Open</string>
+    <string name="add_playlist">＋  Add playlist</string>
+    <string name="adding_playlist">Loading the new playlist…</string>
+    <string name="add_playlist_desc">Send the link from your phone with a QR code</string>
+    <string name="open_suffix"> · open</string>
+    <string name="pl_open_now">Open now</string>
+    <string name="pl_open">Open</string>
+    <string name="pl_open_desc">Switch to this playlist\'s channels</string>
+    <string name="pl_refresh">Update</string>
+    <string name="pl_refresh_desc">Download the channel list again</string>
+    <string name="pl_rename">Rename</string>
+    <string name="pl_rename_desc">Name from the playlist: %1$s</string>
+    <string name="pl_delete">Delete</string>
+    <string name="pl_delete_desc">Together with its favourites, hidden channels and bookmarks</string>
+
+    <!-- guide source -->
+    <string name="src_auto">Auto</string>
+    <string name="src_playlist">From playlist</string>
+    <string name="src_custom">Custom link</string>
+    <string name="guide_error">%1$s · error: %2$s</string>
+    <string name="guide_never">%1$s · not loaded yet</string>
+    <string name="section_source">Source</string>
+    <string name="auto_epgteam">epg.team: fast, fetched day by day</string>
+    <string name="auto_playlist">From the playlist: %1$s</string>
+    <string name="tvg_desc">XMLTV from url-tvg: %1$s</string>
+    <string name="no_tvg">This playlist has no guide link</string>
+    <string name="custom_none">Send a link from your phone</string>
+    <string name="section_update">Update</string>
+    <string name="refresh_now">Update now</string>
+
+    <!-- QR / LAN page -->
+    <string name="link_add_title">Add a playlist</string>
+    <string name="link_add_sub">Scan the QR code with your phone (on the same Wi-Fi) and paste your M3U playlist link</string>
+    <string name="link_guide_title">Custom TV guide</string>
+    <string name="link_guide_sub">Scan the QR code with your phone and paste an XMLTV link (.xml or .xml.gz)</string>
+    <string name="link_rename_title">Rename playlist</string>
+    <string name="link_rename_sub">Scan the QR code with your phone and type a new name</string>
+    <string name="loading_playlist">Loading the playlist…</string>
+    <string name="page_playlist_title">Playlist link</string>
+    <string name="page_playlist_hint">Copy your M3U playlist link from your provider\'s account page (for tv.team: Playlists → “Tivimate” → Copy) and paste it here.</string>
+    <string name="page_guide_title">TV guide (XMLTV)</string>
+    <string name="page_guide_hint">Paste a link to an XMLTV file (.xml or .xml.gz).</string>
+    <string name="page_name_title">Playlist name</string>
+    <string name="page_name_hint">How this playlist will appear in the list.</string>
+    <string name="page_send">Send to TV</string>
+    <string name="page_save">Save</string>
+    <string name="page_empty">The field is empty.</string>
+    <string name="page_not_link">That doesn\'t look like a link.</string>
+    <string name="page_done">Done. Check your TV.</string>
+</resources>
