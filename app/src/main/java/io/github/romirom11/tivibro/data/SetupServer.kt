@@ -37,7 +37,16 @@ class SetupServer(@Volatile var onSubmit: (String) -> Unit) {
         thread(isDaemon = true, name = "setup-server") {
             while (!s.isClosed) {
                 val c = runCatching { s.accept() }.getOrNull() ?: break
-                runCatching { c.use { handle(it.getInputStream().bufferedReader(), it.getOutputStream()) } }
+                // one thread per connection, with a read timeout: mobile Chrome opens spare (pre)connections and sends
+                // nothing on them, which used to block the only thread so the real request never got an answer
+                thread(isDaemon = true, name = "setup-conn") {
+                    runCatching {
+                        c.use {
+                            it.soTimeout = 10_000
+                            handle(it.getInputStream().bufferedReader(), it.getOutputStream())
+                        }
+                    }
+                }
             }
         }
     }
@@ -51,6 +60,8 @@ class SetupServer(@Volatile var onSubmit: (String) -> Unit) {
         val request = r.readLine() ?: return
         val path = request.split(' ').getOrNull(1)?.substringBefore('?')
         if (key.isEmpty() || path != "/$key") {
+            // read the headers first: closing with unread request bytes makes the TCP stack send a reset
+            while (true) { val h = r.readLine() ?: break; if (h.isEmpty()) break }
             out.write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
             out.flush()
             return
