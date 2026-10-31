@@ -279,4 +279,43 @@
     <string name="update_checking">Checking…</string>
     <string name="update_downloading">Downloading the update… %1$d%%</string>
     <string name="update_ready">Version %1$s is available: press OK to update</string>
+
+    <!-- Home -->
+    <string name="menu_home">Home</string>
+    <string name="row_home">Home page</string>
+    <string name="row_home_desc">Where the rows take their programmes from</string>
+    <string name="row_startup">On start</string>
+    <string name="row_startup_desc">What opens when you start the app</string>
+    <string name="startup_last">Last channel</string>
+    <string name="home_sheet_sub">Rows over the video: what is on now, what has just started and what starts soon</string>
+    <string name="home_sources">Sources</string>
+    <string name="home_sources_desc">Groups and channels the programmes come from</string>
+    <string name="sources_sub">OK or ▶: pick the group\'s channels</string>
+    <string name="src_all">all %1$d</string>
+    <string name="src_none">not picked</string>
+    <string name="group_all_channels">All channels of the group</string>
+    <string name="group_all_desc">Including the ones added to the group later</string>
+    <string name="home_group_sub">Tick the channels for the Home page</string>
+    <string name="home_now">On now</string>
+    <string name="home_started">Just started: watch from the beginning</string>
+    <string name="home_soon">Starting soon</string>
+    <string name="home_films">Movies</string>
+    <string name="home_series">TV shows</string>
+    <string name="home_setup_title">What should Home show?</string>
+    <string name="home_setup_desc">Pick groups or single channels: what is on now, what has just started and what starts soon will show up here.</string>
+    <string name="home_setup_button">Choose sources</string>
+    <string name="badge_live">Live</string>
+    <string name="badge_in">In %1$s</string>
+    <string name="badge_started">From start −%1$s</string>
+    <string name="badge_at">At %1$s</string>
+    <string name="home_starts_at">Starts %1$s at %2$s on %3$s</string>
+    <string name="home_loading">Reading the guide of your sources…</string>
+    <string name="home_nothing">Nothing in your sources\' guide right now</string>
+    <string name="hint_card">Card</string>
+    <string name="hint_row">Row</string>
+    <string name="hint_to_video">Back to TV</string>
+    <string name="hint_from_start">From the start</string>
+    <string name="hint_long_live">hold: live</string>
+    <string name="hint_when">When it starts</string>
+    <string name="hint_pick">Tick</string>
 </resources>

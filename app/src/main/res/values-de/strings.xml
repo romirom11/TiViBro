@@ -280,4 +280,43 @@
     <string name="update_checking">Suche…</string>
     <string name="update_downloading">Update wird geladen… %1$d%%</string>
     <string name="update_ready">Version %1$s ist verfügbar: OK zum Aktualisieren</string>
+
+    <!-- Home -->
+    <string name="menu_home">Startseite</string>
+    <string name="row_home">Startseite</string>
+    <string name="row_home_desc">Woher die Reihen ihre Sendungen nehmen</string>
+    <string name="row_startup">Beim Start</string>
+    <string name="row_startup_desc">Was beim Öffnen der App erscheint</string>
+    <string name="startup_last">Letzter Sender</string>
+    <string name="home_sheet_sub">Reihen über dem Video: was gerade läuft, eben begonnen hat und gleich beginnt</string>
+    <string name="home_sources">Quellen</string>
+    <string name="home_sources_desc">Gruppen und Sender, aus denen die Sendungen kommen</string>
+    <string name="sources_sub">OK oder ▶: Sender der Gruppe wählen</string>
+    <string name="src_all">alle %1$d</string>
+    <string name="src_none">nicht gewählt</string>
+    <string name="group_all_channels">Alle Sender der Gruppe</string>
+    <string name="group_all_desc">Auch die, die später dazukommen</string>
+    <string name="home_group_sub">Sender für die Startseite ankreuzen</string>
+    <string name="home_now">Jetzt im TV</string>
+    <string name="home_started">Gerade begonnen: von Anfang an sehen</string>
+    <string name="home_soon">Gleich</string>
+    <string name="home_films">Filme</string>
+    <string name="home_series">Serien</string>
+    <string name="home_setup_title">Was soll die Startseite zeigen?</string>
+    <string name="home_setup_desc">Wähle Gruppen oder einzelne Sender: Hier erscheint, was gerade läuft, eben begonnen hat oder gleich beginnt.</string>
+    <string name="home_setup_button">Quellen wählen</string>
+    <string name="badge_live">Live</string>
+    <string name="badge_in">In %1$s</string>
+    <string name="badge_started">Von Anfang −%1$s</string>
+    <string name="badge_at">Um %1$s</string>
+    <string name="home_starts_at">Beginnt %1$s um %2$s auf %3$s</string>
+    <string name="home_loading">Lese das Programm der Quellen…</string>
+    <string name="home_nothing">Im Programm der Quellen steht gerade nichts</string>
+    <string name="hint_card">Karte</string>
+    <string name="hint_row">Reihe</string>
+    <string name="hint_to_video">Zum Fernsehen</string>
+    <string name="hint_from_start">Von Anfang an</string>
+    <string name="hint_long_live">halten: live</string>
+    <string name="hint_when">Wann es beginnt</string>
+    <string name="hint_pick">Ankreuzen</string>
 </resources>

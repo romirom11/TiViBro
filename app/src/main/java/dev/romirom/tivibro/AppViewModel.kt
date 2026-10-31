@@ -49,7 +49,13 @@ import dev.romirom.tivibro.data.SetupServer
 import dev.romirom.tivibro.data.XmltvGuide
 import dev.romirom.tivibro.data.inArchive
 import dev.romirom.tivibro.data.now
+import dev.romirom.tivibro.home.HomeCard
+import dev.romirom.tivibro.home.HomeKind
+import dev.romirom.tivibro.home.HomeRow
+import dev.romirom.tivibro.home.HomeRows
 import dev.romirom.tivibro.ui.channelsWord
+import dev.romirom.tivibro.ui.dayWord
+import dev.romirom.tivibro.ui.hm
 import dev.romirom.tivibro.update.Updater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -71,12 +77,15 @@ import kotlin.math.max
 import kotlin.math.min
 
 enum class Mode { LIVE, ARCHIVE }
-enum class Layer { NONE, LIST }
+/** What covers the video: nothing, the channel list (with the programme view), or Home. */
+enum class Layer { NONE, LIST, HOME }
 enum class Focus { GROUPS, CHANNELS, DAYS, PROGS }
 /** Layers above the list / video, stacked: the menu stays visible under a settings sheet opened from it. */
-enum class Sheet { MENU, SETTINGS, GROUPS, HIDDEN, PLAYLISTS, PLAYLIST, GUIDE, LINK, LANGUAGE }
-enum class MenuItem { GROUPS, GUIDE, SETTINGS, UPDATE, EXIT }
-enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, LANGUAGE, SCALE, UPDATE }
+enum class Sheet { MENU, SETTINGS, GROUPS, HIDDEN, PLAYLISTS, PLAYLIST, GUIDE, LINK, LANGUAGE, HOME, HOME_SOURCES, HOME_GROUP }
+/** Rows of «Головна сторінка» (Sheet.HOME). */
+enum class HomeSetting { SOURCES }
+enum class MenuItem { HOME, GROUPS, GUIDE, SETTINGS, UPDATE, EXIT }
+enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, HOME, STARTUP, LANGUAGE, SCALE, UPDATE }
 /** Actions on one playlist (Sheet.PLAYLIST), top to bottom. */
 enum class PlaylistAction { USE, REFRESH, RENAME, DELETE }
 /** Rows of «Програма передач» (Sheet.GUIDE): the three sources, then the refresh. */
@@ -227,6 +236,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var progIdx by mutableIntStateOf(0); private set
     private var groupId = "all"
 
+    // ---------- Home ----------
+    /** The rows on Home, built when it opens and merged with what arrives while it is open (see [HomeRows.merge]). */
+    var homeRows by mutableStateOf<List<HomeRow>>(emptyList()); private set
+    var homeRowIdx by mutableIntStateOf(0); private set
+    var homeColIdx by mutableIntStateOf(0); private set
+    /** The card each row was left on, by row kind: coming back to a row lands where it was. */
+    private val homeCols = HashMap<HomeKind, Int>()
+    /** Settings → «При запуску»; Home also opens on a playlist's first start, when it has no last channel yet. */
+    var startHome by mutableStateOf(prefs.startHome); private set
+    private var startupPending = true
+    /** Home sources of the active playlist: whole groups by name, and picked channels of other groups. */
+    private var homeGroups = emptySet<String>()
+    private val homeChannels = HashMap<String, Set<String>>()
+    /** The group Sheet.HOME_GROUP lists. */
+    var homeGroup by mutableStateOf<Group?>(null); private set
+    /** Home's guide index is being read for the first time: the rows it feeds are still to come. */
+    var homeLoading by mutableStateOf(false); private set
+    /** Sources are picked, nothing is loading, and still nothing to show from them. */
+    val homeEmpty: Boolean get() { cfgVersion; return !homeLoading && homeRows.none { it.kind != HomeKind.CONTINUE } && (homeGroups.isNotEmpty() || homeChannels.isNotEmpty()) }
+
     // ---------- menu, settings sheets, channel context menu ----------
     var sheets by mutableStateOf<List<Sheet>>(emptyList()); private set
     var menuIdx by mutableIntStateOf(0); private set
@@ -328,6 +357,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         favs = prefs.favorites.toMutableList()
         recent = prefs.recent.toMutableList()
         hidden = prefs.hiddenChannels
+        homeGroups = prefs.homeGroups
+        homeChannels.clear()
         groupId = prefs.lastGroup ?: "all"
         markRows.clear(); marks.clear(); noArchive.clear()
         channels = emptyList(); guideChannels = emptyList(); byId = emptyMap()
@@ -546,11 +577,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         cur = cur?.let { byId[it.id] ?: it }
         allGroups = list.groupBy { it.group }.map { (name, chs) -> Group("g:$name", name, chs) }
         groupByName = allGroups.associateBy { it.name }
+        homeChannels.clear()
+        for (g in allGroups) prefs.homeChannels(g.name).takeIf { it.isNotEmpty() }?.let { homeChannels[g.name] = it }
         marksFromDb()
         applyVisibility()
         if (first) {
-            val start = prefs.lastChannel?.let(byId::get)?.takeIf(::isShown) ?: shown.firstOrNull() ?: list.first()
-            tune(start)
+            val last = prefs.lastChannel?.let(byId::get)?.takeIf(::isShown)
+            tune(last ?: shown.firstOrNull() ?: list.first())
+            // the app's start (or a playlist's very first one): Home when asked for, or when there is no last channel
+            if ((startupPending && startHome) || last == null) openHome()
+            startupPending = false
         }
     }
 
@@ -817,7 +853,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val pl = playlist?.id ?: return
             viewModelScope.launch(dbIo) { db.saveMark(pl, m) }
         }
-        if (isNew) { rebuildGroups(); markVersion++ }
+        if (isNew) { rebuildGroups(); markVersion++; refreshHome() }
     }
 
     fun forgetMark(ch: Channel, p: Programme) {
@@ -827,6 +863,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         markVersion++
         rebuildGroups()
         syncGroup()
+        refreshHome(drop = HomeRows.continueKey(ch, p))
         val pl = playlist?.id ?: return
         viewModelScope.launch(dbIo) { db.deleteMark(pl, ch.id, p.start) }
     }
@@ -840,6 +877,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         markVersion++
         rebuildGroups()
         syncGroup()
+        refreshHome(drop = HomeRows.continueKey(ch, p))
         val pl = playlist?.id ?: return
         viewModelScope.launch(dbIo) { db.saveMark(pl, m) }
     }
@@ -1336,6 +1374,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (sheets.lastOrNull() == Sheet.LINK) stopLink()
         sheets = sheets.dropLast(1)
         rowIdx = rowStack.removeLastOrNull() ?: 0
+        if (sheets.isEmpty()) refreshHome() // back on Home from its sources: what they changed shows at once
     }
 
     private fun closeSheets() {
@@ -1371,7 +1410,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The side menu's rows, top to bottom. */
     fun menuItems(): List<MenuItem> = MenuItem.entries.filter { it != MenuItem.UPDATE || updater.available != null }
 
-    /** ▲▼ choose, OK opens, ▶ back to the list under it; BACK (or MENU) closes the menu back to playback. */
+    /** ▲▼ choose, OK opens, ▶ back to the list under it; BACK goes on up to Home, MENU closes back to playback. */
     private fun menuKey(k: Key) {
         val items = menuItems()
         val n = items.size
@@ -1380,6 +1419,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Key.UP -> menuIdx = (menuIdx - 1 + n) % n
             Key.DOWN -> menuIdx = (menuIdx + 1) % n
             Key.OK -> when (items[menuIdx]) {
+                MenuItem.HOME -> openHome()
                 MenuItem.GROUPS -> openSheet(Sheet.GROUPS)
                 MenuItem.SETTINGS -> openSheet(Sheet.SETTINGS)
                 MenuItem.GUIDE -> { closeSheets(); refreshGuide(force = true) }
@@ -1387,7 +1427,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 MenuItem.EXIT -> exitApp()
             }
             Key.RIGHT -> pop()
-            Key.BACK, Key.MENU -> { closeSheets(); closeLayers() }
+            Key.BACK -> openHome() // the last step up the hierarchy: playback › programmes › channels › groups › menu › Home
+            Key.MENU -> { closeSheets(); closeLayers() }
             else -> Unit
         }
     }
@@ -1403,6 +1444,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Sheet.GUIDE -> GuideRow.entries.size
             Sheet.LINK -> 0
             Sheet.LANGUAGE -> L10n.Lang.entries.size
+            Sheet.HOME -> HomeSetting.entries.size
+            Sheet.HOME_SOURCES -> allGroups.size
+            Sheet.HOME_GROUP -> (homeGroup?.channels?.size ?: 0) + 1 // + «Усі канали групи»
             Sheet.MENU -> return menuKey(k)
         }
         when (k) {
@@ -1413,6 +1457,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Key.BACK, Key.MENU -> pop()
             Key.LEFT, Key.RIGHT -> if (s == Sheet.SETTINGS && SettingsRow.entries[rowIdx] == SettingsRow.SCALE) {
                 stepScale(if (k == Key.RIGHT) 1 else -1, wrap = false)
+            } else if (s == Sheet.SETTINGS && SettingsRow.entries[rowIdx] == SettingsRow.STARTUP) {
+                changeStartHome(k == Key.RIGHT)
+            } else if (s == Sheet.HOME_SOURCES && k == Key.RIGHT) {
+                allGroups.getOrNull(rowIdx)?.let(::openHomeGroup)
             } else if (k == Key.LEFT) pop()
             Key.OK -> when (s) {
                 Sheet.SETTINGS -> when (SettingsRow.entries[rowIdx]) {
@@ -1420,6 +1468,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     SettingsRow.GROUPS -> openSheet(Sheet.GROUPS)
                     SettingsRow.HIDDEN -> openSheet(Sheet.HIDDEN)
                     SettingsRow.GUIDE -> openSheet(Sheet.GUIDE)
+                    SettingsRow.HOME -> openSheet(Sheet.HOME)
+                    SettingsRow.STARTUP -> changeStartHome(!startHome)
                     SettingsRow.LANGUAGE -> openSheet(Sheet.LANGUAGE)
                     SettingsRow.SCALE -> stepScale(1, wrap = true)
                     SettingsRow.UPDATE -> if (updater.available != null) updater.install() else updater.check(manual = true)
@@ -1446,6 +1496,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     showToast(str(R.string.channel_back, ch.name))
                     rowIdx = rowIdx.coerceAtMost(max(0, n - 2))
                 }
+                Sheet.HOME -> when (HomeSetting.entries[rowIdx]) {
+                    HomeSetting.SOURCES -> openSheet(Sheet.HOME_SOURCES)
+                }
+                Sheet.HOME_SOURCES -> allGroups.getOrNull(rowIdx)?.let(::openHomeGroup)
+                Sheet.HOME_GROUP -> homeGroup?.let { g -> if (rowIdx == 0) toggleHomeGroup(g) else g.channels.getOrNull(rowIdx - 1)?.let { toggleHomeChannel(g, it) } }
                 Sheet.MENU -> Unit
             }
             else -> Unit
@@ -1565,6 +1620,168 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         chIdx = chIdx.coerceIn(0, max(0, (currentGroup()?.channels?.size ?: 1) - 1))
     }
 
+    // ============================================================ Home
+
+    /** Opens Home over the video (playback goes on), or comes back to it from the menu keeping its focus. */
+    fun openHome() {
+        closeSheets(); closeCtx(); markCtx = null
+        banner = false; osd = false
+        if (layer == Layer.HOME) return
+        listKeyAt = keyAt
+        layer = Layer.HOME
+        homeCols.clear()
+        homeRows = buildHomeRows()
+        homeRowIdx = 0
+        homeColIdx = 0
+    }
+
+    private fun closeHome() { if (layer == Layer.HOME) layer = Layer.NONE }
+
+    /** «Продовжити перегляд» on Home: every unfinished bookmark of the playlist still in its archive window, newest first. */
+    private fun homeContinue(): List<Mark> =
+        marks.values.filter { it.watched < DONE && it.ch.inArchive(it.p) }.sortedByDescending { it.at }.take(HOME_ROW_MAX)
+
+    private fun buildHomeRows(): List<HomeRow> {
+        val rows = ArrayList<HomeRow>()
+        val cont = homeContinue()
+        if (cont.isNotEmpty()) rows += HomeRow(HomeKind.CONTINUE, cont.map { HomeCard(HomeRows.continueKey(it.ch, it.p), HomeKind.CONTINUE, it.ch, it.p, it) })
+        if (homeSources().isEmpty()) rows += HomeRow(HomeKind.SETUP, emptyList())
+        return rows
+    }
+
+    /** Folds what changed into the open Home without moving the focused card; [drop]: a card to remove even if focused. */
+    private fun refreshHome(drop: String? = null) {
+        if (layer != Layer.HOME) return
+        val focused = homeCard()?.key?.takeIf { it != drop }
+        val kind = homeRows.getOrNull(homeRowIdx)?.kind
+        homeRows = HomeRows.merge(homeRows, buildHomeRows(), focused)
+        val r = homeRows.indexOfFirst { it.kind == kind }.takeIf { it >= 0 } ?: homeRowIdx.coerceIn(0, max(0, homeRows.size - 1))
+        homeRowIdx = r
+        val cards = homeRows.getOrNull(r)?.cards.orEmpty()
+        homeColIdx = cards.indexOfFirst { it.key == focused }.takeIf { it >= 0 } ?: homeColIdx.coerceIn(0, max(0, cards.size - 1))
+    }
+
+    /** The focused card; null on the «Налаштувати джерела» button. */
+    fun homeCard(): HomeCard? = homeRows.getOrNull(homeRowIdx)?.cards?.getOrNull(homeColIdx)
+
+    /** ◀▶ cards, ▲▼ rows (each row remembers its card), OK acts, BACK back to playback; ◀ on a row's first card opens
+     *  the menu, the way ◀ on the groups does in the list. */
+    private fun homeKey(k: Key) {
+        val row = homeRows.getOrNull(homeRowIdx)
+        val n = if (row?.kind == HomeKind.SETUP) 1 else row?.cards?.size ?: 0
+        fun goRow(r: Int) {
+            if (r !in homeRows.indices || r == homeRowIdx) return
+            homeRows.getOrNull(homeRowIdx)?.let { homeCols[it.kind] = homeColIdx }
+            homeRowIdx = r
+            val m = homeRows[r].cards.size
+            homeColIdx = (homeCols[homeRows[r].kind] ?: 0).coerceIn(0, max(0, m - 1))
+        }
+        when (k) {
+            Key.UP -> goRow(homeRowIdx - 1)
+            Key.DOWN -> goRow(homeRowIdx + 1)
+            Key.CHUP -> goRow(0)
+            Key.CHDOWN -> goRow(homeRows.size - 1)
+            Key.LEFT -> if (homeColIdx > 0) homeColIdx-- else openMenu()
+            Key.RIGHT -> if (homeColIdx < n - 1) homeColIdx++
+            Key.OK -> if (row?.kind == HomeKind.SETUP) openHomeSources() else homeCard()?.let(::homeOk)
+            Key.BACK -> closeHome()
+            Key.RED -> homeCard()?.ch?.let(::toggleFav)
+            else -> Unit
+        }
+    }
+
+    /** OK on a card: the bookmark resumes, «Щойно почалось» starts from the beginning, a live programme plays live, a
+     *  past one from the archive; one still to come only says when it starts. */
+    private fun homeOk(c: HomeCard) {
+        val p = c.p
+        when {
+            c.kind == HomeKind.STARTED && p.isNow() && canArchive(c.ch) -> playProgramme(c.ch, p, fromStart = true)
+            p.isNow() || p.isPast() -> playProgramme(c.ch, p)
+            else -> showToast(str(R.string.home_starts_at, dayWord(p.start).lowercase(), hm(p.start), c.ch.name))
+        }
+    }
+
+    /** Long OK: the bookmark menu where there is a bookmark; on a «Щойно почалось» card, the broadcast instead; on a
+     *  live programme, from the start; on one to come, the channel menu. */
+    private fun homeLongOk() {
+        val c = homeCard() ?: return
+        when {
+            c.mark != null -> openMarkCtx(c.mark)
+            c.kind == HomeKind.STARTED && c.p.isNow() -> playProgramme(c.ch, c.p)
+            c.p.isNow() || c.p.isPast() -> longOkProgramme(c.ch, c.p)
+            else -> openCtx(c.ch)
+        }
+    }
+
+    /** «Налаштувати джерела» on Home: the sources sheet right over it; BACK comes back to Home. */
+    private fun openHomeSources() {
+        closeSheets()
+        openSheet(Sheet.HOME_SOURCES)
+    }
+
+    // ---------- sources («Головна сторінка» → «Джерела»)
+
+    /** How many of [g]'s channels feed Home. */
+    fun homePicked(g: Group): Int = when {
+        g.name in homeGroups -> g.channels.size
+        else -> homeChannels[g.name]?.let { ids -> g.channels.count { it.id in ids } } ?: 0
+    }
+
+    fun isHomeChannel(g: Group, ch: Channel) = g.name in homeGroups || homeChannels[g.name]?.contains(ch.id) == true
+
+    /** The channels Home is built from, in playlist order: hidden channels left out, at most [HOME_SOURCE_MAX]. */
+    fun homeSources(): List<Channel> {
+        if (homeGroups.isEmpty() && homeChannels.isEmpty()) return emptyList()
+        val out = ArrayList<Channel>()
+        for (g in allGroups) {
+            val all = g.name in homeGroups
+            val ids = homeChannels[g.name]
+            if (!all && ids == null) continue
+            for (c in g.channels) if ((all || c.id in ids!!) && c.id !in hidden) { out += c; if (out.size >= HOME_SOURCE_MAX) return out }
+        }
+        return out
+    }
+
+    private fun openHomeGroup(g: Group) {
+        homeGroup = g
+        openSheet(Sheet.HOME_GROUP)
+    }
+
+    /** «Усі канали групи»: everything when not all of it was picked, else nothing. */
+    private fun toggleHomeGroup(g: Group) {
+        val all = homePicked(g) < g.channels.size
+        homeGroups = if (all) homeGroups + g.name else homeGroups - g.name
+        homeChannels.remove(g.name)
+        saveHomeSources(g)
+    }
+
+    /** A whole group stays whole (channels the provider adds later come in too) until one of its channels is unticked;
+     *  ticking the last missing one makes it whole again. */
+    private fun toggleHomeChannel(g: Group, ch: Channel) {
+        val ids = if (g.name in homeGroups) g.channels.mapTo(HashSet()) { it.id } else HashSet(homeChannels[g.name].orEmpty())
+        if (!ids.add(ch.id)) ids.remove(ch.id)
+        homeGroups = homeGroups - g.name
+        homeChannels.remove(g.name)
+        when {
+            g.channels.all { it.id in ids } -> homeGroups = homeGroups + g.name
+            ids.isNotEmpty() -> homeChannels[g.name] = ids
+        }
+        saveHomeSources(g)
+    }
+
+    private fun saveHomeSources(g: Group) {
+        prefs.homeGroups = homeGroups
+        prefs.setHomeChannels(g.name, homeChannels[g.name].orEmpty())
+        cfgVersion++
+    }
+
+    private fun changeStartHome(v: Boolean) {
+        if (v == startHome) return
+        startHome = v
+        prefs.startHome = v
+        cfgVersion++
+    }
+
     // ============================================================ keys
 
     private var keyAt = 0L
@@ -1604,7 +1821,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun longPress(k: Key) {
         when (k) {
-            Key.OK -> if (layer == Layer.LIST) listLongOk() else cur?.let(::openCtx)
+            Key.OK -> when (layer) {
+                Layer.LIST -> listLongOk()
+                Layer.HOME -> homeLongOk()
+                Layer.NONE -> cur?.let(::openCtx)
+            }
             else -> Unit
         }
     }
@@ -1617,6 +1838,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (k.ordinal >= Key.D0.ordinal) { digit(k.ordinal - Key.D0.ordinal); return }
         if (k == Key.MENU) { openMenu(); return }
         if (layer == Layer.LIST) { listKey(k); return }
+        if (layer == Layer.HOME) { homeKey(k); return }
         if (osd) { panelKey(k, repeat); return }
         // plain playback: the same keys in live and in the archive
         when (k) {
@@ -1657,7 +1879,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (ch == null) { showToast(str(R.string.no_such_number)); return@launch }
             if (layer == Layer.LIST) {
                 groupId = "all"; syncGroup(); chIdx = shown.indexOf(ch); focus = Focus.CHANNELS
-            } else tune(ch)
+            } else { closeLayers(); tune(ch) }
         }
     }
 
@@ -1666,6 +1888,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     companion object {
         const val DONE = .92f
         const val RECENT_MAX = 20
+        /** Cards per Home row at most. */
+        const val HOME_ROW_MAX = 20
+        /** Home reads the guide of at most this many source channels, however large the groups picked. */
+        const val HOME_SOURCE_MAX = 300
         /** Settings → «Масштаб інтерфейсу»: the steps, percent; 100 is the default. */
         val UI_SCALES = listOf(90, 100, 110, 125, 150)
         private const val TAG = "tivibro"

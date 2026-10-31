@@ -283,4 +283,43 @@
     <string name="update_checking">Buscando…</string>
     <string name="update_downloading">Descargando la actualización… %1$d%%</string>
     <string name="update_ready">La versión %1$s está disponible: pulsa OK para actualizar</string>
+
+    <!-- Home -->
+    <string name="menu_home">Inicio</string>
+    <string name="row_home">Página de inicio</string>
+    <string name="row_home_desc">De dónde salen los programas de las filas</string>
+    <string name="row_startup">Al iniciar</string>
+    <string name="row_startup_desc">Qué se abre al iniciar la aplicación</string>
+    <string name="startup_last">Último canal</string>
+    <string name="home_sheet_sub">Filas sobre el vídeo: lo que se emite ahora, lo que acaba de empezar y lo que empieza pronto</string>
+    <string name="home_sources">Fuentes</string>
+    <string name="home_sources_desc">Grupos y canales de los que salen los programas</string>
+    <string name="sources_sub">OK o ▶: elige los canales del grupo</string>
+    <string name="src_all">los %1$d</string>
+    <string name="src_none">sin elegir</string>
+    <string name="group_all_channels">Todos los canales del grupo</string>
+    <string name="group_all_desc">También los que se añadan más tarde</string>
+    <string name="home_group_sub">Marca los canales para la página de inicio</string>
+    <string name="home_now">Ahora en antena</string>
+    <string name="home_started">Acaba de empezar: míralo desde el principio</string>
+    <string name="home_soon">Dentro de poco</string>
+    <string name="home_films">Películas</string>
+    <string name="home_series">Series</string>
+    <string name="home_setup_title">¿Qué mostrar en el inicio?</string>
+    <string name="home_setup_desc">Elige grupos o canales sueltos: aquí aparecerá lo que se emite ahora, lo que acaba de empezar y lo que empieza pronto.</string>
+    <string name="home_setup_button">Elegir fuentes</string>
+    <string name="badge_live">En directo</string>
+    <string name="badge_in">En %1$s</string>
+    <string name="badge_started">Desde el inicio −%1$s</string>
+    <string name="badge_at">A las %1$s</string>
+    <string name="home_starts_at">Empieza %1$s a las %2$s en %3$s</string>
+    <string name="home_loading">Leyendo la guía de tus fuentes…</string>
+    <string name="home_nothing">Ahora no hay nada en la guía de tus fuentes</string>
+    <string name="hint_card">Tarjeta</string>
+    <string name="hint_row">Fila</string>
+    <string name="hint_to_video">Volver a la tele</string>
+    <string name="hint_from_start">Desde el principio</string>
+    <string name="hint_long_live">mantener: en directo</string>
+    <string name="hint_when">Cuándo empieza</string>
+    <string name="hint_pick">Marcar</string>
 </resources>

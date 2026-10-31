@@ -286,4 +286,43 @@
     <string name="update_checking">Sprawdzam…</string>
     <string name="update_downloading">Pobieram aktualizację… %1$d%%</string>
     <string name="update_ready">Dostępna wersja %1$s: naciśnij OK, aby zaktualizować</string>
+
+    <!-- Home -->
+    <string name="menu_home">Strona główna</string>
+    <string name="row_home">Strona główna</string>
+    <string name="row_home_desc">Skąd rzędy biorą programy</string>
+    <string name="row_startup">Przy uruchomieniu</string>
+    <string name="row_startup_desc">Co otwierać po uruchomieniu aplikacji</string>
+    <string name="startup_last">Ostatni kanał</string>
+    <string name="home_sheet_sub">Rzędy nad obrazem: co leci teraz, co właśnie się zaczęło i co zaraz się zacznie</string>
+    <string name="home_sources">Źródła</string>
+    <string name="home_sources_desc">Grupy i kanały, z których pochodzą programy</string>
+    <string name="sources_sub">OK lub ▶: wybierz kanały grupy</string>
+    <string name="src_all">wszystkie %1$d</string>
+    <string name="src_none">nie wybrano</string>
+    <string name="group_all_channels">Wszystkie kanały grupy</string>
+    <string name="group_all_desc">Także te, które dojdą do grupy później</string>
+    <string name="home_group_sub">Zaznacz kanały na stronę główną</string>
+    <string name="home_now">Teraz na antenie</string>
+    <string name="home_started">Właśnie się zaczęło: oglądaj od początku</string>
+    <string name="home_soon">Za chwilę</string>
+    <string name="home_films">Filmy</string>
+    <string name="home_series">Seriale</string>
+    <string name="home_setup_title">Co pokazywać na stronie głównej?</string>
+    <string name="home_setup_desc">Wybierz grupy lub pojedyncze kanały: pojawi się tu to, co leci teraz, co właśnie się zaczęło i co zaraz się zacznie.</string>
+    <string name="home_setup_button">Wybierz źródła</string>
+    <string name="badge_live">Na żywo</string>
+    <string name="badge_in">Za %1$s</string>
+    <string name="badge_started">Od początku −%1$s</string>
+    <string name="badge_at">O %1$s</string>
+    <string name="home_starts_at">Zacznie się %1$s o %2$s na %3$s</string>
+    <string name="home_loading">Wczytuję program ze źródeł…</string>
+    <string name="home_nothing">W programie źródeł nic teraz nie ma</string>
+    <string name="hint_card">Karta</string>
+    <string name="hint_row">Rząd</string>
+    <string name="hint_to_video">Do oglądania</string>
+    <string name="hint_from_start">Od początku</string>
+    <string name="hint_long_live">przytrzymaj: na żywo</string>
+    <string name="hint_when">Kiedy się zacznie</string>
+    <string name="hint_pick">Zaznacz</string>
 </resources>

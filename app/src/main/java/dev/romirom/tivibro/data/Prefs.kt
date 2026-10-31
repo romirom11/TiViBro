@@ -32,6 +32,11 @@ class Prefs(ctx: Context) {
         get() = sp.getInt("uiScale", 100)
         set(v) = sp.edit().putInt("uiScale", v).apply()
 
+    /** Settings → «При запуску»: open Home instead of going straight to the last channel. Global. */
+    var startHome: Boolean
+        get() = sp.getBoolean("startHome", false)
+        set(v) = sp.edit().putBoolean("startHome", v).apply()
+
     var guideAt: Long
         get() = sp.getLong("guideAt", 0)
         set(v) = sp.edit().putLong("guideAt", v).apply()
@@ -63,11 +68,22 @@ class Prefs(ctx: Context) {
         get() = sp.getStringSet(k("hiddenCh"), null)?.toSet() ?: emptySet()
         set(v) = sp.edit().putStringSet(k("hiddenCh"), v).apply()
 
+    // ---- Home sources («Головна сторінка» → «Джерела»): whole groups by name, and single channels of the others
+
+    var homeGroups: Set<String>
+        get() = sp.getStringSet(k("homeAll"), null)?.toSet() ?: emptySet()
+        set(v) = sp.edit().putStringSet(k("homeAll"), v).apply()
+
+    fun homeChannels(group: String): Set<String> = sp.getStringSet(k("homeSome:$group"), null)?.toSet() ?: emptySet()
+    fun setHomeChannels(group: String, v: Set<String>) {
+        if (v.isEmpty()) sp.edit().remove(k("homeSome:$group")).apply() else sp.edit().putStringSet(k("homeSome:$group"), v).apply()
+    }
+
     /** Drops every per-playlist setting of [id] (the playlist was deleted). */
     fun forget(id: String) {
         val e = sp.edit()
         if (id == PlaylistRepo.LEGACY_ID) {
-            for (key in sp.all.keys) if (key in LEGACY_KEYS || key.startsWith("gShow:")) e.remove(key)
+            for (key in sp.all.keys) if (key in LEGACY_KEYS || key.startsWith("gShow:") || key.startsWith("homeSome:")) e.remove(key)
         } else {
             for (key in sp.all.keys) if (key.startsWith("$id/")) e.remove(key)
         }
@@ -75,6 +91,6 @@ class Prefs(ctx: Context) {
     }
 
     private companion object {
-        val LEGACY_KEYS = setOf("fav", "last", "lastGroup", "hiddenCh", "recent")
+        val LEGACY_KEYS = setOf("fav", "last", "lastGroup", "hiddenCh", "recent", "homeAll")
     }
 }

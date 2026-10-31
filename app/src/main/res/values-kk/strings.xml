@@ -280,4 +280,43 @@
     <string name="update_checking">Тексерілуде…</string>
     <string name="update_downloading">Жаңарту жүктелуде… %1$d%%</string>
     <string name="update_ready">%1$s нұсқасы бар: жаңарту үшін OK басыңыз</string>
+
+    <!-- Home -->
+    <string name="menu_home">Басты бет</string>
+    <string name="row_home">Басты бет</string>
+    <string name="row_home_desc">Қатарлар хабарларды қайдан алады</string>
+    <string name="row_startup">Іске қосқанда</string>
+    <string name="row_startup_desc">Қолданбаны ашқанда не көрсетіледі</string>
+    <string name="startup_last">Соңғы арна</string>
+    <string name="home_sheet_sub">Бейне үстіндегі қатарлар: қазір не жүріп жатыр, не жаңа басталды, не жақында басталады</string>
+    <string name="home_sources">Дереккөздер</string>
+    <string name="home_sources_desc">Хабарлар алынатын топтар мен арналар</string>
+    <string name="sources_sub">OK немесе ▶: топ арналарын таңдау</string>
+    <string name="src_all">барлығы %1$d</string>
+    <string name="src_none">таңдалмаған</string>
+    <string name="group_all_channels">Топтың барлық арналары</string>
+    <string name="group_all_desc">Кейін топқа қосылатындарымен бірге</string>
+    <string name="home_group_sub">Басты бетке арналарды белгілеңіз</string>
+    <string name="home_now">Қазір эфирде</string>
+    <string name="home_started">Жаңа басталды, басынан көріңіз</string>
+    <string name="home_soon">Жақында</string>
+    <string name="home_films">Фильмдер</string>
+    <string name="home_series">Сериалдар</string>
+    <string name="home_setup_title">Басты бетте не көрсетілсін?</string>
+    <string name="home_setup_desc">Топтарды немесе жеке арналарды таңдаңыз: мұнда қазір жүріп жатқан, жаңа басталған және жақында басталатын хабарлар шығады.</string>
+    <string name="home_setup_button">Дереккөздерді баптау</string>
+    <string name="badge_live">Эфир</string>
+    <string name="badge_in">%1$s кейін</string>
+    <string name="badge_started">Басынан −%1$s</string>
+    <string name="badge_at">Сағат %1$s</string>
+    <string name="home_starts_at">%3$s арнасында %1$s сағат %2$s басталады</string>
+    <string name="home_loading">Дереккөздер бағдарламасын жинап жатырмын…</string>
+    <string name="home_nothing">Дереккөздер бағдарламасында қазір ештеңе жоқ</string>
+    <string name="hint_card">Карточка</string>
+    <string name="hint_row">Қатар</string>
+    <string name="hint_to_video">Көруге оралу</string>
+    <string name="hint_from_start">Басынан</string>
+    <string name="hint_long_live">ұзақ: тікелей</string>
+    <string name="hint_when">Қашан басталады</string>
+    <string name="hint_pick">Белгілеу</string>
 </resources>

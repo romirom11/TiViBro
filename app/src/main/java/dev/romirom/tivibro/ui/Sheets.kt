@@ -43,6 +43,7 @@ import dev.romirom.tivibro.AppViewModel
 import dev.romirom.tivibro.CtxItem
 import dev.romirom.tivibro.GuideRow
 import dev.romirom.tivibro.GuideSource
+import dev.romirom.tivibro.HomeSetting
 import dev.romirom.tivibro.LinkPurpose
 import dev.romirom.tivibro.MarkAction
 import dev.romirom.tivibro.MenuItem
@@ -101,6 +102,7 @@ fun Menu(vm: AppViewModel) {
                 Plate(foc, Modifier.padding(bottom = 6.px).fillMaxWidth().height(78.px), quiet = !top && i == vm.menuIdx, lift = 1.025f) {
                     Row(Modifier.fillMaxSize().padding(horizontal = 26.px), verticalAlignment = Alignment.CenterVertically) {
                         val (glyph, title) = when (m) {
+                            MenuItem.HOME -> "⌂" to str(R.string.menu_home)
                             MenuItem.GROUPS -> "☰" to str(R.string.menu_groups)
                             MenuItem.GUIDE -> "↻" to str(R.string.menu_guide)
                             MenuItem.SETTINGS -> "⚙︎" to str(R.string.menu_settings)
@@ -139,6 +141,9 @@ fun SideSheet(vm: AppViewModel, sheet: Sheet) {
                     Sheet.GUIDE -> GuideSheet(vm)
                     Sheet.LINK -> LinkSheet(vm)
                     Sheet.LANGUAGE -> LanguageSheet(vm)
+                    Sheet.HOME -> HomeSheet(vm)
+                    Sheet.HOME_SOURCES -> HomeSourcesSheet(vm)
+                    Sheet.HOME_GROUP -> HomeGroupSheet(vm)
                     Sheet.MENU -> Unit
                 }
             }
@@ -233,6 +238,14 @@ private fun SettingsSheet(vm: AppViewModel) {
                 SheetRow(foc, str(R.string.row_guide), guideStatus(vm)) {
                     Value(sourceLabel(vm.playlist?.guideMode ?: GuideMode.AUTO), foc)
                 }
+            }
+            SettingsRow.HOME -> {
+                Section(str(R.string.menu_home))
+                SheetRow(foc, str(R.string.row_home), str(R.string.row_home_desc)) { Value(homeSourcesValue(vm), foc) }
+            }
+            SettingsRow.STARTUP -> SheetRow(foc, str(R.string.row_startup), str(R.string.row_startup_desc)) {
+                val v = str(if (vm.startHome) R.string.menu_home else R.string.startup_last)
+                Value(if (foc) "◀  $v  ▶" else v, foc)
             }
             SettingsRow.LANGUAGE -> {
                 Section(str(R.string.section_app))
@@ -523,4 +536,91 @@ private fun LanguageSheet(vm: AppViewModel) {
         val foc = vm.rowIdx == i
         SheetRow(foc, langLabel(l), null) { Radio(cur == l, foc) }
     }
+}
+
+// ---------------------------------------------------------------- Home page: sources
+
+/** «140 каналів», or «не вибрано». */
+private fun homeSourcesValue(vm: AppViewModel): String {
+    vm.cfgVersion
+    val n = vm.allGroups.sumOf(vm::homePicked)
+    return if (n == 0) str(R.string.src_none) else channelsWord(n)
+}
+
+@Composable
+private fun HomeSheet(vm: AppViewModel) {
+    vm.cfgVersion
+    SheetTitle(str(R.string.row_home), str(R.string.home_sheet_sub))
+    SheetList(vm.rowIdx, HomeSetting.entries.size) { i ->
+        vm.cfgVersion
+        val foc = vm.rowIdx == i
+        when (HomeSetting.entries[i]) {
+            HomeSetting.SOURCES -> SheetRow(foc, str(R.string.home_sources), str(R.string.home_sources_desc)) { Value(homeSourcesValue(vm), foc) }
+        }
+    }
+}
+
+/** «усі 120», «5 з 87», «не вибрано». */
+private fun pickedLabel(picked: Int, total: Int) = when (picked) {
+    0 -> str(R.string.src_none)
+    total -> str(R.string.src_all, total)
+    else -> str(R.string.x_of_y, picked, total)
+}
+
+@Composable
+private fun HomeSourcesSheet(vm: AppViewModel) {
+    vm.cfgVersion
+    SheetTitle(str(R.string.home_sources), str(R.string.sources_sub))
+    val state = rememberLazyListState()
+    val stage = LocalStage.current
+    LaunchedEffect(vm.rowIdx, stage) { state.scrollNear(vm.rowIdx, 4) }
+    LazyColumn(Modifier.fadeEdges(), state = state, contentPadding = PaddingValues(vertical = 6.px)) {
+        itemsIndexed(vm.allGroups, key = { _, g -> g.id }) { i, g ->
+            vm.cfgVersion
+            val foc = i == vm.rowIdx
+            val n = vm.homePicked(g)
+            SheetRow(foc, groupTitle(g.name), pickedLabel(n, g.channels.size), dim = n == 0) {
+                Switch(n > 0, onPlate = foc, modifier = Modifier.padding(start = 24.px))
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeGroupSheet(vm: AppViewModel) {
+    vm.cfgVersion
+    val g = vm.homeGroup ?: return
+    SheetTitle(groupTitle(g.name), str(R.string.home_group_sub) + " · " + pickedLabel(vm.homePicked(g), g.channels.size))
+    val state = rememberLazyListState()
+    val stage = LocalStage.current
+    LaunchedEffect(vm.rowIdx, stage) { state.scrollNear(vm.rowIdx, 4) }
+    LazyColumn(Modifier.fadeEdges(), state = state, contentPadding = PaddingValues(vertical = 6.px)) {
+        item(key = "all") {
+            vm.cfgVersion
+            val foc = vm.rowIdx == 0
+            SheetRow(foc, str(R.string.group_all_channels), str(R.string.group_all_desc)) { Check(vm.homePicked(g) == g.channels.size, foc) }
+        }
+        itemsIndexed(g.channels, key = { _, c -> c.id }) { i, c ->
+            vm.cfgVersion
+            val foc = vm.rowIdx == i + 1
+            Plate(foc, Modifier.padding(start = 36.px, end = 36.px, bottom = 4.px).fillMaxWidth().height(88.px), lift = 1.02f) {
+                Row(Modifier.fillMaxSize().padding(horizontal = 28.px), verticalAlignment = Alignment.CenterVertically) {
+                    Logo(c, 52)
+                    T("${c.num}  ${c.name}", 26, if (foc) Tok.OnPlate else Tok.T1, FontWeight.Medium, Modifier.weight(1f).padding(start = 22.px))
+                    Check(vm.isHomeChannel(g, c), foc)
+                }
+            }
+        }
+    }
+}
+
+/** A tick box: filled with ✓ when on. */
+@Composable
+private fun Check(on: Boolean, foc: Boolean) {
+    val c = if (foc) Tok.OnPlate else Tok.T1
+    Box(
+        Modifier.padding(start = 24.px).size(34.px)
+            .then(if (on) Modifier.background(if (foc) Tok.OnPlate else Tok.Ok, RoundedCornerShape(8.px)) else Modifier.border(3.px, if (foc) Tok.OnPlate2 else Tok.T3, RoundedCornerShape(8.px))),
+        contentAlignment = Alignment.Center,
+    ) { if (on) T("✓", 22, if (foc) Tok.Plate else Color.White, FontWeight.Bold) }
 }

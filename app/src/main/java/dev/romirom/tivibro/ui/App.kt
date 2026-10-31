@@ -137,6 +137,7 @@ private fun BoxScope.Overlays(vm: AppViewModel) {
     AnimatedVisibility(vm.layer == Layer.NONE && vm.banner, Modifier.align(Alignment.BottomCenter), enter = fadeIn() + slideInVertically { it / 6 }, exit = fadeOut()) { Banner(vm) }
     AnimatedVisibility(vm.layer == Layer.NONE && vm.osd, Modifier.align(Alignment.BottomCenter), enter = fadeIn() + slideInVertically { it / 6 }, exit = fadeOut()) { Osd(vm) }
     if (vm.layer == Layer.LIST) ListOverlay(vm)
+    if (vm.layer == Layer.HOME) HomeOverlay(vm)
     if (Sheet.MENU in vm.sheets) Menu(vm)
     vm.sheets.lastOrNull { it != Sheet.MENU }?.let { SideSheet(vm, it) }
     vm.ctx?.let { ChannelMenu(vm, it) }
@@ -325,7 +326,7 @@ private fun Hints(vm: AppViewModel, modifier: Modifier) {
     val items: List<Hint> = when {
         vm.ctx != null || vm.markCtx != null -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_apply), h("BACK", R.string.hint_close))
         vm.sheets.isNotEmpty() -> when (vm.sheets.last()) {
-            Sheet.MENU -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_open), h("▶", R.string.hint_to_channels), h("BACK", R.string.hint_close))
+            Sheet.MENU -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_open), h("▶", R.string.hint_to_channels), h("BACK", R.string.menu_home))
             Sheet.SETTINGS -> if (dev.romirom.tivibro.SettingsRow.entries.getOrNull(vm.rowIdx) == dev.romirom.tivibro.SettingsRow.SCALE)
                 listOf(h("▲▼", R.string.hint_choose), h("◀▶", R.string.hint_change), h("OK", R.string.hint_change), h("BACK", R.string.hint_back))
             else listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_open), h("BACK", R.string.hint_back))
@@ -336,6 +337,24 @@ private fun Hints(vm: AppViewModel, modifier: Modifier) {
             Sheet.PLAYLIST -> listOf(h("▲▼", R.string.hint_action), h("OK", R.string.hint_run), h("BACK", R.string.hint_back))
             Sheet.GUIDE, Sheet.LANGUAGE -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_apply), h("BACK", R.string.hint_back))
             Sheet.LINK -> listOf(h("BACK", R.string.hint_cancel))
+            Sheet.HOME -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_open), h("BACK", R.string.hint_back))
+            Sheet.HOME_SOURCES -> listOf(h("▲▼", R.string.hint_group), h("OK", R.string.hint_channels), h("BACK", R.string.hint_done))
+            Sheet.HOME_GROUP -> listOf(h("▲▼", R.string.hint_channel), h("OK", R.string.hint_pick), h("BACK", R.string.hint_back))
+        }
+        vm.layer == Layer.HOME -> {
+            val c = vm.homeCard()
+            when {
+                c == null -> listOf(h("▲▼", R.string.hint_row), h("OK", R.string.hint_open), h("BACK", R.string.hint_to_video))
+                c.mark != null -> listOf(h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_resume), h("OK", R.string.hint_long_actions), h("BACK", R.string.hint_to_video))
+                c.kind == dev.romirom.tivibro.home.HomeKind.STARTED && c.p.isNow() && vm.canArchive(c.ch) ->
+                    listOf(h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_from_start), h("OK", R.string.hint_long_live), h("BACK", R.string.hint_to_video))
+                c.p.isNow() -> listOfNotNull(
+                    h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_watch),
+                    h("OK", R.string.hint_long_restart).takeIf { vm.canArchive(c.ch) }, h("BACK", R.string.hint_to_video),
+                )
+                c.p.isPast() -> listOf(h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_watch), h("BACK", R.string.hint_to_video))
+                else -> listOf(h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_when), h("OK", R.string.hint_long_channel_menu), h("BACK", R.string.hint_to_video))
+            }
         }
         vm.layer == Layer.LIST -> when (vm.focus) {
             Focus.GROUPS -> listOf(h("▲▼", R.string.hint_group), h("▶", R.string.hint_channels), h("BACK", R.string.hint_menu))
@@ -377,7 +396,7 @@ private fun Hints(vm: AppViewModel, modifier: Modifier) {
  *  arrows and BACK (0) go last. */
 private class Hint(val key: String, val label: String, val drop: Int)
 
-private val LONG_HINTS = setOf(R.string.hint_long_mark, R.string.hint_long_restart, R.string.hint_long_actions, R.string.hint_long_channel_menu)
+private val LONG_HINTS = setOf(R.string.hint_long_mark, R.string.hint_long_restart, R.string.hint_long_actions, R.string.hint_long_channel_menu, R.string.hint_long_live)
 
 /** The hints in one line: what doesn't fit is left out, least needed first, instead of running off the screen. */
 @Composable

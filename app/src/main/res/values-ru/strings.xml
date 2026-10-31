@@ -286,4 +286,43 @@
     <string name="update_checking">Проверяю…</string>
     <string name="update_downloading">Загружаю обновление… %1$d%%</string>
     <string name="update_ready">Доступна версия %1$s: нажмите OK, чтобы обновить</string>
+
+    <!-- Home -->
+    <string name="menu_home">Главная</string>
+    <string name="row_home">Главная страница</string>
+    <string name="row_home_desc">Откуда ряды берут передачи</string>
+    <string name="row_startup">При запуске</string>
+    <string name="row_startup_desc">Что открывать при запуске приложения</string>
+    <string name="startup_last">Последний канал</string>
+    <string name="home_sheet_sub">Ряды поверх видео: что идёт сейчас, только началось и скоро начнётся</string>
+    <string name="home_sources">Источники</string>
+    <string name="home_sources_desc">Группы и каналы, откуда берутся передачи</string>
+    <string name="sources_sub">OK или ▶: выбрать каналы группы</string>
+    <string name="src_all">все %1$d</string>
+    <string name="src_none">не выбрано</string>
+    <string name="group_all_channels">Все каналы группы</string>
+    <string name="group_all_desc">Вместе с теми, что появятся в группе позже</string>
+    <string name="home_group_sub">Отметьте каналы для главной страницы</string>
+    <string name="home_now">Сейчас в эфире</string>
+    <string name="home_started">Только началось, смотри с начала</string>
+    <string name="home_soon">Скоро</string>
+    <string name="home_films">Фильмы</string>
+    <string name="home_series">Сериалы</string>
+    <string name="home_setup_title">Что показывать на главной?</string>
+    <string name="home_setup_desc">Выберите группы или отдельные каналы: здесь появятся передачи, которые идут сейчас, только начались или скоро начнутся.</string>
+    <string name="home_setup_button">Настроить источники</string>
+    <string name="badge_live">Эфир</string>
+    <string name="badge_in">Через %1$s</string>
+    <string name="badge_started">С начала −%1$s</string>
+    <string name="badge_at">В %1$s</string>
+    <string name="home_starts_at">Начнётся %1$s в %2$s на %3$s</string>
+    <string name="home_loading">Собираю программу из источников…</string>
+    <string name="home_nothing">В программе источников сейчас ничего нет</string>
+    <string name="hint_card">Карточка</string>
+    <string name="hint_row">Ряд</string>
+    <string name="hint_to_video">К просмотру</string>
+    <string name="hint_from_start">С начала</string>
+    <string name="hint_long_live">долго: в эфире</string>
+    <string name="hint_when">Когда начнётся</string>
+    <string name="hint_pick">Отметить</string>
 </resources>
