@@ -1466,6 +1466,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val app = getApplication<Application>()
         if (L10n.lang(app) == l) return
         L10n.setLang(app, l)
+        status = null // already formatted in the old language; the next progress update writes it in the new one
         rebuildGroups()
         cfgVersion++
         onRecreate()

@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- common -->
+    <string name="loading">Жүктелуде…</string>
+    <string name="loading_list">Жүктелуде…</string>
+    <string name="playlist_fallback">Плейлист</string>
+    <string name="dur_min">%1$d мин</string>
+    <string name="dur_hours">%1$d сағ</string>
+    <string name="dur_hours_min">%1$d сағ %2$d мин</string>
+    <string name="today">Бүгін</string>
+    <string name="yesterday">Кеше</string>
+    <string name="tomorrow">Ертең</string>
+    <!-- «жм, 30 қаз»: %1$s day of week, %2$d day of month, %3$s month -->
+    <string name="day_fmt">%1$s, %2$d %3$s</string>
+    <string name="date_fmt">%1$d %2$s</string>
+    <string-array name="dow_short">
+        <item>жс</item><item>дс</item><item>сс</item><item>ср</item><item>бс</item><item>жм</item><item>сб</item>
+    </string-array>
+    <string-array name="mon_short">
+        <item>қаң</item><item>ақп</item><item>нау</item><item>сәу</item><item>мам</item><item>мау</item>
+        <item>шіл</item><item>там</item><item>қыр</item><item>қаз</item><item>қар</item><item>жел</item>
+    </string-array>
+    <plurals name="channels">
+        <item quantity="one">%d арна</item>
+        <item quantity="other">%d арна</item>
+    </plurals>
+    <plurals name="days">
+        <item quantity="one">%d күн</item>
+        <item quantity="other">%d күн</item>
+    </plurals>
+    <plurals name="programmes">
+        <item quantity="one">%d хабар</item>
+        <item quantity="other">%d хабар</item>
+    </plurals>
+
+    <!-- groups -->
+    <string name="group_cont">Көруді жалғастыру</string>
+    <string name="group_fav">Таңдаулылар</string>
+    <string name="group_recent">Соңғылар</string>
+    <string name="group_all">Барлық арналар</string>
+    <string name="group_other">Басқа</string>
+    <string name="group_empty">Бос</string>
+    <string name="fav_empty">Арнада OK басып тұрыңыз → «Таңдаулыларға қосу»</string>
+
+    <!-- toasts and status -->
+    <string name="err_play">Ойнату мүмкін емес: %1$s</string>
+    <string name="loading_channels">Арналар жүктелуде…</string>
+    <string name="playlist_load_failed">Плейлист жүктелмеді: %1$s</string>
+    <string name="playlist_exists">Бұл плейлист бұрыннан бар · %1$s</string>
+    <string name="playlist_added">Плейлист қосылды · %1$s</string>
+    <string name="playlist_already_open">Бұл плейлист ашық тұр</string>
+    <string name="playlist_switched">Плейлист: %1$s</string>
+    <string name="playlist_refreshed">Плейлист жаңартылды · %1$s</string>
+    <string name="refresh_failed">Жаңарту мүмкін болмады: %1$s</string>
+    <string name="delete_confirm">«%1$s» жою үшін OK қайта басыңыз</string>
+    <string name="playlist_deleted">«%1$s» жойылды</string>
+    <string name="renamed">Жаңа атауы: %1$s</string>
+    <string name="guide_custom_set">Телебағдарлама: өз сілтемеңіз</string>
+    <string name="guide_custom_again">Телебағдарлама: өз сілтемеңіз · өзгерту үшін OK қайта басыңыз</string>
+    <string name="guide_no_tvg">Плейлистте телебағдарлама сілтемесі жоқ (url-tvg)</string>
+    <string name="guide_auto_set">Телебағдарлама: автоматты</string>
+    <string name="guide_playlist_set">Телебағдарлама: плейлистен</string>
+    <string name="guide_busy">Телебағдарлама қазір жаңартылып жатыр</string>
+    <string name="guide_updating">Телебағдарлама жаңартылуда</string>
+    <string name="guide_failed">Телебағдарлама жаңартылмады: %1$s</string>
+    <string name="guide_up_to_date">Телебағдарлама өзекті</string>
+    <string name="guide_updated">Телебағдарлама жаңартылды · %1$s</string>
+    <string name="guide_dl_today">Телебағдарлама: бүгінгісі жүктелуде… %1$d%%</string>
+    <string name="guide_dl_more">Телебағдарлама: бүгінгісі дайын, тағы %1$s жүктелуде… %2$d%%</string>
+    <string name="guide_dl_mb">Телебағдарлама: жүктелуде… %1$d МБ</string>
+    <string name="guide_not_loaded">Телебағдарлама әлі жүктелген жоқ</string>
+    <string name="guide_loading">Бағдарлама әлі жүктелуде</string>
+    <string name="no_guide_for_channel">Бұл арнаның бағдарламасы жоқ</string>
+    <string name="no_archive">Бұл арнада мұрағат жоқ</string>
+    <string name="back_live">Тікелей эфирге оралдық</string>
+    <string name="from_start_toast">Басынан · %1$s</string>
+    <string name="no_other_audio">Басқа дыбыс жолдары жоқ</string>
+    <string name="audio_track">Дыбыс: %1$s (%2$d / %3$d)</string>
+    <string name="audio_track_n">%1$d-жол</string>
+    <string name="out_of_archive">Бұл хабар мұрағатта енді жоқ</string>
+    <string name="resuming">%1$s тұсынан жалғастырамыз · %2$s</string>
+    <string name="not_started">Хабар әлі басталған жоқ</string>
+    <string name="fav_removed">%1$s таңдаулылардан алынды</string>
+    <string name="fav_added">%1$s → Таңдаулылар</string>
+    <string name="channel_back">%1$s қайтадан тізімде</string>
+    <string name="channel_hidden">%1$s жасырылды · баптаулардан қайтаруға болады</string>
+    <string name="mark_unwatched_toast">«Көрілді» белгісі алынды</string>
+    <string name="mark_forgotten_toast">«Көруді жалғастыру» тізімінен алынды</string>
+    <string name="mark_done_toast">Көрілді деп белгіленді: %1$s</string>
+    <string name="no_such_number">Бұл нөмірмен арна жоқ</string>
+    <string name="no_channel">арна жоқ</string>
+    <string name="err_playlist_deleted">плейлист жойылды</string>
+    <string name="err_playlist_empty">плейлист бос немесе M3U емес</string>
+
+    <!-- playback -->
+    <string name="no_programme">Бағдарлама жоқ</string>
+    <string name="remaining">%1$s қалды</string>
+    <string name="next_prog">Келесі %1$s · %2$s</string>
+    <string name="archive_days">Мұрағат %1$d күн</string>
+    <string name="live">ТІКЕЛЕЙ</string>
+    <string name="paused">❚❚ Кідіріс</string>
+    <string name="behind_live">Эфирден −%1$s</string>
+    <string name="archive">Мұрағат</string>
+    <string name="osd_restart">⟲  Басынан</string>
+    <string name="osd_prev">⏮  Алдыңғы</string>
+    <string name="osd_next">⏭  Келесі</string>
+    <string name="osd_live">●  Тікелей</string>
+    <string name="osd_audio">Дыбыс</string>
+
+    <!-- hints -->
+    <string name="key_ok_long">OK ұзақ</string>
+    <string name="hint_choose">Таңдау</string>
+    <string name="hint_apply">Қолдану</string>
+    <string name="hint_close">Жабу</string>
+    <string name="hint_open">Ашу</string>
+    <string name="hint_to_channels">Арналарға</string>
+    <string name="hint_change">Өзгерту</string>
+    <string name="hint_back">Артқа</string>
+    <string name="hint_group">Топ</string>
+    <string name="hint_toggle_group">Көрсету / жасыру</string>
+    <string name="hint_done">Дайын</string>
+    <string name="hint_channel">Арна</string>
+    <string name="hint_unhide">Тізімге қайтару</string>
+    <string name="hint_playlist">Плейлист</string>
+    <string name="hint_action">Әрекет</string>
+    <string name="hint_run">Орындау</string>
+    <string name="hint_cancel">Бас тарту</string>
+    <string name="hint_channels">Арналар</string>
+    <string name="hint_menu">Мәзір</string>
+    <string name="hint_day">Күн</string>
+    <string name="hint_progs">Хабарлар</string>
+    <string name="hint_programme">Хабар</string>
+    <string name="hint_watch">Көру</string>
+    <string name="hint_long_mark">ұзақ: көру әрекеттері</string>
+    <string name="hint_long_restart">ұзақ: басынан</string>
+    <string name="hint_days">Күндер</string>
+    <string name="hint_resume">Жалғастыру</string>
+    <string name="hint_long_actions">ұзақ: әрекеттер</string>
+    <string name="hint_channel_guide">Арна бағдарламасы</string>
+    <string name="hint_groups">Топтар</string>
+    <string name="hint_guide">Бағдарлама</string>
+    <string name="hint_long_channel_menu">ұзақ: арна мәзірі</string>
+    <string name="hint_seek">Айналдыру</string>
+    <string name="hint_play">Ойнату</string>
+    <string name="hint_pause">Кідірту</string>
+    <string name="hint_buttons">Түймелер</string>
+    <string name="hint_hide">Жасыру</string>
+    <string name="hint_timeline">Шкала</string>
+    <string name="hint_list">Тізім</string>
+    <string name="hint_controls">Басқару</string>
+
+    <!-- first run -->
+    <string name="setup_title">Плейлистіңізді қосайық</string>
+    <string name="setup_steps">1. QR кодты телефонмен сканерлеңіз (сол Wi-Fi желісінде).\n2. Провайдердің жеке кабинетінен M3U плейлист сілтемесін көшіріңіз.\n3. Оны бетке қойып, «Жіберу» түймесін басыңыз.</string>
+    <string name="or_open">Немесе ашыңыз: %1$s</string>
+    <string name="no_network">Желі жоқ: теледидарды Wi-Fi-ға қосыңыз</string>
+
+    <!-- list and programme view -->
+    <string name="days_title">Күндер</string>
+    <string name="soon">Жақында</string>
+    <string name="out_archive">Мұрағатта жоқ</string>
+    <string name="watched_pill">✓ Көрілді</string>
+    <string name="watched_of">%2$s ішінен %1$s көрілді</string>
+    <string name="no_desc">Сипаттама жоқ</string>
+    <string name="act_live">Тікелей эфир</string>
+    <string name="act_from_start_prog">Хабар басынан</string>
+    <string name="act_resume">%1$s тұсынан жалғастыру</string>
+    <string name="act_mark_menu">Көру әрекеттері</string>
+    <string name="act_rewatch">Қайта көру</string>
+    <string name="act_watch">Көру</string>
+
+    <!-- menu -->
+    <string name="menu_summary">%1$s · көрсетілген топтар: %2$d / %3$d</string>
+    <string name="menu_groups">Арна топтары</string>
+    <string name="menu_guide">Бағдарламаны жаңарту</string>
+    <string name="menu_settings">Баптаулар</string>
+    <string name="menu_exit">Шығу</string>
+    <string name="menu_update">%1$s нұсқасына жаңарту</string>
+
+    <!-- settings -->
+    <string name="settings_title">Баптаулар</string>
+    <string name="settings_sub">Плейлистер, көрсетілетін топтар мен арналар, телебағдарлама, тіл</string>
+    <string name="section_playlist">Плейлист</string>
+    <string name="row_playlists">Плейлистер</string>
+    <string name="now_playlist">Қазір: %1$s</string>
+    <string name="section_channels">Арналар</string>
+    <string name="row_groups_desc">Тізімде қай топтар көрінеді</string>
+    <string name="x_of_y">%1$d / %2$d</string>
+    <string name="row_hidden">Жасырын арналар</string>
+    <string name="row_hidden_desc">Жасырған арналарды қайтару</string>
+    <string name="none">жоқ</string>
+    <string name="section_guide">Телебағдарлама</string>
+    <string name="row_guide">Телебағдарлама</string>
+    <string name="section_app">Қолданба</string>
+    <string name="row_language">Тіл</string>
+    <string name="lang_system">Жүйедегідей</string>
+    <string name="language_sub">TiViBro интерфейсінің тілі</string>
+    <string name="row_scale">Интерфейс өлшемі</string>
+    <string name="row_scale_desc">Мәтін, тізімдер мен панельдер өлшемі</string>
+    <string name="scale_value">%1$d%%</string>
+    <string name="row_update">Жаңартуларды тексеру</string>
+    <string name="version">Нұсқа %1$s</string>
+
+    <string name="groups_sub">OK: топты көрсету немесе жасыру. Жасырын топтар тізімде де, арна ауыстырғанда да көрінбейді</string>
+    <string name="hidden_suffix">\u0020· жасырын</string>
+    <string name="hidden_sub_empty">Арнада OK басып тұрыңыз → «Арнаны жасыру»</string>
+    <string name="hidden_sub">OK: арнаны тізімге қайтару</string>
+    <string name="hidden_none">Жасырын арналар жоқ</string>
+    <string name="show">Көрсету</string>
+
+    <!-- context menus -->
+    <string name="ctx_channel">Арна</string>
+    <string name="fav_remove">Таңдаулылардан алу</string>
+    <string name="fav_add">Таңдаулыларға қосу</string>
+    <string name="ch_show">Арнаны көрсету</string>
+    <string name="ch_hide">Арнаны жасыру</string>
+    <string name="mark_from_start">Басынан</string>
+    <string name="mark_unwatch">Көрілмеген деп белгілеу</string>
+    <string name="mark_forget">«Көруді жалғастыру» тізімінен алу</string>
+    <string name="mark_watched">Көрілді деп белгілеу</string>
+
+    <!-- playlists -->
+    <string name="updated_at">жаңартылды: %1$s, %2$s</string>
+    <string name="not_loaded">әлі жүктелмеген</string>
+    <string name="playlists_sub">OK: ашу, жаңарту, атын өзгерту немесе жою. Әр плейлистің өз таңдаулылары мен жасырын арналары бар</string>
+    <string name="playlist_open_mark">✓ Ашық</string>
+    <string name="add_playlist">＋  Плейлист қосу</string>
+    <string name="adding_playlist">Жаңа плейлист жүктелуде…</string>
+    <string name="add_playlist_desc">Сілтемені телефоннан QR код арқылы жіберіңіз</string>
+    <string name="open_suffix">\u0020· ашық</string>
+    <string name="pl_open_now">Қазір ашық</string>
+    <string name="pl_open">Ашу</string>
+    <string name="pl_open_desc">Осы плейлист арналарына ауысу</string>
+    <string name="pl_refresh">Жаңарту</string>
+    <string name="pl_refresh_desc">Арналар тізімін қайта жүктеу</string>
+    <string name="pl_rename">Атын өзгерту</string>
+    <string name="pl_rename_desc">Плейлистегі атауы: %1$s</string>
+    <string name="pl_delete">Жою</string>
+    <string name="pl_delete_desc">Таңдаулыларымен, жасырын арналарымен және бетбелгілерімен бірге</string>
+
+    <!-- guide source -->
+    <string name="src_auto">Автоматты</string>
+    <string name="src_playlist">Плейлистен</string>
+    <string name="src_custom">Өз сілтемеңіз</string>
+    <string name="guide_error">%1$s · қате: %2$s</string>
+    <string name="guide_never">%1$s · әлі жүктелмеген</string>
+    <string name="section_source">Дереккөз</string>
+    <string name="auto_epgteam">epg.team: жылдам, күн сайын бөліп жүктеледі</string>
+    <string name="auto_playlist">Плейлистен: %1$s</string>
+    <string name="tvg_desc">url-tvg ішіндегі XMLTV: %1$s</string>
+    <string name="no_tvg">Плейлистте бағдарлама сілтемесі жоқ</string>
+    <string name="custom_none">Сілтемені телефоннан жіберу</string>
+    <string name="section_update">Жаңарту</string>
+    <string name="refresh_now">Қазір жаңарту</string>
+
+    <!-- QR / LAN page -->
+    <string name="link_add_title">Плейлист қосу</string>
+    <string name="link_add_sub">QR кодты телефонмен сканерлеп (сол Wi-Fi желісінде), M3U плейлист сілтемесін қойыңыз</string>
+    <string name="link_guide_title">Өз телебағдарламаңыз</string>
+    <string name="link_guide_sub">QR кодты телефонмен сканерлеп, XMLTV сілтемесін қойыңыз (.xml немесе .xml.gz)</string>
+    <string name="link_rename_title">Плейлист атын өзгерту</string>
+    <string name="link_rename_sub">QR кодты телефонмен сканерлеп, жаңа атау енгізіңіз</string>
+    <string name="loading_playlist">Плейлист жүктелуде…</string>
+    <string name="page_playlist_title">Плейлист сілтемесі</string>
+    <string name="page_playlist_hint">Провайдердің жеке кабинетінен M3U плейлист сілтемесін көшіріп (tv.team үшін: Playlists → «Tivimate» → Copy), осында қойыңыз.</string>
+    <string name="page_guide_title">Телебағдарлама (XMLTV)</string>
+    <string name="page_guide_hint">XMLTV файлының сілтемесін қойыңыз (.xml немесе .xml.gz).</string>
+    <string name="page_name_title">Плейлист атауы</string>
+    <string name="page_name_hint">Плейлист тізімде осылай аталады.</string>
+    <string name="page_send">Теледидарға жіберу</string>
+    <string name="page_save">Сақтау</string>
+    <string name="page_empty">Өріс бос.</string>
+    <string name="page_not_link">Бұл сілтемеге ұқсамайды.</string>
+    <string name="page_done">Дайын. Теледидарға қараңыз.</string>
+    <string name="update_available">Жаңарту бар: %1$s</string>
+    <string name="update_latest">Сізде ең соңғы нұсқа</string>
+    <string name="update_check_failed">Жаңартуларды тексеру мүмкін болмады</string>
+    <string name="update_failed">Жаңарту сәтсіз аяқталды: %1$s</string>
+    <string name="update_allow">TiViBro-ға қолданба орнатуға рұқсат беріп, «Жаңарту» тармағын қайта таңдаңыз</string>
+    <string name="update_checking">Тексерілуде…</string>
+    <string name="update_downloading">Жаңарту жүктелуде… %1$d%%</string>
+    <string name="update_ready">%1$s нұсқасы бар: жаңарту үшін OK басыңыз</string>
+</resources>

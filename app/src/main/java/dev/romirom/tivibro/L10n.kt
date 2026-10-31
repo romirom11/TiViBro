@@ -24,10 +24,18 @@ object L10n {
         SYSTEM(null, null),
         UK("uk", "Українська"),
         EN("en", "English"),
+        RU("ru", "Русский"),
+        DE("de", "Deutsch"),
+        PL("pl", "Polski"),
+        ES("es", "Español"),
+        KK("kk", "Қазақша"),
     }
 
-    /** System languages without a translation of their own that read Ukrainian more easily than English. */
-    private val CLOSE_TO_UK = setOf("ru", "be")
+    /**
+     * System languages without a translation of their own, mapped to the supported one their speakers read most easily:
+     * Belarusian to Russian, which nearly every Belarusian reads fluently.
+     */
+    private val CLOSEST = mapOf("be" to "ru")
 
     private const val PREFS = "tivibro"
     private const val KEY = "lang"
@@ -49,10 +57,10 @@ object L10n {
     /** The locale strings are shown in right now. */
     val locale: Locale get() = res?.let { configLocale(it.resources.configuration) } ?: Locale.getDefault()
 
-    /** «Як у системі»: the system's language if supported (Ukrainian for Russian, Belarusian), English otherwise. */
+    /** «Як у системі»: the system's language if supported (Russian for Belarusian), English otherwise. */
     private fun systemLang(): Lang {
         val sys = configLocale(Resources.getSystem().configuration).language
-        val code = if (sys in CLOSE_TO_UK) "uk" else sys
+        val code = CLOSEST[sys] ?: sys
         return Lang.entries.firstOrNull { it.tag == code } ?: Lang.EN
     }
 

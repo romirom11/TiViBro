@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- common -->
+    <string name="loading">Ładowanie…</string>
+    <string name="loading_list">Ładuję…</string>
+    <string name="playlist_fallback">Playlista</string>
+    <string name="dur_min">%1$d min</string>
+    <string name="dur_hours">%1$d godz.</string>
+    <string name="dur_hours_min">%1$d godz. %2$d min</string>
+    <string name="today">Dziś</string>
+    <string name="yesterday">Wczoraj</string>
+    <string name="tomorrow">Jutro</string>
+    <!-- «pt, 30 paź»: %1$s day of week, %2$d day of month, %3$s month -->
+    <string name="day_fmt">%1$s, %2$d %3$s</string>
+    <string name="date_fmt">%1$d %2$s</string>
+    <string-array name="dow_short">
+        <item>nd</item><item>pn</item><item>wt</item><item>śr</item><item>czw</item><item>pt</item><item>sob</item>
+    </string-array>
+    <string-array name="mon_short">
+        <item>sty</item><item>lut</item><item>mar</item><item>kwi</item><item>maj</item><item>cze</item>
+        <item>lip</item><item>sie</item><item>wrz</item><item>paź</item><item>lis</item><item>gru</item>
+    </string-array>
+    <plurals name="channels">
+        <item quantity="one">%d kanał</item>
+        <item quantity="few">%d kanały</item>
+        <item quantity="many">%d kanałów</item>
+        <item quantity="other">%d kanału</item>
+    </plurals>
+    <plurals name="days">
+        <item quantity="one">%d dzień</item>
+        <item quantity="few">%d dni</item>
+        <item quantity="many">%d dni</item>
+        <item quantity="other">%d dnia</item>
+    </plurals>
+    <plurals name="programmes">
+        <item quantity="one">%d audycja</item>
+        <item quantity="few">%d audycje</item>
+        <item quantity="many">%d audycji</item>
+        <item quantity="other">%d audycji</item>
+    </plurals>
+
+    <!-- groups -->
+    <string name="group_cont">Oglądaj dalej</string>
+    <string name="group_fav">Ulubione</string>
+    <string name="group_recent">Ostatnie</string>
+    <string name="group_all">Wszystkie kanały</string>
+    <string name="group_other">Inne</string>
+    <string name="group_empty">Pusto</string>
+    <string name="fav_empty">Przytrzymaj OK na kanale → „Dodaj do ulubionych”</string>
+
+    <!-- toasts and status -->
+    <string name="err_play">Nie można odtworzyć: %1$s</string>
+    <string name="loading_channels">Ładuję kanały…</string>
+    <string name="playlist_load_failed">Nie udało się wczytać playlisty: %1$s</string>
+    <string name="playlist_exists">Ta playlista już jest · %1$s</string>
+    <string name="playlist_added">Dodano playlistę · %1$s</string>
+    <string name="playlist_already_open">Ta playlista jest już otwarta</string>
+    <string name="playlist_switched">Playlista: %1$s</string>
+    <string name="playlist_refreshed">Zaktualizowano playlistę · %1$s</string>
+    <string name="refresh_failed">Nie udało się zaktualizować: %1$s</string>
+    <string name="delete_confirm">Naciśnij OK jeszcze raz, aby usunąć „%1$s”</string>
+    <string name="playlist_deleted">Usunięto „%1$s”</string>
+    <string name="renamed">Nowa nazwa: %1$s</string>
+    <string name="guide_custom_set">Program TV: własny link</string>
+    <string name="guide_custom_again">Program TV: własny link · OK jeszcze raz, aby zmienić</string>
+    <string name="guide_no_tvg">Ta playlista nie ma linku do programu (url-tvg)</string>
+    <string name="guide_auto_set">Program TV: automatycznie</string>
+    <string name="guide_playlist_set">Program TV: z playlisty</string>
+    <string name="guide_busy">Program TV już się aktualizuje</string>
+    <string name="guide_updating">Aktualizuję program TV</string>
+    <string name="guide_failed">Nie zaktualizowano programu TV: %1$s</string>
+    <string name="guide_up_to_date">Program TV jest aktualny</string>
+    <string name="guide_updated">Zaktualizowano program TV · %1$s</string>
+    <string name="guide_dl_today">Program TV: pobieram dzisiejszy… %1$d%%</string>
+    <string name="guide_dl_more">Program TV: dziś gotowe, pobieram jeszcze %1$s… %2$d%%</string>
+    <string name="guide_dl_mb">Program TV: pobieram… %1$d MB</string>
+    <string name="guide_not_loaded">Program TV nie jest jeszcze wczytany</string>
+    <string name="guide_loading">Program wciąż się wczytuje</string>
+    <string name="no_guide_for_channel">Brak programu dla tego kanału</string>
+    <string name="no_archive">Ten kanał nie ma archiwum</string>
+    <string name="back_live">Powrót na żywo</string>
+    <string name="from_start_toast">Od początku · %1$s</string>
+    <string name="no_other_audio">Brak innych ścieżek dźwiękowych</string>
+    <string name="audio_track">Dźwięk: %1$s (%2$d z %3$d)</string>
+    <string name="audio_track_n">ścieżka %1$d</string>
+    <string name="out_of_archive">Tej audycji nie ma już w archiwum</string>
+    <string name="resuming">Wznawiam od %1$s · %2$s</string>
+    <string name="not_started">Ta audycja jeszcze się nie zaczęła</string>
+    <string name="fav_removed">%1$s usunięto z ulubionych</string>
+    <string name="fav_added">%1$s → Ulubione</string>
+    <string name="channel_back">%1$s znów jest na liście</string>
+    <string name="channel_hidden">Ukryto %1$s · przywrócisz w ustawieniach</string>
+    <string name="mark_unwatched_toast">Usunięto znacznik „Obejrzane”</string>
+    <string name="mark_forgotten_toast">Usunięto z „Oglądaj dalej”</string>
+    <string name="mark_done_toast">Oznaczono jako obejrzane: %1$s</string>
+    <string name="no_such_number">Brak kanału o tym numerze</string>
+    <string name="no_channel">brak kanału</string>
+    <string name="err_playlist_deleted">playlistę usunięto</string>
+    <string name="err_playlist_empty">playlista jest pusta lub to nie M3U</string>
+
+    <!-- playback -->
+    <string name="no_programme">Brak programu</string>
+    <string name="remaining">jeszcze %1$s</string>
+    <string name="next_prog">Dalej %1$s · %2$s</string>
+    <string name="archive_days">Archiwum %1$d dni</string>
+    <string name="live">NA ŻYWO</string>
+    <string name="paused">❚❚ Pauza</string>
+    <string name="behind_live">−%1$s za transmisją</string>
+    <string name="archive">Archiwum</string>
+    <string name="osd_restart">⟲  Od początku</string>
+    <string name="osd_prev">⏮  Poprzednia</string>
+    <string name="osd_next">⏭  Następna</string>
+    <string name="osd_live">●  Na żywo</string>
+    <string name="osd_audio">Dźwięk</string>
+
+    <!-- hints -->
+    <string name="key_ok_long">Przytrzymaj OK</string>
+    <string name="hint_choose">Wybierz</string>
+    <string name="hint_apply">Zastosuj</string>
+    <string name="hint_close">Zamknij</string>
+    <string name="hint_open">Otwórz</string>
+    <string name="hint_to_channels">Do kanałów</string>
+    <string name="hint_change">Zmień</string>
+    <string name="hint_back">Wstecz</string>
+    <string name="hint_group">Grupa</string>
+    <string name="hint_toggle_group">Pokaż / ukryj</string>
+    <string name="hint_done">Gotowe</string>
+    <string name="hint_channel">Kanał</string>
+    <string name="hint_unhide">Przywróć</string>
+    <string name="hint_playlist">Playlista</string>
+    <string name="hint_action">Akcja</string>
+    <string name="hint_run">Wykonaj</string>
+    <string name="hint_cancel">Anuluj</string>
+    <string name="hint_channels">Kanały</string>
+    <string name="hint_menu">Menu</string>
+    <string name="hint_day">Dzień</string>
+    <string name="hint_progs">Audycje</string>
+    <string name="hint_programme">Audycja</string>
+    <string name="hint_watch">Oglądaj</string>
+    <string name="hint_long_mark">przytrzymaj: opcje</string>
+    <string name="hint_long_restart">przytrzymaj: od początku</string>
+    <string name="hint_days">Dni</string>
+    <string name="hint_resume">Wznów</string>
+    <string name="hint_long_actions">przytrzymaj: opcje</string>
+    <string name="hint_channel_guide">Program kanału</string>
+    <string name="hint_groups">Grupy</string>
+    <string name="hint_guide">Program</string>
+    <string name="hint_long_channel_menu">przytrzymaj: menu kanału</string>
+    <string name="hint_seek">Przewijanie</string>
+    <string name="hint_play">Odtwórz</string>
+    <string name="hint_pause">Pauza</string>
+    <string name="hint_buttons">Przyciski</string>
+    <string name="hint_hide">Ukryj</string>
+    <string name="hint_timeline">Oś czasu</string>
+    <string name="hint_list">Lista</string>
+    <string name="hint_controls">Sterowanie</string>
+
+    <!-- first run -->
+    <string name="setup_title">Dodajmy twoją playlistę</string>
+    <string name="setup_steps">1. Zeskanuj kod QR telefonem (w tej samej sieci Wi-Fi).\n2. Skopiuj link do playlisty M3U z konta u swojego dostawcy.\n3. Wklej go na stronie i dotknij „Wyślij”.</string>
+    <string name="or_open">Albo otwórz %1$s</string>
+    <string name="no_network">Brak sieci: połącz telewizor z Wi-Fi</string>
+
+    <!-- list and programme view -->
+    <string name="days_title">Dni</string>
+    <string name="soon">Wkrótce</string>
+    <string name="out_archive">Poza archiwum</string>
+    <string name="watched_pill">✓ Obejrzane</string>
+    <string name="watched_of">Obejrzano %1$s z %2$s</string>
+    <string name="no_desc">Brak opisu</string>
+    <string name="act_live">Na żywo</string>
+    <string name="act_from_start_prog">Od początku</string>
+    <string name="act_resume">Wznów od %1$s</string>
+    <string name="act_mark_menu">Opcje oglądania</string>
+    <string name="act_rewatch">Obejrzyj ponownie</string>
+    <string name="act_watch">Oglądaj</string>
+
+    <!-- menu -->
+    <string name="menu_summary">%1$s · widoczne grupy: %2$d z %3$d</string>
+    <string name="menu_groups">Grupy kanałów</string>
+    <string name="menu_guide">Zaktualizuj program TV</string>
+    <string name="menu_settings">Ustawienia</string>
+    <string name="menu_exit">Wyjdź</string>
+    <string name="menu_update">Zaktualizuj do %1$s</string>
+
+    <!-- settings -->
+    <string name="settings_title">Ustawienia</string>
+    <string name="settings_sub">Playlisty, widoczne grupy i kanały, program TV, język</string>
+    <string name="section_playlist">Playlista</string>
+    <string name="row_playlists">Playlisty</string>
+    <string name="now_playlist">Teraz: %1$s</string>
+    <string name="section_channels">Kanały</string>
+    <string name="row_groups_desc">Które grupy widać na liście</string>
+    <string name="x_of_y">%1$d z %2$d</string>
+    <string name="row_hidden">Ukryte kanały</string>
+    <string name="row_hidden_desc">Przywróć kanały, które ukryto</string>
+    <string name="none">brak</string>
+    <string name="section_guide">Program TV</string>
+    <string name="row_guide">Program TV</string>
+    <string name="section_app">Aplikacja</string>
+    <string name="row_language">Język</string>
+    <string name="lang_system">Jak w systemie</string>
+    <string name="language_sub">Język interfejsu TiViBro</string>
+    <string name="row_scale">Rozmiar interfejsu</string>
+    <string name="row_scale_desc">Rozmiar tekstu, list i paneli</string>
+    <string name="scale_value">%1$d%%</string>
+    <string name="row_update">Sprawdź aktualizacje</string>
+    <string name="version">Wersja %1$s</string>
+
+    <string name="groups_sub">OK pokazuje lub ukrywa grupę. Ukryte grupy znikają z listy i z przełączania kanałów</string>
+    <string name="hidden_suffix">\u0020· ukryta</string>
+    <string name="hidden_sub_empty">Przytrzymaj OK na kanale → „Ukryj kanał”</string>
+    <string name="hidden_sub">OK przywraca kanał na listę</string>
+    <string name="hidden_none">Brak ukrytych kanałów</string>
+    <string name="show">Pokaż</string>
+
+    <!-- context menus -->
+    <string name="ctx_channel">Kanał</string>
+    <string name="fav_remove">Usuń z ulubionych</string>
+    <string name="fav_add">Dodaj do ulubionych</string>
+    <string name="ch_show">Pokaż kanał</string>
+    <string name="ch_hide">Ukryj kanał</string>
+    <string name="mark_from_start">Od początku</string>
+    <string name="mark_unwatch">Oznacz jako nieobejrzane</string>
+    <string name="mark_forget">Usuń z „Oglądaj dalej”</string>
+    <string name="mark_watched">Oznacz jako obejrzane</string>
+
+    <!-- playlists -->
+    <string name="updated_at">zaktualizowano %1$s, %2$s</string>
+    <string name="not_loaded">jeszcze nie wczytano</string>
+    <string name="playlists_sub">OK: otwórz, zaktualizuj, zmień nazwę lub usuń. Każda playlista ma własne ulubione i ukryte kanały</string>
+    <string name="playlist_open_mark">✓ Otwarta</string>
+    <string name="add_playlist">＋  Dodaj playlistę</string>
+    <string name="adding_playlist">Wczytuję nową playlistę…</string>
+    <string name="add_playlist_desc">Wyślij link z telefonu przez kod QR</string>
+    <string name="open_suffix">\u0020· otwarta</string>
+    <string name="pl_open_now">Otwarta teraz</string>
+    <string name="pl_open">Otwórz</string>
+    <string name="pl_open_desc">Przełącz na kanały tej playlisty</string>
+    <string name="pl_refresh">Zaktualizuj</string>
+    <string name="pl_refresh_desc">Pobierz listę kanałów od nowa</string>
+    <string name="pl_rename">Zmień nazwę</string>
+    <string name="pl_rename_desc">Nazwa z playlisty: %1$s</string>
+    <string name="pl_delete">Usuń</string>
+    <string name="pl_delete_desc">Razem z ulubionymi, ukrytymi kanałami i zakładkami</string>
+
+    <!-- guide source -->
+    <string name="src_auto">Automatycznie</string>
+    <string name="src_playlist">Z playlisty</string>
+    <string name="src_custom">Własny link</string>
+    <string name="guide_error">%1$s · błąd: %2$s</string>
+    <string name="guide_never">%1$s · jeszcze nie wczytano</string>
+    <string name="section_source">Źródło</string>
+    <string name="auto_epgteam">epg.team: szybko, pobierany dzień po dniu</string>
+    <string name="auto_playlist">Z playlisty: %1$s</string>
+    <string name="tvg_desc">XMLTV z url-tvg: %1$s</string>
+    <string name="no_tvg">Ta playlista nie ma linku do programu</string>
+    <string name="custom_none">Wyślij link z telefonu</string>
+    <string name="section_update">Aktualizacja</string>
+    <string name="refresh_now">Zaktualizuj teraz</string>
+
+    <!-- QR / LAN page -->
+    <string name="link_add_title">Dodaj playlistę</string>
+    <string name="link_add_sub">Zeskanuj kod QR telefonem (w tej samej sieci Wi-Fi) i wklej link do playlisty M3U</string>
+    <string name="link_guide_title">Własny program TV</string>
+    <string name="link_guide_sub">Zeskanuj kod QR telefonem i wklej link do XMLTV (.xml lub .xml.gz)</string>
+    <string name="link_rename_title">Zmień nazwę playlisty</string>
+    <string name="link_rename_sub">Zeskanuj kod QR telefonem i wpisz nową nazwę</string>
+    <string name="loading_playlist">Wczytuję playlistę…</string>
+    <string name="page_playlist_title">Link do playlisty</string>
+    <string name="page_playlist_hint">Skopiuj link do playlisty M3U z konta u swojego dostawcy (dla tv.team: Playlists → „Tivimate” → Copy) i wklej go tutaj.</string>
+    <string name="page_guide_title">Program TV (XMLTV)</string>
+    <string name="page_guide_hint">Wklej link do pliku XMLTV (.xml lub .xml.gz).</string>
+    <string name="page_name_title">Nazwa playlisty</string>
+    <string name="page_name_hint">Tak playlista będzie widoczna na liście.</string>
+    <string name="page_send">Wyślij na telewizor</string>
+    <string name="page_save">Zapisz</string>
+    <string name="page_empty">Pole jest puste.</string>
+    <string name="page_not_link">To nie wygląda na link.</string>
+    <string name="page_done">Gotowe. Spójrz na telewizor.</string>
+    <string name="update_available">Dostępna aktualizacja: %1$s</string>
+    <string name="update_latest">Masz najnowszą wersję</string>
+    <string name="update_check_failed">Nie udało się sprawdzić aktualizacji</string>
+    <string name="update_failed">Aktualizacja nie powiodła się: %1$s</string>
+    <string name="update_allow">Pozwól TiViBro instalować aplikacje, a potem znowu wybierz „Zaktualizuj”</string>
+    <string name="update_checking">Sprawdzam…</string>
+    <string name="update_downloading">Pobieram aktualizację… %1$d%%</string>
+    <string name="update_ready">Dostępna wersja %1$s: naciśnij OK, aby zaktualizować</string>
+</resources>

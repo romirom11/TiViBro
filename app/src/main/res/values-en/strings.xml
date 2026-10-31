@@ -201,7 +201,7 @@
     <string name="version">Version %1$s</string>
 
     <string name="groups_sub">OK shows or hides a group. Hidden groups leave the list and channel switching</string>
-    <string name="hidden_suffix"> · hidden</string>
+    <string name="hidden_suffix">\u0020· hidden</string>
     <string name="hidden_sub_empty">Hold OK on a channel → “Hide channel”</string>
     <string name="hidden_sub">OK puts a channel back in the list</string>
     <string name="hidden_none">No hidden channels</string>
@@ -226,7 +226,7 @@
     <string name="add_playlist">＋  Add playlist</string>
     <string name="adding_playlist">Loading the new playlist…</string>
     <string name="add_playlist_desc">Send the link from your phone with a QR code</string>
-    <string name="open_suffix"> · open</string>
+    <string name="open_suffix">\u0020· open</string>
     <string name="pl_open_now">Open now</string>
     <string name="pl_open">Open</string>
     <string name="pl_open_desc">Switch to this playlist\'s channels</string>

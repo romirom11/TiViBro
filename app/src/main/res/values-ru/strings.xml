@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- common -->
+    <string name="loading">Загрузка…</string>
+    <string name="loading_list">Загружаю…</string>
+    <string name="playlist_fallback">Плейлист</string>
+    <string name="dur_min">%1$d мин</string>
+    <string name="dur_hours">%1$d ч</string>
+    <string name="dur_hours_min">%1$d ч %2$d мин</string>
+    <string name="today">Сегодня</string>
+    <string name="yesterday">Вчера</string>
+    <string name="tomorrow">Завтра</string>
+    <!-- «пт, 30 окт»: %1$s day of week, %2$d day of month, %3$s month -->
+    <string name="day_fmt">%1$s, %2$d %3$s</string>
+    <string name="date_fmt">%1$d %2$s</string>
+    <string-array name="dow_short">
+        <item>вс</item><item>пн</item><item>вт</item><item>ср</item><item>чт</item><item>пт</item><item>сб</item>
+    </string-array>
+    <string-array name="mon_short">
+        <item>янв</item><item>фев</item><item>мар</item><item>апр</item><item>мая</item><item>июн</item>
+        <item>июл</item><item>авг</item><item>сен</item><item>окт</item><item>ноя</item><item>дек</item>
+    </string-array>
+    <plurals name="channels">
+        <item quantity="one">%d канал</item>
+        <item quantity="few">%d канала</item>
+        <item quantity="many">%d каналов</item>
+        <item quantity="other">%d канала</item>
+    </plurals>
+    <plurals name="days">
+        <item quantity="one">%d день</item>
+        <item quantity="few">%d дня</item>
+        <item quantity="many">%d дней</item>
+        <item quantity="other">%d дня</item>
+    </plurals>
+    <plurals name="programmes">
+        <item quantity="one">%d передача</item>
+        <item quantity="few">%d передачи</item>
+        <item quantity="many">%d передач</item>
+        <item quantity="other">%d передачи</item>
+    </plurals>
+
+    <!-- groups -->
+    <string name="group_cont">Продолжить просмотр</string>
+    <string name="group_fav">Избранное</string>
+    <string name="group_recent">Недавние</string>
+    <string name="group_all">Все каналы</string>
+    <string name="group_other">Другое</string>
+    <string name="group_empty">Пусто</string>
+    <string name="fav_empty">Удерживайте OK на канале → «Добавить в избранное»</string>
+
+    <!-- toasts and status -->
+    <string name="err_play">Не удалось воспроизвести: %1$s</string>
+    <string name="loading_channels">Загружаю каналы…</string>
+    <string name="playlist_load_failed">Не удалось загрузить плейлист: %1$s</string>
+    <string name="playlist_exists">Этот плейлист уже есть · %1$s</string>
+    <string name="playlist_added">Плейлист добавлен · %1$s</string>
+    <string name="playlist_already_open">Этот плейлист уже открыт</string>
+    <string name="playlist_switched">Плейлист: %1$s</string>
+    <string name="playlist_refreshed">Плейлист обновлён · %1$s</string>
+    <string name="refresh_failed">Не удалось обновить: %1$s</string>
+    <string name="delete_confirm">Нажмите OK ещё раз, чтобы удалить «%1$s»</string>
+    <string name="playlist_deleted">Плейлист «%1$s» удалён</string>
+    <string name="renamed">Новое название: %1$s</string>
+    <string name="guide_custom_set">Телепрограмма: своя ссылка</string>
+    <string name="guide_custom_again">Телепрограмма: своя ссылка · OK ещё раз, чтобы изменить</string>
+    <string name="guide_no_tvg">В плейлисте нет ссылки на телепрограмму (url-tvg)</string>
+    <string name="guide_auto_set">Телепрограмма: авто</string>
+    <string name="guide_playlist_set">Телепрограмма: из плейлиста</string>
+    <string name="guide_busy">Телепрограмма уже обновляется</string>
+    <string name="guide_updating">Обновляю телепрограмму</string>
+    <string name="guide_failed">Телепрограмма не обновилась: %1$s</string>
+    <string name="guide_up_to_date">Телепрограмма актуальна</string>
+    <string name="guide_updated">Телепрограмма обновлена · %1$s</string>
+    <string name="guide_dl_today">Телепрограмма: загружаю на сегодня… %1$d%%</string>
+    <string name="guide_dl_more">Телепрограмма: сегодня готово, загружаю ещё %1$s… %2$d%%</string>
+    <string name="guide_dl_mb">Телепрограмма: загружаю… %1$d МБ</string>
+    <string name="guide_not_loaded">Телепрограмма ещё не загружена</string>
+    <string name="guide_loading">Программа ещё загружается</string>
+    <string name="no_guide_for_channel">Для этого канала нет программы</string>
+    <string name="no_archive">У этого канала нет архива</string>
+    <string name="back_live">Снова в прямом эфире</string>
+    <string name="from_start_toast">С начала · %1$s</string>
+    <string name="no_other_audio">Других звуковых дорожек нет</string>
+    <string name="audio_track">Звук: %1$s (%2$d из %3$d)</string>
+    <string name="audio_track_n">дорожка %1$d</string>
+    <string name="out_of_archive">Эта передача уже вне архива</string>
+    <string name="resuming">Продолжаем с %1$s · %2$s</string>
+    <string name="not_started">Передача ещё не началась</string>
+    <string name="fav_removed">%1$s: убран из избранного</string>
+    <string name="fav_added">%1$s → Избранное</string>
+    <string name="channel_back">%1$s снова в списке</string>
+    <string name="channel_hidden">%1$s скрыт · вернуть можно в настройках</string>
+    <string name="mark_unwatched_toast">Отметка «Просмотрено» снята</string>
+    <string name="mark_forgotten_toast">Убрано из «Продолжить просмотр»</string>
+    <string name="mark_done_toast">Отмечено просмотренным: %1$s</string>
+    <string name="no_such_number">Нет канала с таким номером</string>
+    <string name="no_channel">нет канала</string>
+    <string name="err_playlist_deleted">плейлист удалён</string>
+    <string name="err_playlist_empty">плейлист пуст или не в формате M3U</string>
+
+    <!-- playback -->
+    <string name="no_programme">Нет программы</string>
+    <string name="remaining">ещё %1$s</string>
+    <string name="next_prog">Далее %1$s · %2$s</string>
+    <string name="archive_days">Архив %1$d дн</string>
+    <string name="live">ЭФИР</string>
+    <string name="paused">❚❚ Пауза</string>
+    <string name="behind_live">−%1$s от эфира</string>
+    <string name="archive">Архив</string>
+    <string name="osd_restart">⟲  С начала</string>
+    <string name="osd_prev">⏮  Предыдущая</string>
+    <string name="osd_next">⏭  Следующая</string>
+    <string name="osd_live">●  Эфир</string>
+    <string name="osd_audio">Звук</string>
+
+    <!-- hints -->
+    <string name="key_ok_long">OK долго</string>
+    <string name="hint_choose">Выбор</string>
+    <string name="hint_apply">Применить</string>
+    <string name="hint_close">Закрыть</string>
+    <string name="hint_open">Открыть</string>
+    <string name="hint_to_channels">К каналам</string>
+    <string name="hint_change">Изменить</string>
+    <string name="hint_back">Назад</string>
+    <string name="hint_group">Группа</string>
+    <string name="hint_toggle_group">Показать / скрыть</string>
+    <string name="hint_done">Готово</string>
+    <string name="hint_channel">Канал</string>
+    <string name="hint_unhide">Вернуть в список</string>
+    <string name="hint_playlist">Плейлист</string>
+    <string name="hint_action">Действие</string>
+    <string name="hint_run">Выполнить</string>
+    <string name="hint_cancel">Отмена</string>
+    <string name="hint_channels">Каналы</string>
+    <string name="hint_menu">Меню</string>
+    <string name="hint_day">День</string>
+    <string name="hint_progs">Передачи</string>
+    <string name="hint_programme">Передача</string>
+    <string name="hint_watch">Смотреть</string>
+    <string name="hint_long_mark">долго: действия с просмотром</string>
+    <string name="hint_long_restart">долго: с начала</string>
+    <string name="hint_days">Дни</string>
+    <string name="hint_resume">Продолжить</string>
+    <string name="hint_long_actions">долго: действия</string>
+    <string name="hint_channel_guide">Программа канала</string>
+    <string name="hint_groups">Группы</string>
+    <string name="hint_guide">Программа</string>
+    <string name="hint_long_channel_menu">долго: меню канала</string>
+    <string name="hint_seek">Перемотка</string>
+    <string name="hint_play">Воспроизвести</string>
+    <string name="hint_pause">Пауза</string>
+    <string name="hint_buttons">Кнопки</string>
+    <string name="hint_hide">Скрыть</string>
+    <string name="hint_timeline">Шкала</string>
+    <string name="hint_list">Список</string>
+    <string name="hint_controls">Управление</string>
+
+    <!-- first run -->
+    <string name="setup_title">Подключим ваш плейлист</string>
+    <string name="setup_steps">1. Отсканируйте QR-код телефоном (в той же сети Wi-Fi).\n2. Скопируйте ссылку на M3U-плейлист в личном кабинете провайдера.\n3. Вставьте её на странице и нажмите «Отправить».</string>
+    <string name="or_open">Или откройте %1$s</string>
+    <string name="no_network">Нет сети: подключите телевизор к Wi-Fi</string>
+
+    <!-- list and programme view -->
+    <string name="days_title">Дни</string>
+    <string name="soon">Скоро</string>
+    <string name="out_archive">Вне архива</string>
+    <string name="watched_pill">✓ Просмотрено</string>
+    <string name="watched_of">Просмотрено %1$s из %2$s</string>
+    <string name="no_desc">Описания нет</string>
+    <string name="act_live">Прямой эфир</string>
+    <string name="act_from_start_prog">С начала передачи</string>
+    <string name="act_resume">Продолжить с %1$s</string>
+    <string name="act_mark_menu">Действия с просмотром</string>
+    <string name="act_rewatch">Посмотреть ещё раз</string>
+    <string name="act_watch">Смотреть</string>
+
+    <!-- menu -->
+    <string name="menu_summary">%1$s · показано групп: %2$d из %3$d</string>
+    <string name="menu_groups">Группы каналов</string>
+    <string name="menu_guide">Обновить телепрограмму</string>
+    <string name="menu_settings">Настройки</string>
+    <string name="menu_exit">Выход</string>
+    <string name="menu_update">Обновить до %1$s</string>
+
+    <!-- settings -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_sub">Плейлисты, какие группы и каналы показывать, телепрограмма, язык</string>
+    <string name="section_playlist">Плейлист</string>
+    <string name="row_playlists">Плейлисты</string>
+    <string name="now_playlist">Сейчас: %1$s</string>
+    <string name="section_channels">Каналы</string>
+    <string name="row_groups_desc">Какие группы показывать в списке</string>
+    <string name="x_of_y">%1$d из %2$d</string>
+    <string name="row_hidden">Скрытые каналы</string>
+    <string name="row_hidden_desc">Вернуть каналы, которые вы скрыли</string>
+    <string name="none">нет</string>
+    <string name="section_guide">Телепрограмма</string>
+    <string name="row_guide">Телепрограмма</string>
+    <string name="section_app">Приложение</string>
+    <string name="row_language">Язык</string>
+    <string name="lang_system">Как в системе</string>
+    <string name="language_sub">Язык интерфейса TiViBro</string>
+    <string name="row_scale">Масштаб интерфейса</string>
+    <string name="row_scale_desc">Размер текста, списков и панелей</string>
+    <string name="scale_value">%1$d %%</string>
+    <string name="row_update">Проверить обновления</string>
+    <string name="version">Версия %1$s</string>
+
+    <string name="groups_sub">OK: показать или скрыть группу. Скрытые группы пропадают из списка и из переключения</string>
+    <string name="hidden_suffix">\u0020· скрыта</string>
+    <string name="hidden_sub_empty">Удерживайте OK на канале → «Скрыть канал»</string>
+    <string name="hidden_sub">OK: вернуть канал в список</string>
+    <string name="hidden_none">Скрытых каналов нет</string>
+    <string name="show">Показать</string>
+
+    <!-- context menus -->
+    <string name="ctx_channel">Канал</string>
+    <string name="fav_remove">Убрать из избранного</string>
+    <string name="fav_add">Добавить в избранное</string>
+    <string name="ch_show">Показать канал</string>
+    <string name="ch_hide">Скрыть канал</string>
+    <string name="mark_from_start">С начала</string>
+    <string name="mark_unwatch">Отметить непросмотренным</string>
+    <string name="mark_forget">Убрать из «Продолжить просмотр»</string>
+    <string name="mark_watched">Отметить просмотренным</string>
+
+    <!-- playlists -->
+    <string name="updated_at">обновлено %1$s, %2$s</string>
+    <string name="not_loaded">ещё не загружен</string>
+    <string name="playlists_sub">OK: открыть, обновить, переименовать или удалить. У каждого плейлиста своё избранное и скрытые каналы</string>
+    <string name="playlist_open_mark">✓ Открыт</string>
+    <string name="add_playlist">＋  Добавить плейлист</string>
+    <string name="adding_playlist">Загружаю новый плейлист…</string>
+    <string name="add_playlist_desc">Ссылку можно отправить с телефона через QR-код</string>
+    <string name="open_suffix">\u0020· открыт</string>
+    <string name="pl_open_now">Открыт сейчас</string>
+    <string name="pl_open">Открыть</string>
+    <string name="pl_open_desc">Перейти к каналам этого плейлиста</string>
+    <string name="pl_refresh">Обновить</string>
+    <string name="pl_refresh_desc">Заново загрузить список каналов</string>
+    <string name="pl_rename">Переименовать</string>
+    <string name="pl_rename_desc">Название из плейлиста: %1$s</string>
+    <string name="pl_delete">Удалить</string>
+    <string name="pl_delete_desc">Вместе с его избранным, скрытыми каналами и закладками</string>
+
+    <!-- guide source -->
+    <string name="src_auto">Авто</string>
+    <string name="src_playlist">Из плейлиста</string>
+    <string name="src_custom">Своя ссылка</string>
+    <string name="guide_error">%1$s · ошибка: %2$s</string>
+    <string name="guide_never">%1$s · ещё не загружена</string>
+    <string name="section_source">Источник</string>
+    <string name="auto_epgteam">epg.team: быстро, частями по дням</string>
+    <string name="auto_playlist">Из плейлиста: %1$s</string>
+    <string name="tvg_desc">XMLTV из url-tvg: %1$s</string>
+    <string name="no_tvg">В плейлисте нет ссылки на телепрограмму</string>
+    <string name="custom_none">Отправить ссылку с телефона</string>
+    <string name="section_update">Обновление</string>
+    <string name="refresh_now">Обновить сейчас</string>
+
+    <!-- QR / LAN page -->
+    <string name="link_add_title">Добавить плейлист</string>
+    <string name="link_add_sub">Отсканируйте QR-код телефоном (в той же сети Wi-Fi) и вставьте ссылку на M3U-плейлист</string>
+    <string name="link_guide_title">Своя телепрограмма</string>
+    <string name="link_guide_sub">Отсканируйте QR-код телефоном и вставьте ссылку на XMLTV (.xml или .xml.gz)</string>
+    <string name="link_rename_title">Переименовать плейлист</string>
+    <string name="link_rename_sub">Отсканируйте QR-код телефоном и введите новое название</string>
+    <string name="loading_playlist">Загружаю плейлист…</string>
+    <string name="page_playlist_title">Ссылка на плейлист</string>
+    <string name="page_playlist_hint">Скопируйте ссылку на M3U-плейлист в личном кабинете провайдера (для tv.team: Playlists → «Tivimate» → Copy) и вставьте сюда.</string>
+    <string name="page_guide_title">Телепрограмма (XMLTV)</string>
+    <string name="page_guide_hint">Вставьте ссылку на XMLTV-файл (.xml или .xml.gz).</string>
+    <string name="page_name_title">Название плейлиста</string>
+    <string name="page_name_hint">Так плейлист будет называться в списке.</string>
+    <string name="page_send">Отправить на телевизор</string>
+    <string name="page_save">Сохранить</string>
+    <string name="page_empty">Поле пустое.</string>
+    <string name="page_not_link">Это не похоже на ссылку.</string>
+    <string name="page_done">Готово. Смотрите на телевизор.</string>
+    <string name="update_available">Доступно обновление %1$s</string>
+    <string name="update_latest">У вас последняя версия</string>
+    <string name="update_check_failed">Не удалось проверить обновления</string>
+    <string name="update_failed">Не удалось обновить: %1$s</string>
+    <string name="update_allow">Разрешите TiViBro устанавливать приложения, затем снова выберите «Обновить»</string>
+    <string name="update_checking">Проверяю…</string>
+    <string name="update_downloading">Загружаю обновление… %1$d%%</string>
+    <string name="update_ready">Доступна версия %1$s: нажмите OK, чтобы обновить</string>
+</resources>

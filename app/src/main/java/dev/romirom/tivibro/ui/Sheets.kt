@@ -170,7 +170,8 @@ private fun Section(text: String) = Eyebrow(text, Modifier.padding(start = 64.px
 @Composable
 private fun SheetRow(foc: Boolean, title: String, desc: String?, dim: Boolean = false, icon: Icon? = null, value: @Composable () -> Unit = {}) {
     Plate(foc, Modifier.padding(start = 36.px, end = 36.px, bottom = 4.px).fillMaxWidth().heightIn(min = 84.px), lift = 1.02f) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 28.px, vertical = 14.px), verticalAlignment = Alignment.CenterVertically) {
+        // the min height here too, so a row without a description is centred in the plate instead of sitting at its top
+        Row(Modifier.fillMaxWidth().heightIn(min = 84.px).padding(horizontal = 28.px, vertical = 14.px), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (icon == Icon.GLOBE) Globe(if (foc) Tok.OnPlate else Tok.T2, Modifier.padding(end = 14.px).size(26.px))
