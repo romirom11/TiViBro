@@ -1,5 +1,5 @@
 <resources>
-    <style name="Theme.TPlay" parent="android:Theme.Material.NoActionBar.Fullscreen">
+    <style name="Theme.TiViBro" parent="android:Theme.Material.NoActionBar.Fullscreen">
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:colorBackground">@android:color/black</item>
     </style>

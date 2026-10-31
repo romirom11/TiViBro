@@ -1,4 +1,4 @@
-package dev.romankudin.tplay.data
+package io.github.romirom11.tivibro.data
 
 import java.util.Calendar
 import java.util.TimeZone

@@ -1,4 +1,4 @@
-package dev.romankudin.tplay.data
+package io.github.romirom11.tivibro.data
 
 import android.content.ContentValues
 import android.content.Context
@@ -92,7 +92,7 @@ class Db(private val ctx: Context) : SQLiteOpenHelper(ctx, NAME, null, 3) {
     }
 
     companion object {
-        private const val NAME = "tplay.db"
+        private const val NAME = "tivibro.db"
         private const val CREATE = "CREATE TABLE mark(pl TEXT NOT NULL DEFAULT '0', ch TEXT NOT NULL, s INTEGER NOT NULL, e INTEGER NOT NULL, " +
             "t TEXT NOT NULL, pos INTEGER NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(pl, ch, s))"
     }

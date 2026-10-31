@@ -1,4 +1,4 @@
-package dev.romankudin.tplay.ui
+package io.github.romirom11.tivibro.ui
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import dev.romankudin.tplay.data.Channel
+import io.github.romirom11.tivibro.data.Channel
 
 /** Design tokens from prototype/style.css. The prototype is drawn on a 1920×1080 stage; TV dp is half of that. */
 object Tok {

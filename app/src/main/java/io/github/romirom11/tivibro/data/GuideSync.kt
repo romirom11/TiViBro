@@ -1,4 +1,4 @@
-package dev.romankudin.tplay.data
+package io.github.romirom11.tivibro.data
 
 import android.os.SystemClock
 import android.util.Log
@@ -216,7 +216,7 @@ class GuideSync(
     private fun hold() = pacer.hold()
 
     companion object {
-        private const val TAG = "tplay"
+        private const val TAG = "tivibro"
         private const val BASE = "https://epg.team"
         private const val MANIFEST = "/epg/segmented/v1/manifest.json"
         /** Download speed cap: the guide is never worth stealing bandwidth from the stream. */
@@ -251,11 +251,11 @@ class Pacer(private val holdReason: () -> String?, private val bytesPerSec: Long
     fun hold(): Boolean {
         val why = holdReason() ?: return false
         val t0 = SystemClock.elapsedRealtime()
-        Log.i("tplay", "guide: paused ($why)")
+        Log.i("tivibro", "guide: paused ($why)")
         while (holdReason() != null) Thread.sleep(250)
         val ms = SystemClock.elapsedRealtime() - t0
         paused += ms
-        Log.i("tplay", "guide: resumed after $ms ms")
+        Log.i("tivibro", "guide: resumed after $ms ms")
         winStart = SystemClock.elapsedRealtime(); winBytes = 0
         return true
     }

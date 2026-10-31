@@ -1,4 +1,4 @@
-package dev.romankudin.tplay.data
+package io.github.romirom11.tivibro.data
 
 import android.content.Context
 
@@ -7,7 +7,7 @@ import android.content.Context
  * active playlist's [scope]; the first playlist, migrated from the single-playlist days, keeps the old unprefixed keys.
  */
 class Prefs(ctx: Context) {
-    private val sp = ctx.getSharedPreferences("tplay", Context.MODE_PRIVATE)
+    private val sp = ctx.getSharedPreferences("tivibro", Context.MODE_PRIVATE)
 
     /** Id of the playlist the per-playlist settings below belong to. */
     var scope = ""

@@ -1,4 +1,4 @@
-package dev.romankudin.tplay.ui
+package io.github.romirom11.tivibro.ui
 
 import android.graphics.Bitmap
 import androidx.annotation.OptIn
@@ -42,18 +42,18 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
-import dev.romankudin.tplay.AppViewModel
-import dev.romankudin.tplay.AppViewModel.Companion.ago
-import dev.romankudin.tplay.AppViewModel.Companion.dayStart
-import dev.romankudin.tplay.Focus
-import dev.romankudin.tplay.Layer
-import dev.romankudin.tplay.Mode
-import dev.romankudin.tplay.OsdButton
-import dev.romankudin.tplay.Sheet
-import dev.romankudin.tplay.data.DAY
-import dev.romankudin.tplay.data.HOUR
-import dev.romankudin.tplay.data.MIN
-import dev.romankudin.tplay.data.now
+import io.github.romirom11.tivibro.AppViewModel
+import io.github.romirom11.tivibro.AppViewModel.Companion.ago
+import io.github.romirom11.tivibro.AppViewModel.Companion.dayStart
+import io.github.romirom11.tivibro.Focus
+import io.github.romirom11.tivibro.Layer
+import io.github.romirom11.tivibro.Mode
+import io.github.romirom11.tivibro.OsdButton
+import io.github.romirom11.tivibro.Sheet
+import io.github.romirom11.tivibro.data.DAY
+import io.github.romirom11.tivibro.data.HOUR
+import io.github.romirom11.tivibro.data.MIN
+import io.github.romirom11.tivibro.data.now
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

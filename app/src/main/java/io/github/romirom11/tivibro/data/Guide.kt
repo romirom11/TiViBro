@@ -1,4 +1,4 @@
-package dev.romankudin.tplay.data
+package io.github.romirom11.tivibro.data
 
 import android.os.Handler
 import android.os.Looper
@@ -314,7 +314,7 @@ class Guide(private val dir: File, private val onChanged: (id: String?, old: Lis
     }
 
     companion object {
-        const val TAG = "tplay"
+        const val TAG = "tivibro"
         private val GC = Any()
         private const val QUEUE_MAX = 120
         /** Decoded programme lists (≈40 KB per channel for 10 days) and inflated content blocks (≈390 KB each). */

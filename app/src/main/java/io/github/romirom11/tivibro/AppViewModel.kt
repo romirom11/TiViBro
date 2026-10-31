@@ -1,4 +1,4 @@
-package dev.romankudin.tplay
+package io.github.romirom11.tivibro
 
 import android.app.ActivityManager
 import android.app.Application
@@ -28,28 +28,28 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.DefaultHlsExtractorFactory
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
-import dev.romankudin.tplay.data.Catchup
-import dev.romankudin.tplay.data.Channel
-import dev.romankudin.tplay.data.DAY
-import dev.romankudin.tplay.data.Db
-import dev.romankudin.tplay.data.Guide
-import dev.romankudin.tplay.data.GuideMode
-import dev.romankudin.tplay.data.GuideSync
-import dev.romankudin.tplay.data.Group
-import dev.romankudin.tplay.data.HOUR
-import dev.romankudin.tplay.data.MIN
-import dev.romankudin.tplay.data.Mark
-import dev.romankudin.tplay.data.Pacer
-import dev.romankudin.tplay.data.PlaylistInfo
-import dev.romankudin.tplay.data.PlaylistRepo
-import dev.romankudin.tplay.data.Prefs
-import dev.romankudin.tplay.data.Programme
-import dev.romankudin.tplay.data.ProgrammeGuide
-import dev.romankudin.tplay.data.SetupServer
-import dev.romankudin.tplay.data.XmltvGuide
-import dev.romankudin.tplay.data.inArchive
-import dev.romankudin.tplay.data.now
-import dev.romankudin.tplay.ui.channelsWord
+import io.github.romirom11.tivibro.data.Catchup
+import io.github.romirom11.tivibro.data.Channel
+import io.github.romirom11.tivibro.data.DAY
+import io.github.romirom11.tivibro.data.Db
+import io.github.romirom11.tivibro.data.Guide
+import io.github.romirom11.tivibro.data.GuideMode
+import io.github.romirom11.tivibro.data.GuideSync
+import io.github.romirom11.tivibro.data.Group
+import io.github.romirom11.tivibro.data.HOUR
+import io.github.romirom11.tivibro.data.MIN
+import io.github.romirom11.tivibro.data.Mark
+import io.github.romirom11.tivibro.data.Pacer
+import io.github.romirom11.tivibro.data.PlaylistInfo
+import io.github.romirom11.tivibro.data.PlaylistRepo
+import io.github.romirom11.tivibro.data.Prefs
+import io.github.romirom11.tivibro.data.Programme
+import io.github.romirom11.tivibro.data.ProgrammeGuide
+import io.github.romirom11.tivibro.data.SetupServer
+import io.github.romirom11.tivibro.data.XmltvGuide
+import io.github.romirom11.tivibro.data.inArchive
+import io.github.romirom11.tivibro.data.now
+import io.github.romirom11.tivibro.ui.channelsWord
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -282,7 +282,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (BuildConfig.DEBUG) player.addAnalyticsListener(androidx.media3.exoplayer.util.EventLogger())
         viewModelScope.launch(dbIo) {
             runCatching { db.dropOldGuide() }.onFailure { Log.w(TAG, "db: quick migration failed", it) }
-            Log.i(TAG, "db ${getApplication<Application>().getDatabasePath("tplay.db").length() / 1024} KB")
+            Log.i(TAG, "db ${getApplication<Application>().getDatabasePath("tivibro.db").length() / 1024} KB")
         }
         playlist?.let { openPlaylist(it, download = true) }
         viewModelScope.launch {
@@ -877,7 +877,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun tune(ch: Channel, at: Long? = null) {
-        if (BuildConfig.DEBUG) android.util.Log.d("tplay", "tune ${ch.id} at=$at")
+        if (BuildConfig.DEBUG) android.util.Log.d("tivibro", "tune ${ch.id} at=$at")
         saveMark()
         cur = ch
         prefs.lastChannel = ch.id
@@ -904,7 +904,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val durSec = min((now() - from) / 1000, Catchup.maxWindowSec(ch))
         val url = Catchup.url(ch, from / 1000, if (open) null else durSec)
         if (url == null) { onNoArchive(); return }
-        if (BuildConfig.DEBUG) android.util.Log.d("tplay", "archive ${ch.id} behind=${(now() - t) / 1000}s open=$open")
+        if (BuildConfig.DEBUG) android.util.Log.d("tivibro", "archive ${ch.id} behind=${(now() - t) / 1000}s open=$open")
         archiveFrom = from
         archiveTo = if (open) OPEN else from + durSec * 1000
         markLock = null
@@ -953,7 +953,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun goLive() {
-        if (BuildConfig.DEBUG) android.util.Log.d("tplay", "goLive")
+        if (BuildConfig.DEBUG) android.util.Log.d("tivibro", "goLive")
         saveMark()
         val ch = cur ?: return
         mode = Mode.LIVE
@@ -1091,7 +1091,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun playProgramme(ch: Channel, p: Programme, fromStart: Boolean = false) {
-        if (BuildConfig.DEBUG) android.util.Log.d("tplay", "playProgramme ${ch.id} ${p.start} past=${p.isPast()} now=${p.isNow()}")
+        if (BuildConfig.DEBUG) android.util.Log.d("tivibro", "playProgramme ${ch.id} ${p.start} past=${p.isPast()} now=${p.isNow()}")
         closeLayers()
         when {
             p.isNow() && fromStart && !canArchive(ch) -> { showToast("На цьому каналі немає архіву"); tune(ch) }
@@ -1616,13 +1616,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     companion object {
         const val DONE = .92f
         const val RECENT_MAX = 20
-        private const val TAG = "tplay"
+        private const val TAG = "tivibro"
         private const val OPEN = Long.MAX_VALUE
         const val USER_AGENT = "TiviMate/5.1.6 (Android 12)"
         private val ADULT = Regex("adult|18\\+|взросл|доросл", RegexOption.IGNORE_CASE)
         /** Where the provider sends an archive it doesn't have (302 Location, segment names). */
         private val STUB = Regex("noarch|/stub", RegexOption.IGNORE_CASE)
-        private const val NO_ARCHIVE = "X-Tplay-No-Archive"
+        private const val NO_ARCHIVE = "X-TiViBro-No-Archive"
 
         fun isEpgTeam(url: String) = PlaylistInfo.hostOf(url).let { it == "epg.team" || it.endsWith(".epg.team") }
 

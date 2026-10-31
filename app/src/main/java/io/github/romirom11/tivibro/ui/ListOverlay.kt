@@ -1,4 +1,4 @@
-package dev.romankudin.tplay.ui
+package io.github.romirom11.tivibro.ui
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
@@ -27,23 +27,23 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import dev.romankudin.tplay.AppViewModel
-import dev.romankudin.tplay.AppViewModel.Companion.DONE
-import dev.romankudin.tplay.AppViewModel.Companion.ago
-import dev.romankudin.tplay.AppViewModel.Companion.dayStart
-import dev.romankudin.tplay.Focus
-import dev.romankudin.tplay.data.Channel
-import dev.romankudin.tplay.data.Mark
-import dev.romankudin.tplay.data.Programme
-import dev.romankudin.tplay.data.inArchive
-import dev.romankudin.tplay.data.now
+import io.github.romirom11.tivibro.AppViewModel
+import io.github.romirom11.tivibro.AppViewModel.Companion.DONE
+import io.github.romirom11.tivibro.AppViewModel.Companion.ago
+import io.github.romirom11.tivibro.AppViewModel.Companion.dayStart
+import io.github.romirom11.tivibro.Focus
+import io.github.romirom11.tivibro.data.Channel
+import io.github.romirom11.tivibro.data.Mark
+import io.github.romirom11.tivibro.data.Programme
+import io.github.romirom11.tivibro.data.inArchive
+import io.github.romirom11.tivibro.data.now
 import kotlin.math.max
 
 @Composable
 fun ListOverlay(vm: AppViewModel) {
     LaunchedEffect(Unit) {
         withFrameNanos { }
-        android.util.Log.i("tplay", "list: first frame ${android.os.SystemClock.uptimeMillis() - vm.listKeyAt} ms after the key")
+        android.util.Log.i("tivibro", "list: first frame ${android.os.SystemClock.uptimeMillis() - vm.listKeyAt} ms after the key")
     }
     val g = vm.currentGroup() ?: return
     val ch = vm.listChannel()

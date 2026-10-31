@@ -1,4 +1,4 @@
-package dev.romankudin.tplay.ui
+package io.github.romirom11.tivibro.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -32,20 +32,20 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import dev.romankudin.tplay.AppViewModel
-import dev.romankudin.tplay.CtxItem
-import dev.romankudin.tplay.GuideRow
-import dev.romankudin.tplay.GuideSource
-import dev.romankudin.tplay.LinkPurpose
-import dev.romankudin.tplay.MarkAction
-import dev.romankudin.tplay.MenuItem
-import dev.romankudin.tplay.PlaylistAction
-import dev.romankudin.tplay.SettingsRow
-import dev.romankudin.tplay.Sheet
-import dev.romankudin.tplay.data.Channel
-import dev.romankudin.tplay.data.GuideMode
-import dev.romankudin.tplay.data.Mark
-import dev.romankudin.tplay.data.PlaylistInfo
+import io.github.romirom11.tivibro.AppViewModel
+import io.github.romirom11.tivibro.CtxItem
+import io.github.romirom11.tivibro.GuideRow
+import io.github.romirom11.tivibro.GuideSource
+import io.github.romirom11.tivibro.LinkPurpose
+import io.github.romirom11.tivibro.MarkAction
+import io.github.romirom11.tivibro.MenuItem
+import io.github.romirom11.tivibro.PlaylistAction
+import io.github.romirom11.tivibro.SettingsRow
+import io.github.romirom11.tivibro.Sheet
+import io.github.romirom11.tivibro.data.Channel
+import io.github.romirom11.tivibro.data.GuideMode
+import io.github.romirom11.tivibro.data.Mark
+import io.github.romirom11.tivibro.data.PlaylistInfo
 import kotlin.math.max
 
 /** «1 канал», «3 канали», «12 каналів». */

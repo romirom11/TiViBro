@@ -1,4 +1,4 @@
-package dev.romankudin.tplay.data
+package io.github.romirom11.tivibro.data
 
 const val MIN = 60_000L
 const val HOUR = 60 * MIN

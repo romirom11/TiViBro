@@ -1,4 +1,4 @@
-package dev.romankudin.tplay.data
+package io.github.romirom11.tivibro.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

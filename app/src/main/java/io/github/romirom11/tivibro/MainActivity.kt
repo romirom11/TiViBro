@@ -1,4 +1,4 @@
-package dev.romankudin.tplay
+package io.github.romirom11.tivibro
 
 import android.content.Intent
 import android.os.Bundle
@@ -7,7 +7,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import dev.romankudin.tplay.ui.App
+import io.github.romirom11.tivibro.ui.App
 
 class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels()
@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
         takePlaylist(intent)
     }
 
-    /** `adb shell am start -n dev.romankudin.tplay/.MainActivity --es playlist '<url>'` */
+    /** `adb shell am start -n io.github.romirom11.tivibro/.MainActivity --es playlist '<url>'` */
     private fun takePlaylist(i: Intent?) {
         i?.getStringExtra("playlist")?.takeIf { it.startsWith("http") }?.let(vm::usePlaylist)
     }

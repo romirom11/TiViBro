@@ -1,4 +1,4 @@
-package dev.romankudin.tplay.data
+package io.github.romirom11.tivibro.data
 
 /** What the `#EXTM3U` line says about the whole playlist. */
 data class PlaylistHeader(

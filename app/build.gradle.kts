@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "dev.romankudin.tplay"
+    namespace = "io.github.romirom11.tivibro"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "dev.romankudin.tplay"
+        applicationId = "io.github.romirom11.tivibro"
         minSdk = 23
         targetSdk = 35
         versionCode = 1

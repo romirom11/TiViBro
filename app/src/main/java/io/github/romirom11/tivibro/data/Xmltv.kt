@@ -1,4 +1,4 @@
-package dev.romankudin.tplay.data
+package io.github.romirom11.tivibro.data
 
 import android.os.Handler
 import android.os.Looper
@@ -337,7 +337,7 @@ class XmltvGuide(private val dir: File, private val onChanged: (id: String?, old
     }
 
     companion object {
-        private const val TAG = "tplay"
+        private const val TAG = "tivibro"
         private val CLEAR = Any()
         private const val DAT = "guide.dat"
         private const val IDX = "guide.idx"
