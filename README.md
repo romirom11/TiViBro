@@ -5,7 +5,7 @@ paused, rewound and played from the programme guide, and whatever you stop in th
 "Continue watching". Everything is driven by the D-pad: no touch, no mouse, no on-screen keyboard.
 
 The interface is in seven languages: Ukrainian, English, Russian, German, Polish, Spanish and Kazakh. Pick one in
-Settings > Language, or keep "System default", which follows the TV's language (Belarusian gets Russian) and falls
+Settings > Language, or keep "System default", which follows the TV's language and falls
 back to English.
 
 ## Features
