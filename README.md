@@ -4,7 +4,9 @@ TiViBro is a remote-first IPTV player for Android TV, built around catch-up. Eve
 paused, rewound and played from the programme guide, and whatever you stop in the middle of shows up again under
 "Continue watching". Everything is driven by the D-pad: no touch, no mouse, no on-screen keyboard.
 
-The interface is in Ukrainian and English.
+The interface is in seven languages: Ukrainian, English, Russian, German, Polish, Spanish and Kazakh. Pick one in
+Settings > Language, or keep "System default", which follows the TV's language (Belarusian gets Russian) and falls
+back to English.
 
 ## Features
 
@@ -26,11 +28,20 @@ The interface is in Ukrainian and English.
 
 ## Screenshots
 
-_Coming soon._
-
-<!-- Put screenshots in docs/screenshots/ and link them here, for example:
-![Channel list](docs/screenshots/list.png)
--->
+<table>
+  <tr>
+    <td width="50%"><a href="docs/screenshots/channel-list.png"><img src="docs/screenshots/channel-list.png" alt="Channel list"></a><br>Channel list of a group, with what is on now and next</td>
+    <td width="50%"><a href="docs/screenshots/programme-view.png"><img src="docs/screenshots/programme-view.png" alt="Programme view"></a><br>Programme view: days, programmes and an archive programme ready to watch</td>
+  </tr>
+  <tr>
+    <td><a href="docs/screenshots/player.png"><img src="docs/screenshots/player.png" alt="Player panel"></a><br>Player panel: timeline, restart, previous and next programme, back to live</td>
+    <td><a href="docs/screenshots/main-menu.png"><img src="docs/screenshots/main-menu.png" alt="Main menu"></a><br>Main menu</td>
+  </tr>
+  <tr>
+    <td><a href="docs/screenshots/settings.png"><img src="docs/screenshots/settings.png" alt="Settings"></a><br>Settings, with interface size and language</td>
+    <td><a href="docs/screenshots/language.png"><img src="docs/screenshots/language.png" alt="Language picker"></a><br>Language picker: each language in its own name</td>
+  </tr>
+</table>
 
 ## Install
 
