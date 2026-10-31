@@ -200,10 +200,8 @@
     <string name="section_guide">Програма передач</string>
     <string name="row_guide">Програма передач</string>
     <string name="section_app">Застосунок</string>
-    <string name="row_language" translatable="false">Мова / Language</string>
+    <string name="row_language">Мова</string>
     <string name="lang_system">Як у системі</string>
-    <string name="lang_uk" translatable="false">Українська</string>
-    <string name="lang_en" translatable="false">English</string>
     <string name="language_sub">Мова інтерфейсу TiViBro</string>
     <string name="row_scale">Масштаб інтерфейсу</string>
     <string name="row_scale_desc">Розмір тексту, списків і панелей</string>

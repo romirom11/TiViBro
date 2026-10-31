@@ -191,6 +191,7 @@
     <string name="section_guide">TV guide</string>
     <string name="row_guide">TV guide</string>
     <string name="section_app">App</string>
+    <string name="row_language">Language</string>
     <string name="lang_system">System default</string>
     <string name="language_sub">TiViBro\'s interface language</string>
     <string name="row_scale">Interface size</string>

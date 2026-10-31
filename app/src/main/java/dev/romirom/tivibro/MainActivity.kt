@@ -13,7 +13,7 @@ import dev.romirom.tivibro.ui.App
 class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels()
 
-    /** The app's language (Settings → «Мова / Language») over the system's. */
+    /** The app's language (Settings → Language) over the system's. */
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(L10n.wrap(newBase))
     }

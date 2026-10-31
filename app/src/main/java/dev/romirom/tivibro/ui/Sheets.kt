@@ -53,7 +53,12 @@ import dev.romirom.tivibro.data.Channel
 import dev.romirom.tivibro.data.GuideMode
 import dev.romirom.tivibro.data.Mark
 import dev.romirom.tivibro.data.PlaylistInfo
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
 import kotlin.math.max
+import kotlin.math.sqrt
 import kotlin.math.min
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.sizeIn
@@ -163,16 +168,36 @@ private fun Section(text: String) = Eyebrow(text, Modifier.padding(start = 64.px
 
 /** One `.it` row: title, optional explanation, value on the right. */
 @Composable
-private fun SheetRow(foc: Boolean, title: String, desc: String?, dim: Boolean = false, value: @Composable () -> Unit = {}) {
+private fun SheetRow(foc: Boolean, title: String, desc: String?, dim: Boolean = false, icon: Icon? = null, value: @Composable () -> Unit = {}) {
     Plate(foc, Modifier.padding(start = 36.px, end = 36.px, bottom = 4.px).fillMaxWidth().heightIn(min = 84.px), lift = 1.02f) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 28.px, vertical = 14.px), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                T(title, 26, if (foc) Tok.OnPlate else if (dim) Tok.T3 else Tok.T1, FontWeight.Medium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (icon == Icon.GLOBE) Globe(if (foc) Tok.OnPlate else Tok.T2, Modifier.padding(end = 14.px).size(26.px))
+                    T(title, 26, if (foc) Tok.OnPlate else if (dim) Tok.T3 else Tok.T1, FontWeight.Medium)
+                }
                 if (desc != null) T(desc, 20, if (foc) Tok.OnPlate2 else Tok.T2, modifier = Modifier.padding(top = 5.px), maxLines = 2)
             }
             value()
         }
     }
+}
+
+private enum class Icon { GLOBE }
+
+/** The platform's language glyph, drawn as lines so it takes the row's colour (the 🌐 emoji would come in colour). */
+@Composable
+private fun Globe(color: Color, modifier: Modifier) = Canvas(modifier) {
+    val w = size.minDimension * .09f
+    val r = size.minDimension / 2 - w / 2
+    val st = Stroke(w)
+    drawCircle(color, r, center, style = st)
+    drawOval(color, Offset(center.x - r * .45f, center.y - r), Size(r * .9f, r * 2), style = st)
+    drawLine(color, Offset(center.x - r, center.y), Offset(center.x + r, center.y), w)
+    val dy = r * .5f
+    val dx = sqrt(r * r - dy * dy)
+    drawLine(color, Offset(center.x - dx, center.y - dy), Offset(center.x + dx, center.y - dy), w)
+    drawLine(color, Offset(center.x - dx, center.y + dy), Offset(center.x + dx, center.y + dy), w)
 }
 
 @Composable
@@ -210,7 +235,7 @@ private fun SettingsSheet(vm: AppViewModel) {
             }
             SettingsRow.LANGUAGE -> {
                 Section(str(R.string.section_app))
-                SheetRow(foc, str(R.string.row_language), null) {
+                SheetRow(foc, str(R.string.row_language), null, icon = Icon.GLOBE) {
                     Value(langLabel(L10n.lang(LocalContext.current)), foc)
                 }
             }
@@ -399,11 +424,8 @@ private fun sourceLabel(m: GuideMode) = when (m) {
     GuideMode.CUSTOM -> str(R.string.src_custom)
 }
 
-private fun langLabel(l: L10n.Lang) = when (l) {
-    L10n.Lang.SYSTEM -> str(R.string.lang_system)
-    L10n.Lang.UK -> str(R.string.lang_uk)
-    L10n.Lang.EN -> str(R.string.lang_en)
-}
+/** «Як у системі» in the current UI language; every other option in its own language. */
+private fun langLabel(l: L10n.Lang) = l.nativeName ?: str(R.string.lang_system)
 
 /** What the guide is doing: progress, the last error, or when it was last updated and from where. */
 private fun guideStatus(vm: AppViewModel): String {

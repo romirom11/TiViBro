@@ -10,12 +10,24 @@ import androidx.annotation.StringRes
 import java.util.Locale
 
 /**
- * The app's own language, independent of the system's: «Як у системі» (default), Ukrainian or English. The activity
+ * The app's own language, independent of the system's: «Як у системі» (default) or one of [Lang]. The activity
  * wraps its base context with [wrap]; code without a localized context of its own (the view model, the LAN page, the
  * data layer) reads strings through [str] / [plural], which follow the same choice.
  */
 object L10n {
-    enum class Lang { SYSTEM, UK, EN }
+    /**
+     * The supported interface languages, in the order the Language sheet lists them. Each option is shown by its own
+     * [nativeName] whatever the current UI language is. To add a language: an entry here (its name is what Prefs
+     * stores, so never rename one) and res/values-<tag>/strings.xml. [SYSTEM] is the only one without a tag.
+     */
+    enum class Lang(val tag: String?, val nativeName: String?) {
+        SYSTEM(null, null),
+        UK("uk", "Українська"),
+        EN("en", "English"),
+    }
+
+    /** System languages without a translation of their own that read Ukrainian more easily than English. */
+    private val CLOSE_TO_UK = setOf("ru", "be")
 
     private const val PREFS = "tivibro"
     private const val KEY = "lang"
@@ -37,17 +49,14 @@ object L10n {
     /** The locale strings are shown in right now. */
     val locale: Locale get() = res?.let { configLocale(it.resources.configuration) } ?: Locale.getDefault()
 
-    /** «Як у системі»: Ukrainian for a Ukrainian (or Russian, Belarusian) system, English for anything else. */
-    private fun systemLocale(): Locale {
-        val sys = configLocale(Resources.getSystem().configuration)
-        return if (sys.language in setOf("uk", "ru", "be")) Locale("uk") else Locale.ENGLISH
+    /** «Як у системі»: the system's language if supported (Ukrainian for Russian, Belarusian), English otherwise. */
+    private fun systemLang(): Lang {
+        val sys = configLocale(Resources.getSystem().configuration).language
+        val code = if (sys in CLOSE_TO_UK) "uk" else sys
+        return Lang.entries.firstOrNull { it.tag == code } ?: Lang.EN
     }
 
-    fun localeFor(l: Lang): Locale = when (l) {
-        Lang.SYSTEM -> systemLocale()
-        Lang.UK -> Locale("uk")
-        Lang.EN -> Locale.ENGLISH
-    }
+    fun localeFor(l: Lang): Locale = Locale.forLanguageTag((if (l == Lang.SYSTEM) systemLang() else l).tag!!)
 
     @Suppress("DEPRECATION")
     private fun configLocale(c: Configuration): Locale = if (Build.VERSION.SDK_INT >= 24) c.locales[0] else c.locale
