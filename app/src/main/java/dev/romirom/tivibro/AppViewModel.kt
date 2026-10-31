@@ -341,7 +341,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val id = info.id
         openJob = viewModelScope.launch {
             val rows = withContext(dbIo) { db.marks(id) }
-            for (r in rows) markRows.putIfAbsent(r.ch + ":" + r.p.start, r)
+            for (r in rows) markRows.getOrPut(r.ch + ":" + r.p.start) { r }
             load(download)
         }
     }

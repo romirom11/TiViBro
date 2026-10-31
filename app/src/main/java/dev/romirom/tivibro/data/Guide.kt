@@ -336,9 +336,9 @@ class Guide(private val dir: File, private val onChanged: (id: String?, old: Lis
             for (i in 0 until h.primary.toInt()) {
                 val id = c.str()
                 out[id] = i
-                names.putIfAbsent(epgName(c.str()), i)
+                names.getOrPut(epgName(c.str())) { i }
             }
-            for ((n, i) in names) out.putIfAbsent(n, i)
+            for ((n, i) in names) out.getOrPut(n) { i }
             return out
         }
 
