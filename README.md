@@ -162,7 +162,7 @@ Requirements: JDK 17 and the Android SDK (API 35). Point `local.properties` at t
 A debug build accepts a playlist from adb, which is handy on an emulator:
 
 ```sh
-adb shell am start -n io.github.romirom11.tivibro/.MainActivity --es playlist 'https://example.com/playlist.m3u'
+adb shell am start -n dev.romirom.tivibro/.MainActivity --es playlist 'https://example.com/playlist.m3u'
 ```
 
 ### Versions and signing
@@ -249,8 +249,8 @@ quiet, and a manual check just says it couldn't check.
 For testing, a debug build can read a local JSON shaped like GitHub's `releases/latest` response:
 
 ```sh
-adb shell am start -n io.github.romirom11.tivibro/.MainActivity --es updateUrl 'http://10.0.2.2:8000/latest.json'
-adb shell am start -n io.github.romirom11.tivibro/.MainActivity --es updateUrl ''   # back to GitHub
+adb shell am start -n dev.romirom.tivibro/.MainActivity --es updateUrl 'http://10.0.2.2:8000/latest.json'
+adb shell am start -n dev.romirom.tivibro/.MainActivity --es updateUrl ''   # back to GitHub
 ```
 
 ## Privacy

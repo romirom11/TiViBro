@@ -39,11 +39,11 @@ val releaseSigning: Signing? = run {
 }
 
 android {
-    namespace = "io.github.romirom11.tivibro"
+    namespace = "dev.romirom.tivibro"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "io.github.romirom11.tivibro"
+        applicationId = "dev.romirom.tivibro"
         minSdk = 23
         targetSdk = 35
         versionCode = tivibroVersion?.let(::versionCodeOf) ?: 1
