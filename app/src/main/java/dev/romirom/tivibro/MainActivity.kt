@@ -8,6 +8,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import dev.romirom.tivibro.tvhome.DeepLink
 import dev.romirom.tivibro.ui.App
 
 class MainActivity : ComponentActivity() {
@@ -24,12 +25,21 @@ class MainActivity : ComponentActivity() {
         vm.onExit = { finishAndRemoveTask() }
         vm.onRecreate = { recreate() }
         takePlaylist(intent)
+        // a recreate (a new language) brings the same intent back: the link was already followed
+        if (savedInstanceState == null) takeLink(intent)
         setContent { App(vm) }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         takePlaylist(intent)
+        takeLink(intent)
+    }
+
+    /** tivibro://… from the home screen's channel or Watch Next. */
+    private fun takeLink(i: Intent?) {
+        if (i?.action != Intent.ACTION_VIEW) return
+        DeepLink.parse(i.dataString)?.let(vm::openDeepLink)
     }
 
     /** Debug builds only: `adb shell am start -n dev.romirom.tivibro/.MainActivity --es playlist '<url>'`.

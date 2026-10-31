@@ -344,4 +344,7 @@
     <string name="tmdb_key_removed">Własny klucz TMDB usunięty</string>
     <string name="row_about">O aplikacji</string>
     <string name="about_tmdb">Plakaty, oceny i opisy filmów: TMDB. Ten produkt korzysta z API TMDB, ale nie jest zatwierdzony ani certyfikowany przez TMDB.</string>
+
+    <!-- home screen links -->
+    <string name="link_archive_gone">Tego programu nie ma już w archiwum: włączam na żywo</string>
 </resources>

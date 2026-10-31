@@ -337,4 +337,7 @@
     <string name="tmdb_key_removed">Your TMDB key was removed</string>
     <string name="row_about">About</string>
     <string name="about_tmdb">Posters, ratings and film descriptions: TMDB.</string>
+
+    <!-- home screen links -->
+    <string name="link_archive_gone">That programme is no longer in the archive: playing live</string>
 </resources>

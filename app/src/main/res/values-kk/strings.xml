@@ -338,4 +338,7 @@
     <string name="tmdb_key_removed">Өз TMDB кілтіңіз жойылды</string>
     <string name="row_about">Қолданба туралы</string>
     <string name="about_tmdb">Постерлер, рейтингтер мен фильм сипаттамалары: TMDB. Бұл өнім TMDB API-ын пайдаланады, бірақ TMDB оны мақұлдамаған әрі сертификаттамаған.</string>
+
+    <!-- home screen links -->
+    <string name="link_archive_gone">Бұл хабар мұрағатта жоқ: тікелей эфир қосылды</string>
 </resources>

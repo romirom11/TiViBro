@@ -59,6 +59,8 @@ import dev.romirom.tivibro.home.Filler
 import dev.romirom.tivibro.home.Slot
 import dev.romirom.tivibro.tmdb.Tmdb
 import dev.romirom.tivibro.tmdb.TmdbInfo
+import dev.romirom.tivibro.tvhome.DeepLink
+import dev.romirom.tivibro.tvhome.TvHome
 import dev.romirom.tivibro.ui.channelsWord
 import dev.romirom.tivibro.ui.dayWord
 import dev.romirom.tivibro.ui.hm
@@ -252,6 +254,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Settings → «При запуску»; Home also opens on a playlist's first start, when it has no last channel yet. */
     var startHome by mutableStateOf(prefs.startHome); private set
     private var startupPending = true
+    /** A home screen link waiting for its playlist's channels (see [openDeepLink]). */
+    private var pendingLink: DeepLink? = null
     /** Home sources of the active playlist: whole groups by name, and picked channels of other groups. */
     private var homeGroups = emptySet<String>()
     private val homeChannels = HashMap<String, Set<String>>()
@@ -261,6 +265,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val homeIndex: HomeIndex = HomeIndex(viewModelScope) {
         homeLoading = homeIndex.building && homeIndex.slots.isEmpty()
         refreshHome()
+        if (!homeIndex.building) syncTvHome()
     }
     // ---------- TMDB
     /** «Свій ключ TMDB», else the one built in (BuildConfig.TMDB_TOKEN); null: none, TMDB stays out of sight. */
@@ -612,10 +617,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         applyVisibility()
         if (first) {
             val last = prefs.lastChannel?.let(byId::get)?.takeIf(::isShown)
-            tune(last ?: shown.firstOrNull() ?: list.first())
-            // the app's start (or a playlist's very first one): Home when asked for, or when there is no last channel
-            if ((startupPending && startHome) || last == null) openHome()
+            val link = pendingLink
+            // a link to a channel of this playlist tunes it itself; anything else plays the last channel under it
+            if (!(link is DeepLink.Live && link.channel in byId) && !(link is DeepLink.Archive && link.channel in byId)) tune(last ?: shown.firstOrNull() ?: list.first())
+            when {
+                link != null -> applyDeepLink()
+                // the app's start (or a playlist's very first one): Home when asked for, or when there is no last channel
+                (startupPending && startHome) || last == null -> openHome()
+            }
             startupPending = false
+            // the sources' now/next for the home screen's channel, once the first channel has had its start
+            viewModelScope.launch { delay(20_000); if (channels === list) ensureHomeIndex() }
         }
     }
 
@@ -882,7 +894,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val pl = playlist?.id ?: return
             viewModelScope.launch(dbIo) { db.saveMark(pl, m) }
         }
-        if (isNew) { rebuildGroups(); markVersion++; refreshHome() }
+        if (isNew) { rebuildGroups(); markVersion++; refreshHome(); syncTvHome() }
     }
 
     fun forgetMark(ch: Channel, p: Programme) {
@@ -893,6 +905,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         rebuildGroups()
         syncGroup()
         refreshHome(drop = HomeRows.continueKey(ch, p))
+        syncTvHome()
         val pl = playlist?.id ?: return
         viewModelScope.launch(dbIo) { db.deleteMark(pl, ch.id, p.start) }
     }
@@ -907,6 +920,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         rebuildGroups()
         syncGroup()
         refreshHome(drop = HomeRows.continueKey(ch, p))
+        syncTvHome()
         val pl = playlist?.id ?: return
         viewModelScope.launch(dbIo) { db.saveMark(pl, m) }
     }
@@ -1209,7 +1223,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun onStop() { saveMark(); player.pause() }
+    fun onStop() { saveMark(); player.pause(); syncTvHome(now = true) }
 
     /** «Вихід»: the bookmark is saved, playback stops, the activity finishes. */
     private fun exitApp() {
@@ -1926,6 +1940,88 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         startHome = v
         prefs.startHome = v
         cfgVersion++
+    }
+
+    // ============================================================ the Android TV home screen
+
+    private var tvHomeJob: Job? = null
+
+    /** Publishes what to continue and what is on now to the home screen ([TvHome]), a few seconds after the last change
+     *  (marks change in bursts), or at once when the app goes to the background. */
+    private fun syncTvHome(now: Boolean = false) {
+        if (!TvHome.supported || channels.isEmpty()) return
+        tvHomeJob?.cancel()
+        val app = getApplication<Application>()
+        tvHomeJob = viewModelScope.launch {
+            if (!now) delay(5000)
+            val s = tvHomeSnapshot() ?: return@launch
+            val pl = playlist?.id
+            val hasSources = homeSources().isNotEmpty()
+            withContext(tvHomeIo) {
+                // the index not read yet this session: keep what was on the channel rather than empty it
+                val keep = if (s.live.isEmpty() && hasSources) TvHome.load(app)?.live?.filter { it.playlist == pl }.orEmpty() else s.live
+                val out = TvHome.Snapshot(s.cont, keep)
+                TvHome.save(app, out)
+                TvHome.publish(app, out)
+            }
+        }
+    }
+
+    private val tvHomeIo = Dispatchers.IO.limitedParallelism(1)
+
+    /** Bookmarks of this playlist, and the Home sources with their next few programmes and the pictures TMDB has
+     *  already found for them (nothing is looked up for this). */
+    private fun tvHomeSnapshot(): TvHome.Snapshot? {
+        val pl = playlist?.id ?: return null
+        val t = now()
+        fun prog(p: Programme): TvHome.Prog {
+            val i = if (tmdbActive) tmdb.get(p.title) else null
+            return TvHome.Prog(p.start, p.end, p.title, i?.backdropUrl, i?.let { it.type == "movie" })
+        }
+        val cont = homeContinue().take(8).map { m ->
+            TvHome.Cont(pl, m.ch.id, m.ch.name, m.ch.logo, prog(m.p), m.pos, m.at, m.p.start + m.ch.archiveDays * DAY)
+        }
+        val ids = homeSources().mapTo(HashSet()) { it.id }
+        val live = homeIndex.slots.filter { it.ch.id in ids }.mapNotNull { s ->
+            val ps = s.progs.filter { it.end > t && !Filler.isFiller(it.title) }.take(6)
+            if (ps.isEmpty()) null else TvHome.Live(pl, s.ch.id, s.ch.name, s.ch.logo, ps.map(::prog))
+        }.take(24)
+        return TvHome.Snapshot(cont, live)
+    }
+
+    /** A link from the home screen. Overrides «При запуску»; waits for the channels when they are still loading, and
+     *  switches playlists when it is for another one. */
+    fun openDeepLink(l: DeepLink) {
+        startupPending = false
+        pendingLink = l
+        if (l is DeepLink.Live || l is DeepLink.Archive) {
+            val pl = if (l is DeepLink.Live) l.playlist else (l as DeepLink.Archive).playlist
+            if (pl != playlist?.id) {
+                val info = repo.get(pl)
+                if (info == null) pendingLink = DeepLink.Home // a playlist that is gone: Home
+                else { closeSheets(); openPlaylist(info, download = true); return } // applied once its channels are in
+            }
+        }
+        if (channels.isNotEmpty()) applyDeepLink()
+    }
+
+    private fun applyDeepLink() {
+        val l = pendingLink ?: return
+        pendingLink = null
+        Log.i(TAG, "link: ${l.uri()}")
+        closeSheets(); closeCtx(); markCtx = null
+        val chId = when (l) { is DeepLink.Live -> l.channel; is DeepLink.Archive -> l.channel; DeepLink.Home -> null }
+        val ch = chId?.let(byId::get)
+        when {
+            l == DeepLink.Home || ch == null -> { if (cur == null) shown.firstOrNull()?.let { tune(it) }; openHome() }
+            l is DeepLink.Archive -> {
+                closeLayers()
+                // the archive moved on since the link was made: the broadcast instead
+                if (!canArchive(ch) || l.start < now() - ch.archiveDays * DAY) { tune(ch); showToast(str(R.string.link_archive_gone)) }
+                else tune(ch, l.start + l.position)
+            }
+            else -> { closeLayers(); if (cur != ch || mode != Mode.LIVE) tune(ch) else showBanner() }
+        }
     }
 
     // ============================================================ keys

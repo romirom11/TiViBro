@@ -348,4 +348,7 @@
     <string name="tmdb_key_removed">Свій ключ TMDB видалено</string>
     <string name="row_about">Про застосунок</string>
     <string name="about_tmdb">Постери, рейтинги й описи фільмів: TMDB. Цей продукт використовує TMDB API, але не схвалений і не сертифікований TMDB.</string>
+
+    <!-- home screen links -->
+    <string name="link_archive_gone">Цієї передачі вже немає в архіві: вмикаю ефір</string>
 </resources>

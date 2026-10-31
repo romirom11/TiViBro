@@ -338,4 +338,7 @@
     <string name="tmdb_key_removed">Eigener TMDB-Schlüssel entfernt</string>
     <string name="row_about">Über die App</string>
     <string name="about_tmdb">Poster, Bewertungen und Filmbeschreibungen: TMDB. Dieses Produkt nutzt die TMDB-API, ist aber nicht von TMDB unterstützt oder zertifiziert.</string>
+
+    <!-- home screen links -->
+    <string name="link_archive_gone">Diese Sendung ist nicht mehr im Archiv: Live-Programm läuft</string>
 </resources>

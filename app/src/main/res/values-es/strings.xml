@@ -341,4 +341,7 @@
     <string name="tmdb_key_removed">Se quitó tu clave de TMDB</string>
     <string name="row_about">Acerca de</string>
     <string name="about_tmdb">Pósters, valoraciones y descripciones: TMDB. Este producto usa la API de TMDB, pero TMDB no lo respalda ni lo certifica.</string>
+
+    <!-- home screen links -->
+    <string name="link_archive_gone">Ese programa ya no está en el archivo: se pone en directo</string>
 </resources>

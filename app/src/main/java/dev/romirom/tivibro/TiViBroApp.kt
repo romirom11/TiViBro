@@ -18,5 +18,6 @@ class TiViBroApp : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         L10n.init(this)
+        dev.romirom.tivibro.tvhome.TvHomeWorker.schedule(this)
     }
 }

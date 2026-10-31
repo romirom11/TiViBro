@@ -107,6 +107,9 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4")
     implementation("com.google.zxing:core:3.5.3")
+    // the Android TV home screen: a preview channel and Watch Next (Android 8+), refreshed by WorkManager
+    implementation("androidx.tvprovider:tvprovider:1.1.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.5")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303") // the real org.json: android.jar only has stubs
