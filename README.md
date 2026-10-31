@@ -1,5 +1,14 @@
 <p align="center"><img src="design/banner_tivibro.png" alt="TiViBro" width="640"></p>
 
+<p align="center">
+  <a href="https://github.com/romirom11/TiViBro/releases/latest"><img src="https://img.shields.io/github/v/release/romirom11/TiViBro?label=release&color=2ea043" alt="Latest release"></a>
+  <a href="https://github.com/romirom11/TiViBro/releases"><img src="https://img.shields.io/github/downloads/romirom11/TiViBro/total?color=0969da" alt="Downloads"></a>
+  <img src="https://img.shields.io/badge/Android%20TV-6.0%2B-3ddc84?logo=android&logoColor=white" alt="Android TV 6.0+">
+  <a href="https://github.com/romirom11/TiViBro/actions/workflows/ci.yml"><img src="https://github.com/romirom11/TiViBro/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/romirom11/TiViBro?color=blue" alt="License: GPL-3.0"></a>
+  <a href="https://ko-fi.com/romirom11"><img src="https://img.shields.io/badge/Ko--fi-support-ff5e5b?logo=ko-fi&logoColor=white" alt="Support on Ko-fi"></a>
+</p>
+
 **TiViBro** is a free IPTV player for Android TV. Add the playlist from your IPTV provider and watch live TV, or go
 back in time: pause, rewind and play any past programme from the archive, all with the TV remote.
 
@@ -90,6 +99,14 @@ No. There are no accounts, no analytics and no tracking. Your playlist, favourit
 only connects to your provider (channels), your TV guide source, GitHub (to check for updates) and, if posters are
 turned on, TMDB: then only the titles of the programmes shown on Home are sent to find posters, never your playlist
 or links. You can turn posters off in Settings > Home page.
+
+## Support
+
+TiViBro is free and has no ads. If you enjoy it, you can buy me a coffee on
+[Ko-fi](https://ko-fi.com/romirom11). Bug reports and ideas are welcome in
+[Issues](https://github.com/romirom11/TiViBro/issues).
+
+<a href="https://ko-fi.com/romirom11"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi"></a>
 
 ## More
 
