@@ -127,6 +127,30 @@ class XmltvGuide(private val dir: File, private val onChanged: (id: String?, old
         main.post { onChanged(id, null, list) }
     }
 
+    /**
+     * Every programme of the guide ids in [ids], read straight from guide.dat on the caller's thread (the search index,
+     * see search.GuideScan): its own file handle, so an [install] renaming a new store over this one doesn't disturb it.
+     */
+    fun scan(ids: Set<String>, visit: (id: String, start: Long, end: Long, title: String) -> Unit) {
+        val idx = index
+        if (idx.isEmpty()) return
+        RandomAccessFile(File(dir, DAT), "r").use { f ->
+            for (id in ids) {
+                val chunks = idx[id] ?: continue
+                for (k in chunks.indices step 2) {
+                    val buf = ByteArray(chunks[k + 1].toInt())
+                    f.seek(chunks[k]); f.readFully(buf)
+                    DataInputStream(InflaterInputStream(buf.inputStream())).use { r ->
+                        repeat(r.readInt()) {
+                            val s = r.readLong(); val d = r.readInt(); val title = r.readUTF(); r.readUTF()
+                            visit(id, s * 1000, (s + d) * 1000, title)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private class Install(val dat: File, val idx: File, val meta: Meta, val done: () -> Unit)
 
     /** Replaces the store with a finished import (on the decode thread, so no read sees half of it). */

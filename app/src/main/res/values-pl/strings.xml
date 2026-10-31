@@ -348,4 +348,31 @@
 
     <!-- home screen links -->
     <string name="link_archive_gone">Tego programu nie ma już w archiwum: włączam na żywo</string>
+
+    <!-- phone remote and MCP -->
+    <string name="section_remote">Telefon i asystent</string>
+    <string name="row_remote">Pilot w telefonie</string>
+    <string name="row_remote_desc">Wyszukiwanie kanałów i programów z telefonu; MCP dla asystenta AI</string>
+    <string name="remote_sub">Zeskanuj kod QR telefonem w tej samej sieci Wi-Fi. Link się nie zmienia, możesz dodać go do zakładek.</string>
+    <string name="remote_mcp">MCP dla asystenta AI: %1$s</string>
+    <string name="remote_reset">Nowy link</string>
+    <string name="remote_reset_desc">Stary link i adres MCP przestaną działać</string>
+    <string name="remote_reset_done">Link zmieniony</string>
+    <string name="rp_search">Kanał lub program</string>
+    <string name="rp_channels">Kanały</string>
+    <string name="rp_programmes">Programy</string>
+    <string name="rp_favourites">Teraz na ulubionych</string>
+    <string name="rp_now">Teraz</string>
+    <string name="rp_archive">Archiwum</string>
+    <string name="rp_upcoming">Wkrótce</string>
+    <string name="rp_live">Na żywo</string>
+    <string name="rp_from_start">Od początku</string>
+    <string name="rp_sent">Włączam na telewizorze</string>
+    <string name="rp_offline">Telewizor nie odpowiada</string>
+    <string name="rp_nothing">Nic nie znaleziono</string>
+    <string name="rp_on_tv">Na telewizorze</string>
+    <string name="rp_indexing">Program TV jest jeszcze indeksowany…</string>
+    <string name="rp_no_playlist">Otwórz TiViBro na telewizorze</string>
+    <string name="rp_not_started">Jeszcze się nie zaczął</string>
+    <string name="rp_cancel">Anuluj</string>
 </resources>

@@ -36,6 +36,8 @@ back in time: pause, rewind and play any past programme from the archive, all wi
   looks at in Settings > Home page.
 - **Favourites, recent channels and hidden channels.** Hide whole groups you never watch.
 - **Several playlists**, each with its own favourites and settings.
+- **Search from your phone.** Find a channel by name or number, or a programme by title (on now, in the archive,
+  coming up), and start it on the TV with a tap. Your AI assistant can do the same over MCP.
 - **Android TV home screen.** A TiViBro row with what to continue and what is on now (Android 8 and newer).
 - **7 languages:** Ukrainian, English, Russian, German, Polish, Spanish and Kazakh.
 - **Bigger or smaller text.** Make the whole interface from 90% to 150% of its normal size.
@@ -77,6 +79,23 @@ playlist.
 | BACK | Home page. BACK on Home returns to the channel. In the channel list or TV guide, BACK closes it |
 | PLAY/PAUSE | Pause, even live TV |
 | MENU | Main menu: Home, channel groups, settings, exit |
+
+## Phone remote and AI assistant
+
+Open Settings > Phone remote on the TV and scan the QR code with a phone on the same Wi-Fi. The page that opens
+searches channels and programmes and starts them on the TV; it also shows what the TV is playing, with pause and
+channel up / down. The link stays the same, so you can bookmark it or add it to your home screen. «New link» in the
+same place makes a new one and the old link stops working.
+
+The same screen shows an MCP address for AI assistants (it ends in `/mcp`). With Claude Code:
+
+```sh
+claude mcp add --transport http tivibro http://<tv-ip>:8765/<token>/mcp
+```
+
+Assistants that only run local (stdio) servers can reach it through `npx mcp-remote http://<tv-ip>:8765/<token>/mcp`.
+Then ask «what is on 1+1?» or «put on yesterday's football». Details in
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#phone-remote-and-mcp).
 
 ## FAQ
 

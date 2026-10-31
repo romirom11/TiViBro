@@ -348,4 +348,31 @@
 
     <!-- home screen links -->
     <string name="link_archive_gone">Этой передачи уже нет в архиве: включаю эфир</string>
+
+    <!-- phone remote and MCP -->
+    <string name="section_remote">Телефон и ассистент</string>
+    <string name="row_remote">Пульт на телефоне</string>
+    <string name="row_remote_desc">Поиск каналов и передач с телефона, MCP для AI-ассистента</string>
+    <string name="remote_sub">Отсканируйте QR-код телефоном в той же сети Wi-Fi. Ссылка постоянная: её можно сохранить в закладки.</string>
+    <string name="remote_mcp">MCP для AI-ассистента: %1$s</string>
+    <string name="remote_reset">Новая ссылка</string>
+    <string name="remote_reset_desc">Старая ссылка и адрес MCP перестанут работать</string>
+    <string name="remote_reset_done">Ссылка изменена</string>
+    <string name="rp_search">Канал или передача</string>
+    <string name="rp_channels">Каналы</string>
+    <string name="rp_programmes">Передачи</string>
+    <string name="rp_favourites">Сейчас на избранных</string>
+    <string name="rp_now">Сейчас</string>
+    <string name="rp_archive">Архив</string>
+    <string name="rp_upcoming">Скоро</string>
+    <string name="rp_live">В эфире</string>
+    <string name="rp_from_start">С начала</string>
+    <string name="rp_sent">Включаю на телевизоре</string>
+    <string name="rp_offline">Телевизор не отвечает</string>
+    <string name="rp_nothing">Ничего не найдено</string>
+    <string name="rp_on_tv">На телевизоре</string>
+    <string name="rp_indexing">Программа передач ещё индексируется…</string>
+    <string name="rp_no_playlist">Откройте TiViBro на телевизоре</string>
+    <string name="rp_not_started">Ещё не началось</string>
+    <string name="rp_cancel">Отмена</string>
 </resources>

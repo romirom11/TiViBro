@@ -342,4 +342,31 @@
 
     <!-- home screen links -->
     <string name="link_archive_gone">Diese Sendung ist nicht mehr im Archiv: Live-Programm läuft</string>
+
+    <!-- phone remote and MCP -->
+    <string name="section_remote">Handy und Assistent</string>
+    <string name="row_remote">Fernbedienung am Handy</string>
+    <string name="row_remote_desc">Sender und Sendungen vom Handy aus suchen; MCP für einen KI-Assistenten</string>
+    <string name="remote_sub">Scannen Sie den QR-Code mit einem Handy im selben WLAN. Der Link bleibt gleich, Sie können ihn als Lesezeichen speichern.</string>
+    <string name="remote_mcp">MCP für einen KI-Assistenten: %1$s</string>
+    <string name="remote_reset">Neuer Link</string>
+    <string name="remote_reset_desc">Der alte Link und die MCP-Adresse funktionieren dann nicht mehr</string>
+    <string name="remote_reset_done">Link geändert</string>
+    <string name="rp_search">Sender oder Sendung</string>
+    <string name="rp_channels">Sender</string>
+    <string name="rp_programmes">Sendungen</string>
+    <string name="rp_favourites">Jetzt auf Ihren Favoriten</string>
+    <string name="rp_now">Jetzt</string>
+    <string name="rp_archive">Archiv</string>
+    <string name="rp_upcoming">Demnächst</string>
+    <string name="rp_live">Live</string>
+    <string name="rp_from_start">Von Anfang an</string>
+    <string name="rp_sent">Wird auf dem Fernseher gestartet</string>
+    <string name="rp_offline">Der Fernseher antwortet nicht</string>
+    <string name="rp_nothing">Nichts gefunden</string>
+    <string name="rp_on_tv">Auf dem Fernseher</string>
+    <string name="rp_indexing">Die TV-Programmübersicht wird noch indiziert…</string>
+    <string name="rp_no_playlist">Öffnen Sie TiViBro auf dem Fernseher</string>
+    <string name="rp_not_started">Noch nicht begonnen</string>
+    <string name="rp_cancel">Abbrechen</string>
 </resources>

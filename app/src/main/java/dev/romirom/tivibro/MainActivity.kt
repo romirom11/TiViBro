@@ -8,6 +8,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import dev.romirom.tivibro.remote.Remote
 import dev.romirom.tivibro.tvhome.DeepLink
 import dev.romirom.tivibro.ui.App
 
@@ -54,6 +55,6 @@ class MainActivity : ComponentActivity() {
     /** The remote is routed by hand, not by Compose focus: one owner, same rules on every screen. */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean = vm.onKey(event) || super.dispatchKeyEvent(event)
 
-    override fun onStart() { super.onStart(); vm.onStart() }
-    override fun onStop() { vm.onStop(); super.onStop() }
+    override fun onStart() { super.onStart(); Remote.foreground = true; vm.onStart() }
+    override fun onStop() { Remote.foreground = false; vm.onStop(); super.onStop() }
 }

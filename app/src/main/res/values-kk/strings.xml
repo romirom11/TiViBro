@@ -342,4 +342,31 @@
 
     <!-- home screen links -->
     <string name="link_archive_gone">Бұл хабар мұрағатта жоқ: тікелей эфир қосылды</string>
+
+    <!-- phone remote and MCP -->
+    <string name="section_remote">Телефон және көмекші</string>
+    <string name="row_remote">Телефондағы пульт</string>
+    <string name="row_remote_desc">Арналар мен хабарларды телефоннан іздеу; AI-көмекшіге арналған MCP</string>
+    <string name="remote_sub">QR кодты сол Wi-Fi желісіндегі телефонмен сканерлеңіз. Сілтеме өзгермейді: оны бетбелгіге сақтауға болады.</string>
+    <string name="remote_mcp">AI-көмекшіге арналған MCP: %1$s</string>
+    <string name="remote_reset">Жаңа сілтеме</string>
+    <string name="remote_reset_desc">Ескі сілтеме мен MCP мекенжайы жұмыс істемей қалады</string>
+    <string name="remote_reset_done">Сілтеме өзгертілді</string>
+    <string name="rp_search">Арна немесе хабар</string>
+    <string name="rp_channels">Арналар</string>
+    <string name="rp_programmes">Хабарлар</string>
+    <string name="rp_favourites">Қазір таңдаулыларда</string>
+    <string name="rp_now">Қазір</string>
+    <string name="rp_archive">Мұрағат</string>
+    <string name="rp_upcoming">Жақында</string>
+    <string name="rp_live">Тікелей эфир</string>
+    <string name="rp_from_start">Басынан</string>
+    <string name="rp_sent">Теледидарда қосып жатырмын</string>
+    <string name="rp_offline">Теледидар жауап бермейді</string>
+    <string name="rp_nothing">Ештеңе табылмады</string>
+    <string name="rp_on_tv">Теледидарда</string>
+    <string name="rp_indexing">Телебағдарлама әлі индекстелуде…</string>
+    <string name="rp_no_playlist">Теледидарда TiViBro ашыңыз</string>
+    <string name="rp_not_started">Әлі басталған жоқ</string>
+    <string name="rp_cancel">Болдырмау</string>
 </resources>

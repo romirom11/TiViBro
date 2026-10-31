@@ -12,6 +12,7 @@ build, sign and release the app, and how auto-update works.
 - [TV guide](#tv-guide)
 - [Home](#home)
 - [Remote control](#remote-control)
+- [Phone remote and MCP](#phone-remote-and-mcp)
 - [Building from source](#building-from-source)
 - [Releasing](#releasing)
 - [Auto-update](#auto-update)
@@ -89,8 +90,9 @@ adb install TiViBro-vX.Y.Z.apk
 TiViBro shows a QR code. Scan it with a phone on the same Wi-Fi network, paste your M3U playlist link into the page
 that opens, and tap Send. The TV downloads the playlist and starts the first channel.
 
-The page is served by the app itself on the local network. It lives at a random address that changes every time it is
-shown, so only someone who can see the TV screen can use it, and it runs only while a QR code is on screen.
+The page is served by the app itself on the local network (port 8765, the same server as the
+[phone remote](#phone-remote-and-mcp)). It lives at a random address that changes every time it is shown, so only
+someone who can see the TV screen can use it, and it answers only while a QR code is on screen.
 
 ## Playlists and catch-up
 
@@ -257,6 +259,61 @@ playback.
 | Hold OK | On air: from the start. Watched archive programme: watch options |
 | BACK | Back to playback |
 
+## Phone remote and MCP
+
+While the app process runs, TiViBro serves one small HTTP server on the local network, port 8765 (another free port if
+that one is taken). It carries the QR setup page, the phone remote and an MCP endpoint, and is advertised over
+mDNS/DNS-SD as `_tivibro._tcp` (`dns-sd -B _tivibro._tcp` on a Mac lists it).
+
+Everything except the setup page needs the token shown in Settings > Phone remote. It is random, kept across
+restarts, and replaced by «New link». It can be given three ways: as the first path segment
+(`http://<tv-ip>:8765/<token>/…`, what the QR code and the MCP address use), as `Authorization: Bearer <token>`, or as
+`?t=<token>`. Without it the server answers 404 (401 on `/api` and `/mcp`).
+
+**Phone page** (`/<token>`): a search box with live results, channels and programmes. Tap a channel to tune it live;
+tap a programme in the archive to play it; the programme on now asks «Live» or «From the start»; upcoming ones are
+shown but cannot be played. With an empty box it shows now and next on your favourites. The strip at the bottom shows
+what the TV plays, with channel down, play / pause, channel up and back to live.
+
+**JSON API** (all under the token): `GET /api/search?q=` (channels and programmes), `GET /api/channels?q=&limit=`,
+`GET /api/programmes?q=&limit=`, `GET /api/whatson?channel=` (no channel: favourites), `GET /api/now`,
+`POST /api/play` with `{"channelId": "…", "start": <ms>, "fromStart": true}` (`start` only for a programme), and
+`POST /api/key` with `{"key": "pause" | "resume" | "playpause" | "next" | "prev" | "live"}`.
+
+**MCP** (`POST /<token>/mcp`, or `/mcp` with the Bearer header): Streamable HTTP, stateless, plain JSON responses, no
+SSE and no sessions. Legacy clients (protocol 2024-11-05 to 2025-11-25) start with `initialize`; 2026-07-28 clients
+send the version in each request's `_meta` and may call `server/discover`. Tools: `search_channels`,
+`search_programmes`, `whats_on`, `play_channel`, `play_programme`, `now_playing` and `control` (pause, resume, channel
+up / down, back to live). Results carry channel ids and programme start times (epoch ms) to pass back to the play
+tools, plus the TV's local time for the assistant to say.
+
+```sh
+# Claude Code
+claude mcp add --transport http tivibro http://<tv-ip>:8765/<token>/mcp
+# or with the header form
+claude mcp add --transport http tivibro http://<tv-ip>:8765/mcp --header "Authorization: Bearer <token>"
+# clients that only start local (stdio) servers
+npx mcp-remote http://<tv-ip>:8765/<token>/mcp
+```
+
+The TV's address can change when the router hands out a new one; give the TV a fixed address (a DHCP reservation in
+the router) if an assistant or a bookmark should keep working.
+
+**Starting playback when TiViBro is not on screen.** When the app is in the foreground, a play request switches
+playback at once and closes whatever was open (menu, list, Home). When it is in the background, TiViBro tries to bring
+itself to the front with the same link the Android TV home screen uses. Android 10 and newer block that for apps in
+the background (the log says «Background activity start … isBgStartWhitelisted: false»); the request then fails with
+a message asking to open TiViBro on the TV. The «display over other apps» permission would lift the limit, but
+TiViBro does not ask for it. Search works either way while the app's process is alive.
+
+**Search index.** Programme search runs over an index of every channel's guide: the archive each channel actually has,
+what is on, and what is coming. It is built on a background thread from the guide files (about 16 s for 4000
+channels and 800 000 programmes on a 2020 Realtek TV), saved, and loaded on the next start (about 2 s). It takes about
+20 MB of memory: titles are stored once, searched as one byte per character, and the display titles stay on disk.
+Search is case-insensitive and ignores accents, apostrophes and the й/и, ё/е, ї/і, ґ/г difference; every word of the
+query must match the start of a word in the title (or, ranked last, the inside of one). Results come in this order:
+on now, the archive (most recent first), upcoming (soonest first). Hidden channels and groups are left out.
+
 ## Building from source
 
 Requirements: JDK 17 and the Android SDK (API 35). Point `local.properties` at the SDK (`sdk.dir=...`) or set
@@ -385,6 +442,9 @@ adb shell am start -n dev.romirom.tivibro/.MainActivity --es updateUrl ''   # ba
   for a week. Turn it off in Settings > Home page.
 - The Android TV home screen row and Play Next get only titles, times and pictures, never stream links.
 - The QR setup page is served on your local network only, under a random address, and only while it is on screen.
+- The phone remote and the MCP endpoint are served on your local network only, behind a random token that you can
+  replace at any time (Settings > Phone remote > New link). They see channel names and the TV guide, never stream or
+  playlist links.
 
 ## License and third-party code
 

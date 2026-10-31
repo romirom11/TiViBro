@@ -341,4 +341,31 @@
 
     <!-- home screen links -->
     <string name="link_archive_gone">That programme is no longer in the archive: playing live</string>
+
+    <!-- phone remote and MCP -->
+    <string name="section_remote">Phone and assistant</string>
+    <string name="row_remote">Phone remote</string>
+    <string name="row_remote_desc">Search channels and programmes from your phone; MCP for an AI assistant</string>
+    <string name="remote_sub">Scan the QR code with a phone on the same Wi-Fi network. The link stays the same, so you can bookmark it.</string>
+    <string name="remote_mcp">MCP for an AI assistant: %1$s</string>
+    <string name="remote_reset">New link</string>
+    <string name="remote_reset_desc">The old link and MCP address will stop working</string>
+    <string name="remote_reset_done">Link changed</string>
+    <string name="rp_search">Channel or programme</string>
+    <string name="rp_channels">Channels</string>
+    <string name="rp_programmes">Programmes</string>
+    <string name="rp_favourites">On your favourites now</string>
+    <string name="rp_now">Now</string>
+    <string name="rp_archive">Archive</string>
+    <string name="rp_upcoming">Soon</string>
+    <string name="rp_live">Live</string>
+    <string name="rp_from_start">From the start</string>
+    <string name="rp_sent">Starting on the TV</string>
+    <string name="rp_offline">The TV is not answering</string>
+    <string name="rp_nothing">Nothing found</string>
+    <string name="rp_on_tv">On the TV</string>
+    <string name="rp_indexing">The TV guide is still being indexed…</string>
+    <string name="rp_no_playlist">Open TiViBro on the TV</string>
+    <string name="rp_not_started">Not started yet</string>
+    <string name="rp_cancel">Cancel</string>
 </resources>

@@ -1,22 +1,21 @@
 package dev.romirom.tivibro.data
 
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.Inet4Address
-import java.net.NetworkInterface
-import java.net.ServerSocket
 import java.net.URLDecoder
 import java.security.SecureRandom
 import dev.romirom.tivibro.L10n
 import dev.romirom.tivibro.R
 import dev.romirom.tivibro.str
-import kotlin.concurrent.thread
+import dev.romirom.tivibro.remote.Http
+import dev.romirom.tivibro.remote.Remote
 
 /**
  * Tiny LAN page for pasting a link (or typing a name) on a phone instead of with the remote: the playlist on first run
- * and when adding one, an XMLTV link, a playlist's new name. Runs only while a screen that shows its QR code is open;
+ * and when adding one, an XMLTV link, a playlist's new name. Served only while a screen that shows its QR code is open;
  * [page] says what it asks for, [onSubmit] gets the answer (on the server thread). The address carries a random key
  * made on every [start]: only someone who saw the QR code on the TV can open the page or send an answer.
+ *
+ * A route of the app's one LAN server ([Remote.http], port 8765), which also serves the phone remote: [start] and
+ * [stop] only make the page's key valid or not.
  */
 class SetupServer(@Volatile var onSubmit: (String) -> Unit) {
     /** What the page asks for. [link]: the answer must be an http(s) URL; otherwise any non-blank text. */
@@ -24,62 +23,29 @@ class SetupServer(@Volatile var onSubmit: (String) -> Unit) {
 
     /** What the page asks for; null: the playlist link, in the current language. */
     @Volatile var page: Page? = null
-    private var socket: ServerSocket? = null
     @Volatile private var key = ""
 
-    val address: String? get() = socket?.let { s -> localIp()?.let { "http://$it:${s.localPort}/$key" } }
+    val address: String? get() = key.takeIf { it.isNotEmpty() }?.let { k -> Remote.base()?.let { "$it/$k" } }
 
     fun start() {
-        if (socket != null) return
-        val s = runCatching { ServerSocket(PORT) }.getOrElse { ServerSocket(0) }
+        if (key.isNotEmpty()) return
         key = newKey()
-        socket = s
-        thread(isDaemon = true, name = "setup-server") {
-            while (!s.isClosed) {
-                val c = runCatching { s.accept() }.getOrNull() ?: break
-                // one thread per connection, with a read timeout: mobile Chrome opens spare (pre)connections and sends
-                // nothing on them, which used to block the only thread so the real request never got an answer
-                thread(isDaemon = true, name = "setup-conn") {
-                    runCatching {
-                        c.use {
-                            it.soTimeout = 10_000
-                            handle(it.getInputStream().bufferedReader(), it.getOutputStream())
-                        }
-                    }
-                }
-            }
-        }
+        Remote.setup = this
     }
 
     fun stop() {
-        runCatching { socket?.close() }
-        socket = null
+        key = ""
+        if (Remote.setup === this) Remote.setup = null
     }
 
-    private fun handle(r: BufferedReader, out: java.io.OutputStream) {
-        val request = r.readLine() ?: return
-        val path = request.split(' ').getOrNull(1)?.substringBefore('?')
-        if (key.isEmpty() || path != "/$key") {
-            // read the headers first: closing with unread request bytes makes the TCP stack send a reset
-            while (true) { val h = r.readLine() ?: break; if (h.isEmpty()) break }
-            out.write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray())
-            out.flush()
-            return
-        }
-        var length = 0
-        while (true) {
-            val h = r.readLine() ?: break
-            if (h.isEmpty()) break
-            if (h.startsWith("Content-Length:", ignoreCase = true)) length = h.substringAfter(':').trim().toIntOrNull() ?: 0
-        }
+    /** The page if [r] is for it (its path is the current key), else null. */
+    fun handle(r: Http.Request): Http.Response? {
+        val k = key
+        if (k.isEmpty() || r.path != "/$k") return null
         var message = ""
-        if (request.startsWith("POST")) {
-            val buf = CharArray(length)
-            var n = 0
-            if (length > 64 * 1024) return
-            while (n < length) { val k = r.read(buf, n, length - n); if (k < 0) break; n += k }
-            val answer = String(buf, 0, n).split('&').firstOrNull { it.startsWith("url=") }
-                ?.let { URLDecoder.decode(it.substring(4), "UTF-8").trim() }
+        if (r.method == "POST") {
+            val answer = r.text.split('&').firstOrNull { it.startsWith("url=") }
+                ?.let { runCatching { URLDecoder.decode(it.substring(4), "UTF-8").trim() }.getOrNull() }
             val pg = page ?: playlistPage()
             message = when {
                 answer.isNullOrBlank() -> "<p class=err>${esc(str(R.string.page_empty))}</p>"
@@ -90,16 +56,13 @@ class SetupServer(@Volatile var onSubmit: (String) -> Unit) {
         val pg = page ?: playlistPage()
         val field = if (pg.link) "<textarea name=url placeholder=\"https://…\" autofocus>${esc(pg.value)}</textarea>"
         else "<input name=url value=\"${esc(pg.value)}\" autofocus>"
-        val html = PAGE.replace("{lang}", L10n.locale.language).replace("{title}", esc(pg.title)).replace("{hint}", esc(pg.hint)).replace("{button}", esc(pg.button))
-            .replace("{field}", field).replace("{msg}", message).toByteArray()
-        out.write("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${html.size}\r\nConnection: close\r\n\r\n".toByteArray())
-        out.write(html)
-        out.flush()
+        return Http.Response.html(
+            PAGE.replace("{lang}", L10n.locale.language).replace("{title}", esc(pg.title)).replace("{hint}", esc(pg.hint)).replace("{button}", esc(pg.button))
+                .replace("{field}", field).replace("{msg}", message),
+        )
     }
 
     companion object {
-        const val PORT = 8765
-
         /** The playlist link: first run and «Додати плейлист». */
         fun playlistPage() = Page(str(R.string.page_playlist_title), str(R.string.page_playlist_hint), str(R.string.page_send))
 
@@ -110,12 +73,6 @@ class SetupServer(@Volatile var onSubmit: (String) -> Unit) {
         }
 
         private fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
-
-        fun localIp(): String? = NetworkInterface.getNetworkInterfaces().toList()
-            .filter { it.isUp && !it.isLoopback }
-            .flatMap { it.inetAddresses.toList() }
-            .filterIsInstance<Inet4Address>()
-            .firstOrNull { it.isSiteLocalAddress }?.hostAddress
 
         private val PAGE = """
             <!doctype html><html lang={lang}><meta name=viewport content="width=device-width,initial-scale=1">

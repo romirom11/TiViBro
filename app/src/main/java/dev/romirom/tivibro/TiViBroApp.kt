@@ -18,6 +18,8 @@ class TiViBroApp : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         L10n.init(this)
+        // the LAN server (QR setup page, phone remote, MCP) lives as long as the process
+        dev.romirom.tivibro.remote.Remote.init(this)
         dev.romirom.tivibro.tvhome.TvHomeWorker.schedule(this)
     }
 }

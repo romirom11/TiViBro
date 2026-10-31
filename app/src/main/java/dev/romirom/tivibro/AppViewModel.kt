@@ -80,6 +80,7 @@ import java.io.File
 import java.util.Calendar
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import dev.romirom.tivibro.remote.Remote
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -89,11 +90,11 @@ enum class Mode { LIVE, ARCHIVE }
 enum class Layer { NONE, LIST, HOME }
 enum class Focus { GROUPS, CHANNELS, DAYS, PROGS }
 /** Layers above the list / video, stacked: the menu stays visible under a settings sheet opened from it. */
-enum class Sheet { MENU, SETTINGS, GROUPS, HIDDEN, PLAYLISTS, PLAYLIST, GUIDE, LINK, LANGUAGE, HOME, HOME_SOURCES, HOME_GROUP }
+enum class Sheet { MENU, SETTINGS, GROUPS, HIDDEN, PLAYLISTS, PLAYLIST, GUIDE, LINK, LANGUAGE, HOME, HOME_SOURCES, HOME_GROUP, REMOTE }
 /** Rows of «Головна сторінка» (Sheet.HOME). */
 enum class HomeSetting { SOURCES, TMDB, TMDB_KEY }
 enum class MenuItem { HOME, GROUPS, GUIDE, SETTINGS, UPDATE, EXIT }
-enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, HOME, STARTUP, LANGUAGE, SCALE, UPDATE, ABOUT }
+enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, HOME, STARTUP, REMOTE, LANGUAGE, SCALE, UPDATE, ABOUT }
 /** Actions on one playlist (Sheet.PLAYLIST), top to bottom. */
 enum class PlaylistAction { USE, REFRESH, RENAME, DELETE }
 /** Rows of «Програма передач» (Sheet.GUIDE): the three sources, then the refresh. */
@@ -394,6 +395,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         homeIndex.clear()
         channels = emptyList(); guideChannels = emptyList(); byId = emptyMap()
         allGroups = emptyList(); groupByName = emptyMap(); providerGroups = emptyList(); shown = emptyList(); groups = emptyList()
+        publishRemote()
         cur = null
         mode = Mode.LIVE; paused = false; pausedLiveAt = null; pendingAbs = null
         layer = Layer.NONE; osd = false; banner = false
@@ -587,6 +589,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         guideError = null
         status = null
         guideVersion++
+        remoteGuide()
         if (s is GuideSource.Segmented && repo.all().none { sourceFor(it) is GuideSource.Xmltv }) xmlGuide.clear()
         guideWake.trySend(Unit)
     }
@@ -615,6 +618,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         for (g in allGroups) prefs.homeChannels(g.name).takeIf { it.isNotEmpty() }?.let { homeChannels[g.name] = it }
         marksFromDb()
         applyVisibility()
+        remoteGuide()
         if (first) {
             val last = prefs.lastChannel?.let(byId::get)?.takeIf(::isShown)
             val link = pendingLink
@@ -655,6 +659,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         g += Group("all", str(R.string.group_all), shown)
         g += providerGroups
         groups = g
+        publishRemote()
     }
 
     // ============================================================ what is shown
@@ -773,6 +778,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Decoded programmes or a description landed. Every getter below reads [guideVersion], so whatever showed their
      *  results recomposes. */
     private fun onGuideChanged(id: String?, old: List<Programme>?, new: List<Programme>?) {
+        if (id == null) remoteGuide()
         if (id != null && old != null && new != null) keepProgFocus(id, old, new)
         // a screenful of rows lands as a burst of decodes: one recomposition for the lot
         if (guideBumpAt != 0L) return
@@ -1239,6 +1245,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         Updater.onInstallError = null
+        if (Remote.target === remoteTarget) Remote.target = null
         setupServer.stop()
         player.release()
         guideThread.close()
@@ -1499,6 +1506,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Sheet.HOME -> HomeSetting.entries.size
             Sheet.HOME_SOURCES -> allGroups.size
             Sheet.HOME_GROUP -> (homeGroup?.channels?.size ?: 0) + 1 // + «Усі канали групи»
+            Sheet.REMOTE -> 1 // «Нове посилання»
             Sheet.MENU -> return menuKey(k)
         }
         when (k) {
@@ -1522,6 +1530,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     SettingsRow.GUIDE -> openSheet(Sheet.GUIDE)
                     SettingsRow.HOME -> openSheet(Sheet.HOME)
                     SettingsRow.STARTUP -> changeStartHome(!startHome)
+                    SettingsRow.REMOTE -> openSheet(Sheet.REMOTE)
                     SettingsRow.LANGUAGE -> openSheet(Sheet.LANGUAGE)
                     SettingsRow.SCALE -> stepScale(1, wrap = true)
                     SettingsRow.UPDATE -> if (updater.available != null) updater.install() else updater.check(manual = true)
@@ -1556,6 +1565,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 Sheet.HOME_SOURCES -> allGroups.getOrNull(rowIdx)?.let(::openHomeGroup)
                 Sheet.HOME_GROUP -> homeGroup?.let { g -> if (rowIdx == 0) toggleHomeGroup(g) else g.channels.getOrNull(rowIdx - 1)?.let { toggleHomeChannel(g, it) } }
+                Sheet.REMOTE -> resetRemote()
                 Sheet.MENU -> Unit
             }
             else -> Unit
@@ -2046,6 +2056,49 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             else -> { closeLayers(); if (cur != ch || mode != Mode.LIVE) tune(ch) else showBanner() }
         }
+    }
+
+    // ============================================================ phone remote and MCP (see remote.Remote)
+
+    /** What the LAN remote may search and play: this playlist's channels, the ones not hidden, the favourites. */
+    private fun publishRemote() = Remote.publish(playlist?.id, channels, shown, favs.toList())
+
+    /** The guide or its source changed: the remote's programme index is rebuilt in the background if what it was built
+     *  from (the bound days, the XMLTV import, the channels) is different now. */
+    private fun remoteGuide() {
+        if (channels.isEmpty()) return
+        val key = if (guide === xmlGuide) "x:${xmlGuide.meta?.at}:${xmlGuide.hasData}" else "s:" + segGuide.days.values.joinToString(",") { it.schedule }
+        Remote.guideChanged(channels, guide, key)
+    }
+
+    /** The phone and the assistant end in plain playback, whatever was open on the TV: no sheet, list or Home over it. */
+    private val remoteTarget = object : Remote.Target {
+        override fun play(ch: Channel, p: Programme?, fromStart: Boolean) {
+            closeSheets(); closeCtx(); markCtx = null; closeLayers(); osd = false
+            if (p == null) { if (cur != ch || mode != Mode.LIVE) tune(ch) else showBanner() }
+            else playProgramme(ch, p, fromStart)
+        }
+
+        override fun key(k: String): Boolean {
+            when (k) {
+                "playpause" -> togglePause()
+                "pause" -> if (!paused) togglePause()
+                "resume" -> if (paused) togglePause()
+                "next", "prev" -> { closeSheets(); closeCtx(); markCtx = null; closeLayers(); zap(if (k == "next") 1 else -1) }
+                "live" -> if (mode != Mode.LIVE) goLive()
+                else -> return false
+            }
+            return true
+        }
+
+        override fun playing(): Remote.Playing? = cur?.let { Remote.Playing(it, mode == Mode.LIVE, paused, posAbs(), playingProgramme()) }
+    }.also { Remote.target = it } // here, not in init: init runs before this property exists
+
+    /** Settings → «Пульт на телефоні» → «Нове посилання». */
+    private fun resetRemote() {
+        Remote.resetToken()
+        cfgVersion++
+        showToast(str(R.string.remote_reset_done))
     }
 
     // ============================================================ keys

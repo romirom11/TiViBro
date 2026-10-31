@@ -144,6 +144,7 @@ fun SideSheet(vm: AppViewModel, sheet: Sheet) {
                     Sheet.HOME -> HomeSheet(vm)
                     Sheet.HOME_SOURCES -> HomeSourcesSheet(vm)
                     Sheet.HOME_GROUP -> HomeGroupSheet(vm)
+                    Sheet.REMOTE -> RemoteSheet(vm)
                     Sheet.MENU -> Unit
                 }
             }
@@ -246,6 +247,10 @@ private fun SettingsSheet(vm: AppViewModel) {
             SettingsRow.STARTUP -> SheetRow(foc, str(R.string.row_startup), str(R.string.row_startup_desc)) {
                 val v = str(if (vm.startHome) R.string.menu_home else R.string.startup_last)
                 Value(if (foc) "◀  $v  ▶" else v, foc)
+            }
+            SettingsRow.REMOTE -> {
+                Section(str(R.string.section_remote))
+                SheetRow(foc, str(R.string.row_remote), str(R.string.row_remote_desc))
             }
             SettingsRow.LANGUAGE -> {
                 Section(str(R.string.section_app))
@@ -524,6 +529,31 @@ private fun LinkSheet(vm: AppViewModel) {
             T(str(R.string.loading_playlist), 24, Tok.T1, FontWeight.Medium, Modifier.padding(top = 20.px))
         }
     }
+}
+
+// ---------------------------------------------------------------- phone remote and MCP
+
+/** The phone remote's QR code and address, the MCP URL for an AI assistant, and «Нове посилання» to revoke both. */
+@Composable
+private fun RemoteSheet(vm: AppViewModel) {
+    vm.cfgVersion
+    SheetTitle(str(R.string.row_remote), str(R.string.remote_sub))
+    val page = remember(vm.cfgVersion) { dev.romirom.tivibro.remote.Remote.pageUrl() }
+    val mcp = remember(vm.cfgVersion) { dev.romirom.tivibro.remote.Remote.mcpUrl() }
+    val qr = remember(page) { page?.let(::qrBitmap) }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 64.px)) {
+        if (qr != null) {
+            Box(
+                Modifier.weight(1f, fill = false).sizeIn(maxWidth = 320.px, maxHeight = 320.px).aspectRatio(1f, matchHeightConstraintsFirst = true)
+                    .background(Color.White, RoundedCornerShape(28.px)).padding(20.px),
+            ) {
+                Image(qr.asImageBitmap(), null, Modifier.fillMaxSize(), filterQuality = FilterQuality.None)
+            }
+            T(str(R.string.or_open, page ?: ""), 22, Tok.T2, modifier = Modifier.padding(top = 22.px), maxLines = 2)
+            T(str(R.string.remote_mcp, mcp ?: ""), 22, Tok.T2, modifier = Modifier.padding(top = 10.px, bottom = 18.px), maxLines = 2)
+        } else T(str(R.string.no_network), 26, Tok.Live, modifier = Modifier.padding(bottom = 18.px))
+    }
+    SheetRow(true, str(R.string.remote_reset), str(R.string.remote_reset_desc))
 }
 
 // ---------------------------------------------------------------- language
