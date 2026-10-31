@@ -99,7 +99,32 @@ class Updater(private val app: Context, http: OkHttpClient, private val scope: C
 
     /** The latest release if it is newer than this build and has an APK; null if not. Throws when it can't tell
      *  (offline, rate-limited, no such repo yet). */
-    private fun fetchLatest(): Release? {
+    private fun fetchLatest(): Release? =
+        try {
+            fetchLatestFromApi()
+        } catch (e: IOException) {
+            // the API allows 60 anonymous requests an hour per IP, shared by every device at home; the web page has no such limit
+            if (BuildConfig.DEBUG && sp.getString(K_DEBUG_URL, null) != null) throw e
+            fetchLatestFromWeb()
+        }
+
+    /** github.com/…/releases/latest answers with a redirect to …/releases/tag/<tag>; CI names the APK TiViBro-<tag>.apk. */
+    private fun fetchLatestFromWeb(): Release? {
+        val req = Request.Builder().url("https://github.com/$OWNER/$REPO/releases/latest").head()
+            .header("User-Agent", "TiViBro/${BuildConfig.VERSION_NAME}")
+            .build()
+        val location = http.newBuilder().followRedirects(false).build().newCall(req).execute().use { r ->
+            if (!r.isRedirect) throw IOException("HTTP ${r.code}")
+            r.header("Location") ?: throw IOException("no Location")
+        }
+        val tag = location.substringAfter("/releases/tag/", "").substringBefore('?').takeIf { it.isNotEmpty() }
+            ?: throw IOException("unexpected redirect")
+        val version = Version.parse(tag) ?: return null
+        if (!Version.isNewer(tag, BuildConfig.VERSION_NAME)) return null
+        return Release(version, tag, "https://github.com/$OWNER/$REPO/releases/download/$tag/TiViBro-$tag.apk", 0)
+    }
+
+    private fun fetchLatestFromApi(): Release? {
         val req = Request.Builder().url(latestUrl())
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
