@@ -298,14 +298,34 @@ restarts, and replaced by «New link». It can be given three ways: as the first
 (`http://<tv-ip>:8765/<token>/…`, what the QR code and the MCP address use), as `Authorization: Bearer <token>`, or as
 `?t=<token>`. Without it the server answers 404 (401 on `/api` and `/mcp`).
 
-**Phone page** (`/<token>`), two tabs. Search: a search box with live results, channels and programmes; with an empty
-box, now and next on your favourites. Channels: your favourites, then the playlist's groups (switched-off groups and
-hidden channels left out, as in the app); a group lists its channels 40 at a time as you scroll, each with what is on
-now. Tap a channel to tune it live; its › opens its schedule: one day at a time, from as far back as its archive goes
-(at most 14 days) to tomorrow. Everywhere, a programme in the archive plays on tap, the one on now asks «Live» or «From
-the start», upcoming ones are shown but cannot be played. Where you are is kept in the address's `#` part, so the
-phone's back button and a reload work. The strip at the bottom shows what the TV plays, with channel down, play /
-pause, channel up and back to live.
+**Phone page** (`/<token>`), three tabs. Home: Continue watching as the TV's Home shows it (tap resumes on the TV
+where it stopped, also for a programme still on air; × removes the bookmark), the 10 channels watched last, and now and
+next on the favourites. Search: a search box with live results, channels and programmes. Channels: the favourites
+(«Reorder» moves them up and down a step at a time), then the playlist's groups (switched-off groups and hidden
+channels left out, as in the app); a group lists its channels 40 at a time as you scroll, each with what is on now; at
+the end, «Hidden groups and channels» mirrors Settings > Channel groups (a switch per group) and Hidden channels
+(«Show channel»). Every channel row has a ☆ that toggles the favourite at once (optimistically, put back if the TV
+refuses); holding a channel opens its menu (live, schedule, favourite, hide), holding a group offers to hide it. A
+channel's › opens its schedule: one day at a time, from as far back as its archive goes (at most 14 days) to tomorrow.
+Tapping a programme opens its details (title, time, channel, the guide's description, read on demand) with what can be
+done: watch or resume an archive programme, from the start, live; one still to come only says when it starts. Where
+you are is kept in the address's `#` part (`#search`, `#groups`, `#g/<group>`, `#s/<channel>/<day>`, `#hidden`), so
+the phone's back button and a reload work. Changes go through the same view model functions as the TV's own keys, so
+they are saved and shown on the TV (with its toast) exactly as if made with the remote.
+
+The strip at the bottom shows what the TV plays, with channel down, play / pause and channel up; tapping it opens the
+player panel: the programme with its description, a live / archive / paused badge and how far behind live it is, a
+seek bar over the programme (drag or tap; it is clamped to what the archive holds and to now, and past the live edge
+it returns to live), −5 min, −30 s, play / pause, +30 s, +5 min, previous / next programme (as the TV's player panel),
+from the start, back to live, channel down / up, and the audio tracks when there are several. Every action answers
+with the player's new state; otherwise the page polls `/api/now` every 2 s with the panel open and every 8 s without,
+and not while the page is hidden. The TV's clock comes with each answer (`serverNow`), so a phone whose clock is off
+still draws the live edge right. When TiViBro is not in front on the TV (`foreground: false`) a banner says so and
+taps that would play or steer playback are refused with it; favourites, hiding and bookmarks still work.
+
+«Add to Home screen» uses `/<token>/manifest.webmanifest` (standalone, the token in `start_url`) and
+`/<token>/icon.png` (192 px, from `assets/remote`). Chrome treats a plain-http LAN page as insecure, so on Android it
+may add a shortcut that opens in a browser tab rather than a standalone window; Safari on iOS opens it full-screen.
 
 **JSON API** (all under the token): `GET /api/search?q=` (channels and programmes), `GET /api/channels?q=&limit=`,
 `GET /api/programmes?q=&limit=`, `GET /api/whatson?channel=` (no channel: favourites), `GET /api/now`,
@@ -313,16 +333,43 @@ pause, channel up and back to live.
 `GET /api/group?id=&offset=&limit=` (a page of a group's channels with what is on now, and `total`; limit 40 by
 default, 100 at most), `GET /api/schedule?channel=&day=` (`day` 0 is today, -1 yesterday, 1 tomorrow; answers the
 channel, its `days` as `{"day", "start"}` local midnights, and the day's `programmes` with `when` now / archive /
-upcoming),
-`POST /api/play` with `{"channelId": "…", "start": <ms>, "fromStart": true}` (`start` only for a programme), and
-`POST /api/key` with `{"key": "pause" | "resume" | "playpause" | "next" | "prev" | "live"}`.
+upcoming), `GET /api/home` (`bookmarks`, `recent`, `favourites`, `foreground`), `GET /api/hidden` (every provider
+group with `shown`, and the hidden channels), `GET /api/programme?channel=&start=` (one programme with `desc`,
+`resumeAt` and `inArchive`; `pending` while the guide still reads the description: ask again shortly). Every channel
+object carries `fav`.
+
+`GET /api/now` answers `playing`, `foreground`, `serverNow`, the `channel`, `mode` (live / archive), `paused`,
+`position` (the frame on screen, epoch ms), the `programme` (with `desc` once read), `canSeek`, `earliest` (the oldest
+moment the archive holds), `can` (which of restart, previous_programme, next_programme, live make sense now) and
+`audio` (`[{"index", "name", "selected"}]`).
+
+POST, with a JSON body:
+
+- `/api/play` `{"channelId", "start": <ms>, "fromStart": true, "resume": true}` (`start` only for a programme;
+  `resume` continues a bookmark even of a programme still on air, which otherwise plays live);
+- `/api/key` `{"key": "pause" | "resume" | "playpause" | "next" | "prev" | "live" | "restart" | "previous_programme" |
+  "next_programme"}`, answered with `now`;
+- `/api/seek` `{"by": <ms>}` (negative goes back) or `{"to": <epoch ms> | "HH:MM"}` (the most recent such time),
+  answered with `now`; from live it goes back into the archive, past the live edge it returns to live;
+- `/api/audio` `{"index": n}` (0-based), answered with the `tracks`;
+- `/api/fav` `{"channelId", "on": true | false}`, answered with the new `favs` list; `/api/fav/move`
+  `{"channelId", "dir": -1 | 1}` (one step past the next favourite the user can see);
+- `/api/hide` `{"channelId", "hidden": true | false}`; `/api/group/show` `{"group", "shown": true | false}`;
+- `/api/bookmark/forget` `{"channelId", "start"}`.
+
+Playback control (`key`, `seek`, choosing an audio track) needs TiViBro on screen; the rest works while it is in the
+background as long as its process lives.
 
 **MCP** (`POST /<token>/mcp`, or `/mcp` with the Bearer header): Streamable HTTP, stateless, plain JSON responses, no
 SSE and no sessions. Legacy clients (protocol 2024-11-05 to 2025-11-25) start with `initialize`; 2026-07-28 clients
 send the version in each request's `_meta` and may call `server/discover`. Tools: `search_channels`,
 `search_programmes`, `whats_on`, `play_channel`, `play_programme`, `now_playing`, `control` (pause, resume, channel
-up / down, back to live), `list_groups` and `list_channels` (a group's channels, paged). Results carry channel ids and programme start times (epoch ms) to pass back to the play
-tools, plus the TV's local time for the assistant to say.
+up / down, back to live, restart, previous / next programme), `seek` (`seconds`, negative back, or `to` a time of day
+like "21:30" or epoch ms), `audio_track` (lists the tracks, or switches to `track`, numbered from 1),
+`list_favourites`, `add_favourite`, `remove_favourite`, `continue_watching`, `resume` (a bookmark by `channel_id` and
+`start`, or the most recent one), `list_groups` and `list_channels` (a group's channels, paged). Results carry channel
+ids and programme start times (epoch ms) to pass back to the play tools, plus the TV's local time for the assistant to
+say.
 
 ```sh
 # Claude Code
@@ -339,7 +386,7 @@ the router) if an assistant or a bookmark should keep working.
 **Connections and Chrome.** The server reads one request per connection and closes it (`Connection: close`). A
 connection may sit idle for up to 15 minutes before its request: Chrome opens spare connections ahead of time (the
 omnibox does while an address is typed) and Chrome for Android was seen keeping an unused one for 277 s. At most 64
-connections are open at once; more are closed right away. A TLS ClientHello (https:// typed, or Chrome's
+connections are open at once; at the cap the oldest one still waiting for its request is closed to make room. A TLS ClientHello (https:// typed, or Chrome's
 HTTPS upgrade with «Always use secure connections» on for private sites) gets a TLS alert at once, so Chrome falls back
 or shows its «not secure» page without waiting. Every connection ends in one line under the logcat tag
 `tivibro-http`, with the token masked:

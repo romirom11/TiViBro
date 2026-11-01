@@ -26,6 +26,12 @@ class McpTest {
             return JSONObject().put("ok", true)
         }
         override fun schedule(channel: String, day: Int) = JSONObject().put("ok", true)
+        override fun favourites() = JSONObject().put("ok", true)
+        override fun setFavourite(channel: String, on: Boolean) = JSONObject().put("ok", true).also { played += "fav $channel $on" }
+        override fun bookmarks() = JSONObject().put("ok", true)
+        override fun resume(channel: String?, start: Long?) = JSONObject().put("ok", true).also { played += "resume $channel $start" }
+        override fun seek(seconds: Long?, to: String?) = JSONObject().put("ok", true).also { played += "seek $seconds $to" }
+        override fun audio(index: Int?) = JSONObject().put("ok", true).also { played += "audio $index" }
     }
     private val mcp = Mcp(tv)
 
@@ -51,7 +57,15 @@ class McpTest {
     @Test fun toolsAreListed() {
         val tools = json(post("""{"jsonrpc":"2.0","id":3,"method":"tools/list"}""")).getJSONObject("result").getJSONArray("tools")
         val names = (0 until tools.length()).map { tools.getJSONObject(it).getString("name") }
-        assertEquals(listOf("search_channels", "search_programmes", "whats_on", "play_channel", "play_programme", "now_playing", "control", "list_groups", "list_channels"), names)
+        assertEquals(
+            listOf(
+                "search_channels", "search_programmes", "whats_on", "play_channel", "play_programme", "now_playing", "control", "seek",
+                "audio_track", "list_favourites", "add_favourite", "remove_favourite", "continue_watching", "resume", "list_groups", "list_channels",
+            ),
+            names, // the order is what clients show: keep it deliberate
+        )
+        val control = tools.getJSONObject(names.indexOf("control")).getJSONObject("inputSchema").getJSONObject("properties").getJSONObject("action")
+        assertTrue(control.getJSONArray("enum").toString().contains("next_programme"))
     }
 
     @Test fun toolCallReturnsTextAndPlays() {
@@ -67,6 +81,23 @@ class McpTest {
 
         post("""{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"list_channels","arguments":{"group":"Кіно","offset":-3}}}""")
         assertEquals("group Кіно 0 50", played.last())
+    }
+
+    private fun call(name: String, args: String) =
+        json(post("""{"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"$name","arguments":$args}}""")).getJSONObject("result")
+
+    @Test fun newToolsPassTheirArguments() {
+        call("add_favourite", """{"channel":"1+1"}"""); assertEquals("fav 1+1 true", played.last())
+        call("remove_favourite", """{"channel":"ch1"}"""); assertEquals("fav ch1 false", played.last())
+        call("resume", "{}"); assertEquals("resume null null", played.last())
+        call("resume", """{"channel_id":"ch1","start":1000}"""); assertEquals("resume ch1 1000", played.last())
+        call("seek", """{"seconds":-300}"""); assertEquals("seek -300 null", played.last())
+        call("seek", """{"to":"21:30"}"""); assertEquals("seek null 21:30", played.last())
+        call("seek", """{"to":1793477719916}"""); assertEquals("seek null 1793477719916", played.last())
+        // «track 2» is the second track: 0-based underneath
+        call("audio_track", """{"track":2}"""); assertEquals("audio 1", played.last())
+        call("audio_track", "{}"); assertEquals("audio null", played.last())
+        assertFalse(call("continue_watching", "{}").getBoolean("isError"))
     }
 
     @Test fun modernRequestsAreServedAndUnknownVersionsRefused() {

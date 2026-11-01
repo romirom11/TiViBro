@@ -344,7 +344,7 @@
     <!-- phone remote and MCP -->
     <string name="section_remote">Phone and assistant</string>
     <string name="row_remote">Phone remote</string>
-    <string name="row_remote_desc">Search channels and programmes from your phone; MCP for an AI assistant</string>
+    <string name="row_remote_desc">Control from your phone: search, favourites, seeking; MCP for an AI assistant</string>
     <string name="remote_sub">Scan the QR code with a phone on the same Wi-Fi network. The link stays the same, so you can bookmark it.</string>
     <string name="remote_mcp">MCP for an AI assistant: %1$s</string>
     <string name="remote_reset">New link</string>
@@ -376,4 +376,18 @@
     <string name="rp_groups">Groups</string>
     <string name="rp_schedule">Schedule</string>
     <string name="rp_no_programmes">No schedule for this day</string>
+    <string name="rp_tv_background">TiViBro is in the background on the TV. Open it to switch channels and control playback.</string>
+    <string name="rp_edit_order">Reorder</string>
+    <string name="rp_done">Done</string>
+    <string name="rp_fav_empty">Tap ☆ next to a channel and it will show up here</string>
+    <string name="rp_behind">%1$s behind live</string>
+    <string name="rp_resume_at">Resume from %1$s</string>
+    <string name="rp_hide_group">Hide group</string>
+    <string name="rp_manage">Hidden groups and channels</string>
+    <string name="rp_min">%1$d min</string>
+    <string name="rp_sec">%1$d s</string>
+    <string name="rp_prev_prog">Previous programme</string>
+    <string name="rp_next_prog">Next programme</string>
+    <string name="rp_cant_now">Not possible right now</string>
+    <string name="rp_nothing_playing">Nothing is playing</string>
 </resources>

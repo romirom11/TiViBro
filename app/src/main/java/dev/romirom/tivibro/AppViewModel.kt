@@ -84,6 +84,7 @@ import java.io.File
 import java.util.Calendar
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import dev.romirom.tivibro.remote.Control
 import dev.romirom.tivibro.remote.Remote
 import kotlin.math.abs
 import kotlin.math.max
@@ -1164,12 +1165,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun cycleAudio() {
         val gs = audioGroups()
         if (gs.size < 2) { showToast(str(R.string.no_other_audio)); return }
-        val i = (gs.indexOfFirst { it.isSelected } + 1) % gs.size
+        selectAudio((gs.indexOfFirst { it.isSelected } + 1) % gs.size)
+    }
+
+    private fun selectAudio(i: Int) {
+        val gs = audioGroups()
+        val g = gs.getOrNull(i) ?: return
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-            .setOverrideForType(androidx.media3.common.TrackSelectionOverride(gs[i].mediaTrackGroup, 0)).build()
-        val f = gs[i].getTrackFormat(0)
-        val name = f.label ?: f.language?.let { java.util.Locale(it).getDisplayLanguage(L10n.locale).replaceFirstChar(Char::uppercase) }
-        showToast(str(R.string.audio_track, name ?: str(R.string.audio_track_n, i + 1), i + 1, gs.size))
+            .setOverrideForType(androidx.media3.common.TrackSelectionOverride(g.mediaTrackGroup, 0)).build()
+        showToast(str(R.string.audio_track, audioName(g, i), i + 1, gs.size))
+    }
+
+    /** The track's label, else its language in the app's language, else «Доріжка N». */
+    private fun audioName(g: androidx.media3.common.Tracks.Group, i: Int): String {
+        val f = g.getTrackFormat(0)
+        return f.label ?: f.language?.takeIf { it != "und" }?.let { java.util.Locale(it).getDisplayLanguage(L10n.locale).replaceFirstChar(Char::uppercase) }
+            ?: str(R.string.audio_track_n, i + 1)
     }
 
     /** Timeline: ◀▶ seek, OK pause, ▼ buttons. Buttons: ◀▶ choose, OK run, ▲ timeline. BACK closes; any key keeps it up. */
@@ -2080,7 +2091,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ============================================================ phone remote and MCP (see remote.Remote)
 
     /** What the LAN remote may search and play: this playlist's channels, the ones not hidden, the favourites. */
-    private fun publishRemote() = Remote.publish(playlist?.id, channels, shown, favs.toList())
+    private fun publishRemote() = Remote.publish(
+        playlist?.id, channels, shown, favs.toList(), recent.toList(), hidden, allGroups.filterNot(::groupShown).mapTo(HashSet()) { it.name },
+    )
 
     /** The guide or its source changed: the remote's programme index is rebuilt in the background if what it was built
      *  from (the bound days, the XMLTV import, the channels) is different now. */
@@ -2090,27 +2103,109 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Remote.guideChanged(channels, guide, key)
     }
 
-    /** The phone and the assistant end in plain playback, whatever was open on the TV: no sheet, list or Home over it. */
+    /** The phone and the assistant end in plain playback, whatever was open on the TV: no sheet, list or Home over it.
+     *  Each call is the TV's own action (the RED key, the context menu, the player panel's buttons), toast included, so
+     *  whoever watches the TV sees what the phone did. */
     private val remoteTarget = object : Remote.Target {
+        private fun toPlayback() { closeSheets(); closeCtx(); markCtx = null; closeLayers() }
+
         override fun play(ch: Channel, p: Programme?, fromStart: Boolean) {
-            closeSheets(); closeCtx(); markCtx = null; closeLayers(); osd = false
-            if (p == null) { if (cur != ch || mode != Mode.LIVE) tune(ch) else showBanner() }
-            else playProgramme(ch, p, fromStart)
+            toPlayback(); osd = false
+            val m = p?.takeIf { it.isNow() && !fromStart && canArchive(ch) }?.let { marks[markKey(ch, it)] }?.takeIf { it.watched < DONE }
+            when {
+                p == null -> if (cur != ch || mode != Mode.LIVE) tune(ch) else showBanner()
+                // a bookmark of a programme still on air: where it stopped, where the TV's own lists would play it live
+                m != null -> { tune(ch, m.pos); showToast(str(R.string.resuming, ago(m.pos - m.p.start), m.p.title)) }
+                else -> playProgramme(ch, p, fromStart)
+            }
         }
 
-        override fun key(k: String): Boolean {
-            when (k) {
-                "playpause" -> togglePause()
-                "pause" -> if (!paused) togglePause()
-                "resume" -> if (paused) togglePause()
-                "next", "prev" -> { closeSheets(); closeCtx(); markCtx = null; closeLayers(); zap(if (k == "next") 1 else -1) }
-                "live" -> if (mode != Mode.LIVE) goLive()
-                else -> return false
+        override fun key(k: String): String? {
+            val b = when (k) {
+                "restart" -> OsdButton.RESTART
+                "previous_programme" -> OsdButton.PREV
+                "next_programme" -> OsdButton.NEXT
+                else -> null
             }
+            when {
+                b != null -> { if (!osdEnabled(b)) return str(R.string.rp_cant_now); toPlayback(); runOsd(b); showOsd() }
+                k == "playpause" -> togglePause()
+                k == "pause" -> if (!paused) togglePause()
+                k == "resume" -> if (paused) togglePause()
+                k == "next" || k == "prev" -> { toPlayback(); zap(if (k == "next") 1 else -1) }
+                k == "live" -> if (mode != Mode.LIVE) goLive()
+            }
+            return null
+        }
+
+        override fun seek(byMs: Long?, to: Long?): String? {
+            val ch = cur ?: return str(R.string.rp_nothing_playing)
+            if (!canArchive(ch)) return str(R.string.no_archive)
+            val base = if (mode == Mode.LIVE) livePos() else posAbs()
+            toPlayback()
+            val t = Control.seekTarget(base, byMs, to, now(), ch.archiveDays)
+            if (t == null) { if (mode != Mode.LIVE) goLive(); return null }
+            saveMark()
+            seekAbs(t)
+            showOsd()
+            return null
+        }
+
+        override fun audio(select: Int?): List<Remote.Track> {
+            if (select != null) selectAudio(select)
+            // the override applies on the next track selection: report the one asked for as the selected one
+            return audioGroups().mapIndexed { i, g ->
+                Remote.Track(i, audioName(g, i).replaceFirstChar(Char::uppercase), if (select != null) i == select else g.isSelected)
+            }
+        }
+
+        override fun setFav(ch: Channel, on: Boolean) { if (isFav(ch) != on) toggleFav(ch) }
+
+        override fun moveFav(id: String, dir: Int) {
+            val moved = Control.moveFav(favs, shown.mapTo(HashSet()) { it.id }, id, dir)
+            if (moved == favs) return
+            favs = moved.toMutableList()
+            prefs.favorites = favs
+            rebuildGroups()
+            syncGroup()
+        }
+
+        override fun setHidden(ch: Channel, hide: Boolean) {
+            if (isHidden(ch) == hide) return
+            this@AppViewModel.setHidden(ch, hide)
+            showToast(str(if (hide) R.string.channel_hidden else R.string.channel_back, ch.name))
+        }
+
+        override fun setGroupShown(name: String, on: Boolean) {
+            val g = groupByName[name] ?: return
+            if (groupShown(g) != on) toggleGroupShown(g)
+        }
+
+        override fun bookmarks(): List<Mark> = homeContinue()
+
+        override fun forgetBookmark(chId: String, start: Long): Boolean {
+            val m = marks[chId + ":" + start] ?: return false
+            forgetMark(m.ch, m.p)
+            showToast(str(R.string.mark_forgotten_toast))
+            afterMarkChange(m.ch)
             return true
         }
 
-        override fun playing(): Remote.Playing? = cur?.let { Remote.Playing(it, mode == Mode.LIVE, paused, posAbs(), playingProgramme()) }
+        override fun programme(ch: Channel, t: Long): Remote.ProgInfo? {
+            val p = progAt(ch, t) ?: return null
+            return Remote.ProgInfo(p, desc(p), marks[markKey(ch, p)]?.takeIf { it.watched < DONE }?.pos)
+        }
+
+        override fun playing(): Remote.Playing? = cur?.let { ch ->
+            val can = buildSet {
+                if (osdEnabled(OsdButton.RESTART)) add("restart")
+                if (osdEnabled(OsdButton.PREV)) add("previous_programme")
+                if (osdEnabled(OsdButton.NEXT)) add("next_programme")
+                if (mode == Mode.ARCHIVE) add("live")
+            }
+            val p = playingProgramme()
+            Remote.Playing(ch, mode == Mode.LIVE, paused, if (mode == Mode.LIVE) livePos() else posAbs(), p, canArchive(ch), can, audio(null), p?.let(::desc))
+        }
     }.also { Remote.target = it } // here, not in init: init runs before this property exists
 
     /** Settings → «Пульт на телефоні» → «Нове посилання». */

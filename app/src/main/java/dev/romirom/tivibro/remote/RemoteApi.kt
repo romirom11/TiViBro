@@ -44,6 +44,17 @@ interface Tv {
     fun groupChannels(group: String, offset: Int, limit: Int): JSONObject
     /** [channel]'s programmes on day [day] (0 today, -1 yesterday, 1 tomorrow) and the days it has. */
     fun schedule(channel: String, day: Int): JSONObject
+    /** The favourites in the user's order, with what is on now. */
+    fun favourites(): JSONObject
+    fun setFavourite(channel: String, on: Boolean): JSONObject
+    /** «Продовжити перегляд»: unfinished archive programmes, newest first, with how far along each is. */
+    fun bookmarks(): JSONObject
+    /** Resumes a bookmark ([channel] id and programme [start]); both null: the most recent one. */
+    fun resume(channel: String?, start: Long?): JSONObject
+    /** Seeks by [seconds] (negative: back) or [to] (epoch ms, or a local time like «21:30»). */
+    fun seek(seconds: Long?, to: String?): JSONObject
+    /** The audio tracks, after switching to [index] (0-based) when given. */
+    fun audio(index: Int?): JSONObject
 }
 
 /** [Tv] over [Remote]'s snapshots, plus the JSON routes the phone page calls (`/api/…`). */
@@ -65,11 +76,25 @@ class RemoteApi(private val app: Context) : Tv {
             "group" -> groupChannels(q["id"].orEmpty(), q["offset"]?.toIntOrNull() ?: 0, q["limit"]?.toIntOrNull()?.coerceIn(1, 100) ?: 40)
             "schedule" -> schedule(q["channel"].orEmpty(), q["day"]?.toIntOrNull() ?: 0)
             "now" -> nowPlaying()
-            "play", "key" -> {
+            "home" -> home()
+            "hidden" -> hiddenList()
+            "programme" -> programme(q["channel"].orEmpty(), q["start"]?.toLongOrNull() ?: 0)
+            "play", "key", "seek", "audio", "fav", "fav/move", "hide", "group/show", "bookmark/forget" -> {
                 if (method != "POST") return Http.Response.json("""{"error":"POST only"}""", 405)
                 val o = runCatching { JSONObject(body) }.getOrElse { return Http.Response.json("""{"error":"bad json"}""", 400) }
-                if (path == "key") control(o.optString("key"))
-                else play(o.optString("channelId", o.optString("channel")), o.optLong("start", 0).takeIf { it > 0 }, o.optBoolean("fromStart"))
+                val ch = o.optString("channelId", o.optString("channel"))
+                when (path) {
+                    "play" -> play(ch, o.optLong("start", 0).takeIf { it > 0 }, o.optBoolean("fromStart"), o.optBoolean("resume"))
+                    // what the player does now comes back with the answer: the phone shows it without polling again
+                    "key" -> withNow(control(o.optString("key")))
+                    "seek" -> withNow(seekMs(if (o.has("by")) o.optLong("by") else null, o.opt("to")?.let { if (it is Number) it.toLong().toString() else it.toString() }?.ifBlank { null }))
+                    "audio" -> audio(o.optInt("index", -1).takeIf { it >= 0 })
+                    "fav" -> setFavourite(ch, o.optBoolean("on", true))
+                    "fav/move" -> moveFavourite(ch, o.optInt("dir"))
+                    "hide" -> setHidden(ch, o.optBoolean("hidden", true))
+                    "group/show" -> setGroupShown(o.optString("group"), o.optBoolean("shown", true))
+                    else -> forgetBookmark(ch, o.optLong("start"))
+                }
             }
             else -> return Http.Response.json("""{"error":"not found"}""", 404)
         }
@@ -107,15 +132,27 @@ class RemoteApi(private val app: Context) : Tv {
     }
 
     override fun nowPlaying(): JSONObject {
-        val tg = Remote.target ?: return ok().put("playing", false).put("foreground", false)
-        val p = Remote.onMain { tg.playing() } ?: return ok().put("playing", false).put("foreground", Remote.foreground)
+        val t = now()
+        val tg = Remote.target ?: return ok().put("playing", false).put("foreground", false).put("serverNow", t)
+        val p = Remote.onMain { tg.playing() } ?: return ok().put("playing", false).put("foreground", Remote.foreground).put("serverNow", t)
         val prog = p.p?.takeIf { it.end > it.start } ?: idx.whatsOn(p.ch, p.pos, 0).firstOrNull()?.p
-        return ok().put("playing", true).put("foreground", Remote.foreground).put("channel", channelJson(p.ch, now(), now = false))
+        return ok().put("playing", true).put("foreground", Remote.foreground).put("serverNow", t)
+            .put("channel", channelJson(p.ch, t, now = false))
             .put("mode", if (p.live) "live" else "archive").put("paused", p.paused).put("position", p.pos).put("positionLocal", local(p.pos))
-            .put("programme", prog?.let { JSONObject().put("title", it.title).put("start", it.start).put("end", it.end).put("local", span(it)) })
+            .put("programme", prog?.let {
+                JSONObject().put("title", it.title).put("start", it.start).put("end", it.end).put("local", span(it))
+                    .put("desc", p.desc?.takeIf { d -> d.isNotBlank() && p.p === it } ?: JSONObject.NULL)
+            })
+            // what the phone's player panel may offer: seeking (a channel with an archive), the buttons, the audio tracks
+            .put("canSeek", p.canSeek).put("earliest", if (p.canSeek) t - p.ch.archiveDays * DAY else t)
+            .put("can", JSONArray(p.can.toList()))
+            .put("audio", JSONArray().also { a -> p.audio.forEach { a.put(trackJson(it)) } })
     }
 
-    override fun play(channel: String, start: Long?, fromStart: Boolean): JSONObject {
+    override fun play(channel: String, start: Long?, fromStart: Boolean): JSONObject = play(channel, start, fromStart, resume = false)
+
+    /** [resume]: a bookmark is continued even while its programme is still on air (else that plays live). */
+    fun play(channel: String, start: Long?, fromStart: Boolean, resume: Boolean): JSONObject {
         if (st.channels.isEmpty()) return fail(NO_PLAYLIST)
         val ch = resolve(channel) ?: return fail(noChannel(channel))
         val t = now()
@@ -128,13 +165,13 @@ class RemoteApi(private val app: Context) : Tv {
                 (g.end <= t || fromStart) && ch.archiveDays <= 0 -> return fail("${ch.name} has no archive: only live is possible.")
                 g.end <= t && !ch.inArchive(g, t) -> return fail("That programme is older than ${ch.name}'s archive (${ch.archiveDays} days).")
             }
-            p = if (g.isNow(t) && !fromStart) null else g
+            p = if (g.isNow(t) && !fromStart && !resume) null else g
         }
-        val what = p?.let { "«${it.title.ifEmpty { local(it.start) }}» on ${ch.name}" + if (it.isNow(t)) " from the start" else " from the archive" }
+        val what = p?.let { "«${it.title.ifEmpty { local(it.start) }}» on ${ch.name}" + if (it.isNow(t) && fromStart) " from the start" else " from the archive" }
             ?: "${ch.name} live"
         val tg = Remote.target
         if (tg != null && Remote.foreground) {
-            Remote.onMain { tg.play(ch, p, fromStart); true } ?: return fail("The TV app did not respond.")
+            Remote.onMain { tg.play(ch, p, fromStart); true } ?: return fail(NO_ANSWER)
             return ok().put("message", "Playing $what.").put("channel", channelJson(ch, t, now = false))
         }
         // not on screen: the same link the home screen uses brings the activity up and plays (if Android lets it)
@@ -150,9 +187,10 @@ class RemoteApi(private val app: Context) : Tv {
     }
 
     override fun control(action: String): JSONObject {
-        val tg = Remote.target?.takeIf { Remote.foreground } ?: return fail("TiViBro is not on screen on the TV.")
-        val done = Remote.onMain { tg.key(action) } ?: return fail("The TV app did not respond.")
-        return if (done) ok().put("message", "Done: $action.") else fail("Unknown action «$action». Use pause, resume, playpause, next, prev or live.")
+        if (action !in Remote.KEYS) return fail("Unknown action «$action». Use ${Remote.KEYS.joinToString()}.")
+        val tg = foregroundTarget() ?: return fail(NOT_ON_SCREEN)
+        val r = Remote.onMain { Result.success(tg.key(action)) } ?: return fail(NO_ANSWER)
+        return r.getOrNull()?.let(::fail) ?: ok().put("message", "Done: $action.")
     }
 
     override fun groups(): JSONObject {
@@ -186,13 +224,143 @@ class RemoteApi(private val app: Context) : Tv {
             .put("programmes", a).put("indexing", indexing)
     }
 
+    override fun favourites(): JSONObject {
+        if (st.channels.isEmpty()) return fail(NO_PLAYLIST)
+        val t = now()
+        val a = JSONArray()
+        for (ch in Browse.favourites(st)) a.put(channelJson(ch, t))
+        return ok().put("channels", a)
+    }
+
+    override fun setFavourite(channel: String, on: Boolean): JSONObject {
+        val ch = resolve(channel, hiddenToo = true) ?: return fail(noChannel(channel))
+        val tg = Remote.target ?: return fail(NOT_RUNNING)
+        Remote.onMain { tg.setFav(ch, on); true } ?: return fail(NO_ANSWER)
+        return ok().put("message", if (on) "${ch.name} is in the favourites." else "${ch.name} is no longer a favourite.")
+            .put("fav", on).put("favs", JSONArray(Remote.state.favs))
+    }
+
+    override fun bookmarks(): JSONObject {
+        val tg = Remote.target ?: return fail(NOT_RUNNING)
+        val ms = Remote.onMain { tg.bookmarks() } ?: return fail(NO_ANSWER)
+        val a = JSONArray()
+        for (m in ms) {
+            a.put(JSONObject().put("channelId", m.ch.id).put("channel", m.ch.name).put("logo", m.ch.logo ?: JSONObject.NULL)
+                .put("title", m.p.title).put("start", m.p.start).put("end", m.p.end).put("local", span(m.p))
+                .put("position", m.pos).put("progress", (m.watched * 100).toInt()))
+        }
+        return ok().put("bookmarks", a)
+    }
+
+    override fun resume(channel: String?, start: Long?): JSONObject {
+        if (channel.isNullOrBlank() || start == null) {
+            val b = bookmarks().optJSONArray("bookmarks")?.optJSONObject(0) ?: return fail("Nothing to continue: no unfinished programmes.")
+            return play(b.getString("channelId"), b.getLong("start"), false, resume = true)
+        }
+        return play(channel, start, false, resume = true)
+    }
+
+    override fun seek(seconds: Long?, to: String?): JSONObject = seekMs(seconds?.times(1000), to)
+
+    /** [to]: epoch ms, or a local time of day (the most recent one). */
+    private fun seekMs(byMs: Long?, to: String?): JSONObject {
+        val t = now()
+        val at = to?.trim()?.let { s -> s.toLongOrNull()?.takeIf { it > 1_000_000_000_000L } ?: Control.localTime(s, t) ?: return fail("«$s» is not a time: use HH:MM or epoch ms.") }
+        if (at == null && byMs == null) return fail("Say how far: seconds (negative goes back) or to (a time).")
+        val tg = foregroundTarget() ?: return fail(NOT_ON_SCREEN)
+        val r = Remote.onMain { Result.success(tg.seek(byMs, at)) } ?: return fail(NO_ANSWER)
+        return r.getOrNull()?.let(::fail) ?: ok()
+    }
+
+    override fun audio(index: Int?): JSONObject {
+        val tg = (if (index != null) foregroundTarget() else Remote.target) ?: return fail(if (index != null) NOT_ON_SCREEN else NOT_RUNNING)
+        val ts = Remote.onMain { tg.audio(index) } ?: return fail(NO_ANSWER)
+        if (index != null && index !in ts.indices) return fail("There is no audio track ${index + 1}: there ${if (ts.size == 1) "is 1" else "are ${ts.size}"}.")
+        return ok().put("tracks", JSONArray().also { a -> ts.forEach { a.put(trackJson(it)) } })
+    }
+
+    // ------------------------------------------------------------------ the phone page only
+
+    fun moveFavourite(channel: String, dir: Int): JSONObject {
+        val tg = Remote.target ?: return fail(NOT_RUNNING)
+        Remote.onMain { tg.moveFav(channel, dir); true } ?: return fail(NO_ANSWER)
+        return ok().put("favs", JSONArray(Remote.state.favs))
+    }
+
+    fun forgetBookmark(channel: String, start: Long): JSONObject {
+        val tg = Remote.target ?: return fail(NOT_RUNNING)
+        val r = Remote.onMain { Result.success(tg.forgetBookmark(channel, start)) } ?: return fail(NO_ANSWER)
+        return if (r.getOrNull() == true) ok() else fail("No such bookmark.")
+    }
+
+    fun setHidden(channel: String, hide: Boolean): JSONObject {
+        val ch = st.byId[channel] ?: return fail(noChannel(channel))
+        val tg = Remote.target ?: return fail(NOT_RUNNING)
+        Remote.onMain { tg.setHidden(ch, hide); true } ?: return fail(NO_ANSWER)
+        return ok().put("hidden", hide)
+    }
+
+    fun setGroupShown(group: String, on: Boolean): JSONObject {
+        if (group !in st.allGroups) return fail("No group «$group».")
+        val tg = Remote.target ?: return fail(NOT_RUNNING)
+        Remote.onMain { tg.setGroupShown(group, on); true } ?: return fail(NO_ANSWER)
+        return ok().put("shown", on)
+    }
+
+    /** What Settings → «Групи каналів» and «Приховані канали» list: every group with its switch, the hidden channels. */
+    fun hiddenList(): JSONObject {
+        if (st.channels.isEmpty()) return fail(NO_PLAYLIST)
+        val s = st
+        val g = JSONArray()
+        for ((name, n) in s.allGroups) g.put(JSONObject().put("name", name).put("count", n).put("shown", name !in s.groupsOff))
+        val c = JSONArray()
+        for (id in s.hidden) s.byId[id]?.let { c.put(channelJson(it, 0, now = false)) }
+        return ok().put("groups", g).put("channels", c)
+    }
+
+    /** The phone's «Головна»: what to continue, the channels watched last, now and next on the favourites. */
+    fun home(): JSONObject {
+        val t = now()
+        val o = ok().put("foreground", Remote.foreground).put("ready", st.channels.isNotEmpty())
+        o.put("bookmarks", bookmarks().optJSONArray("bookmarks") ?: JSONArray())
+        val r = JSONArray()
+        for (id in st.recent) { if (r.length() >= RECENT) break; st.byId[id]?.takeIf { it.id in st.shown }?.let { r.put(channelJson(it, t)) } }
+        o.put("recent", r)
+        o.put("favourites", whatsOn(null).optJSONArray("channels") ?: JSONArray())
+        return o
+    }
+
+    /** One programme with its description and the bookmark's position; `pending` while the guide still reads them. */
+    fun programme(channel: String, start: Long): JSONObject {
+        val ch = st.byId[channel] ?: return fail(noChannel(channel))
+        val tg = Remote.target ?: return fail(NOT_RUNNING)
+        val t = now()
+        // the main thread answers from what is decoded; a guide read it queues lands a moment later
+        val info = Remote.onMain { Result.success(tg.programme(ch, start)) }?.getOrNull()
+        val p = info?.p ?: idx.find(ch, start) ?: return fail("No such programme.").put("pending", info == null)
+        val kind = when { p.end <= t -> "archive"; p.start <= t -> "now"; else -> "upcoming" }
+        return ok().put("channel", channelJson(ch, t, now = false)).put("title", p.title).put("start", p.start).put("end", p.end)
+            .put("local", span(p)).put("when", kind).put("desc", info?.desc?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
+            .put("resumeAt", info?.markPos ?: JSONObject.NULL).put("inArchive", ch.archiveDays > 0 && ch.inArchive(p, t))
+            .put("pending", info == null || info.desc == null)
+    }
+
     // ------------------------------------------------------------------ helpers
 
-    /** An id, a channel number, or the best name match, among the channels the user did not hide. */
-    private fun resolve(s: String): Channel? {
+    /** The view model, when its activity is on screen: what playback control needs (a stopped player can't seek). */
+    private fun foregroundTarget() = Remote.target?.takeIf { Remote.foreground }
+
+    /** [o] with the player's state after it, for the phone to show at once. */
+    private fun withNow(o: JSONObject): JSONObject = o.put("now", nowPlaying())
+
+    private fun trackJson(t: Remote.Track) = JSONObject().put("index", t.index).put("name", t.name).put("selected", t.selected)
+
+    /** An id, a channel number, or the best name match, among the channels the user did not hide (an id may name a
+     *  hidden one when [hiddenToo]: unstarring a favourite whose channel was hidden since). */
+    private fun resolve(s: String, hiddenToo: Boolean = false): Channel? {
         val q = s.trim()
         if (q.isEmpty()) return null
-        st.byId[q]?.takeIf { it.id in st.shown }?.let { return it }
+        st.byId[q]?.takeIf { hiddenToo || it.id in st.shown }?.let { return it }
         q.toIntOrNull()?.let { n -> st.visible.firstOrNull { it.num == n }?.let { return it } }
         return searchChannels(st.visible, q, 1).firstOrNull()?.ch
     }
@@ -201,7 +369,7 @@ class RemoteApi(private val app: Context) : Tv {
 
     private fun channelJson(ch: Channel, t: Long, now: Boolean = true): JSONObject {
         val o = JSONObject().put("id", ch.id).put("num", ch.num).put("name", ch.name).put("group", ch.group)
-            .put("archiveDays", ch.archiveDays).put("logo", ch.logo ?: JSONObject.NULL)
+            .put("archiveDays", ch.archiveDays).put("logo", ch.logo ?: JSONObject.NULL).put("fav", ch.id in st.favSet)
         if (now) idx.whatsOn(ch, t, 0).firstOrNull()?.takeIf { it.kind == When.NOW }?.let {
             o.put("now", JSONObject().put("title", it.p.title).put("start", it.p.start).put("end", it.p.end))
         }
@@ -223,5 +391,11 @@ class RemoteApi(private val app: Context) : Tv {
 
     private companion object {
         const val NO_PLAYLIST = "TiViBro has no channels loaded yet: open TiViBro on the TV."
+        const val NOT_RUNNING = "TiViBro is not running on the TV: open it."
+        const val NOT_ON_SCREEN = "TiViBro is not on screen on the TV: open it, then try again."
+        const val NO_ANSWER = "The TV app did not respond."
+        const val DAY = 24 * 3600_000L
+        /** «Нещодавні» on the phone's Home: the channels watched last. */
+        const val RECENT = 10
     }
 }

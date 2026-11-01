@@ -355,7 +355,7 @@
     <!-- phone remote and MCP -->
     <string name="section_remote">Телефон і асистент</string>
     <string name="row_remote">Пульт на телефоні</string>
-    <string name="row_remote_desc">Пошук каналів і передач з телефона, MCP для AI-асистента</string>
+    <string name="row_remote_desc">Керування з телефона: пошук, обране, перемотка; MCP для AI-асистента</string>
     <string name="remote_sub">Відскануйте QR-код телефоном у тій самій Wi-Fi мережі. Посилання постійне: його можна зберегти в закладки.</string>
     <string name="remote_mcp">MCP для AI-асистента: %1$s</string>
     <string name="remote_reset">Нове посилання</string>
@@ -387,4 +387,18 @@
     <string name="rp_groups">Групи</string>
     <string name="rp_schedule">Програма</string>
     <string name="rp_no_programmes">Програми на цей день немає</string>
+    <string name="rp_tv_background">TiViBro на телевізорі згорнуто. Відкрийте його, щоб вмикати канали й керувати переглядом.</string>
+    <string name="rp_edit_order">Змінити порядок</string>
+    <string name="rp_done">Готово</string>
+    <string name="rp_fav_empty">Позначте канал зірочкою ☆, і він з’явиться тут</string>
+    <string name="rp_behind">%1$s від ефіру</string>
+    <string name="rp_resume_at">Продовжити з %1$s</string>
+    <string name="rp_hide_group">Приховати групу</string>
+    <string name="rp_manage">Приховані групи й канали</string>
+    <string name="rp_min">%1$d хв</string>
+    <string name="rp_sec">%1$d с</string>
+    <string name="rp_prev_prog">Попередня передача</string>
+    <string name="rp_next_prog">Наступна передача</string>
+    <string name="rp_cant_now">Зараз це неможливо</string>
+    <string name="rp_nothing_playing">Зараз нічого не грає</string>
 </resources>

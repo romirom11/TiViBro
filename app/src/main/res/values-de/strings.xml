@@ -345,7 +345,7 @@
     <!-- phone remote and MCP -->
     <string name="section_remote">Handy und Assistent</string>
     <string name="row_remote">Fernbedienung am Handy</string>
-    <string name="row_remote_desc">Sender und Sendungen vom Handy aus suchen; MCP für einen KI-Assistenten</string>
+    <string name="row_remote_desc">Steuerung vom Handy: Suche, Favoriten, Spulen; MCP für einen KI-Assistenten</string>
     <string name="remote_sub">Scannen Sie den QR-Code mit einem Handy im selben WLAN. Der Link bleibt gleich, Sie können ihn als Lesezeichen speichern.</string>
     <string name="remote_mcp">MCP für einen KI-Assistenten: %1$s</string>
     <string name="remote_reset">Neuer Link</string>
@@ -377,4 +377,18 @@
     <string name="rp_groups">Gruppen</string>
     <string name="rp_schedule">Programm</string>
     <string name="rp_no_programmes">Für diesen Tag kein Programm</string>
+    <string name="rp_tv_background">TiViBro läuft auf dem Fernseher im Hintergrund. Öffne es, um Sender zu wechseln und die Wiedergabe zu steuern.</string>
+    <string name="rp_edit_order">Reihenfolge ändern</string>
+    <string name="rp_done">Fertig</string>
+    <string name="rp_fav_empty">Tippe bei einem Sender auf ☆, dann erscheint er hier</string>
+    <string name="rp_behind">%1$s hinter live</string>
+    <string name="rp_resume_at">Fortsetzen ab %1$s</string>
+    <string name="rp_hide_group">Gruppe ausblenden</string>
+    <string name="rp_manage">Ausgeblendete Gruppen und Sender</string>
+    <string name="rp_min">%1$d Min.</string>
+    <string name="rp_sec">%1$d s</string>
+    <string name="rp_prev_prog">Vorherige Sendung</string>
+    <string name="rp_next_prog">Nächste Sendung</string>
+    <string name="rp_cant_now">Gerade nicht möglich</string>
+    <string name="rp_nothing_playing">Es läuft nichts</string>
 </resources>

@@ -38,8 +38,9 @@ back in time: pause, rewind and play any past programme from the archive, all wi
 - **Several playlists**, each with its own favourites and settings.
 - **Search on the TV.** Main menu > Search, or the remote's search key: type with the TV's keyboard (or its mic) and
   results appear as you type, channels by name or number and programmes by title (on now, in the archive, coming up).
-- **Your phone as a remote.** Search, or browse your groups and a channel's schedule day by day, and start it on the TV
-  with a tap. Your AI assistant can do the same over MCP.
+- **Your phone as a remote.** Search, browse your groups and a channel's schedule, start things on the TV with a tap,
+  manage favourites and hidden channels, continue watching, seek and switch audio. Your AI assistant can do the same
+  over MCP.
 - **Android TV home screen.** A TiViBro row with what to continue and what is on now (Android 8 and newer).
 - **7 languages:** Ukrainian, English, Russian, German, Polish, Spanish and Kazakh.
 - **Bigger or smaller text.** Make the whole interface from 90% to 150% of its normal size.
@@ -89,11 +90,18 @@ Settings.
 
 ## Phone remote and AI assistant
 
-Open Settings > Phone remote on the TV and scan the QR code with a phone on the same Wi-Fi. The page that opens
-searches channels and programmes and starts them on the TV. Its Channels tab lists your favourites and groups; tap a
-channel to watch it live, or its › for its schedule: the days its archive covers, today and tomorrow, with past
-programmes ready to play. It also shows what the TV is playing, with pause and channel up / down. The link stays the same, so you can bookmark it or add it to your home screen. «New link» in the
-same place makes a new one and the old link stops working.
+Open Settings > Phone remote on the TV and scan the QR code with a phone on the same Wi-Fi. The page that opens has
+three tabs. Home: Continue watching (tap to resume on the TV where you stopped, × to remove), the channels you watched
+last, and what is on your favourites. Search: channels and programmes as you type. Channels: your favourites (with
+«Reorder»), your groups, and at the end the hidden groups and channels, to bring back. Every channel has a ☆ that adds
+it to or removes it from your favourites on the TV at once; hold a channel to hide it, or a group to hide the group.
+Tap a programme for its description and what you can do with it (watch, resume, from the start, live).
+
+The strip at the bottom shows what the TV is playing; tap it for the player: a seek bar you can drag (also back from
+live into the archive), steps of 30 seconds and 5 minutes, previous / next programme, from the start, back to live,
+channel up / down, and the audio tracks when there are several. If TiViBro is not open on the TV, the page says so.
+The link stays the same, so you can bookmark it or add it to your home screen, where it opens like an app. «New link»
+in the same place makes a new one and the old link stops working.
 
 The same screen shows an MCP address for AI assistants (it ends in `/mcp`). With Claude Code:
 
@@ -102,7 +110,7 @@ claude mcp add --transport http tivibro http://<tv-ip>:8765/<token>/mcp
 ```
 
 Assistants that only run local (stdio) servers can reach it through `npx mcp-remote http://<tv-ip>:8765/<token>/mcp`.
-Then ask «what is on 1+1?» or «put on yesterday's football». Details in
+Then ask «what is on 1+1?», «put on yesterday's football», «go back five minutes» or «add Інтер to my favourites». Details in
 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#phone-remote-and-mcp).
 
 ## FAQ

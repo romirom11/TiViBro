@@ -62,6 +62,8 @@ class Http(
 
     @Volatile private var socket: ServerSocket? = null
     private val open = java.util.concurrent.atomic.AtomicInteger()
+    /** Connections still waiting for their first byte, oldest first: the ones evicted at the cap. */
+    private val idle = java.util.concurrent.ConcurrentLinkedDeque<Socket>()
 
     /** The port actually bound: [PORT], or a free one if something else holds it. */
     val port: Int get() = socket?.localPort ?: 0
@@ -73,12 +75,18 @@ class Http(
         thread(isDaemon = true, name = "lan-http") {
             while (!s.isClosed) {
                 val c = runCatching { s.accept() }.getOrNull() ?: break
-                // idle connections are held long, so their number is capped: a flood can't pile up threads without end
+                // idle connections are held long, so their number is capped. At the cap the oldest idle one makes room
+                // (its reader thread then ends): a client that only opens sockets and never sends can't lock others out
                 if (open.incrementAndGet() > MAX_OPEN) {
-                    open.decrementAndGet()
-                    runCatching { c.close() }
-                    runCatching { android.util.Log.w(LOG, "over $MAX_OPEN open connections, refused one") }
-                    continue
+                    val evicted = idle.pollFirst()
+                    if (evicted != null) {
+                        runCatching { evicted.close() }
+                    } else {
+                        open.decrementAndGet()
+                        runCatching { c.close() }
+                        runCatching { android.util.Log.w(LOG, "$MAX_OPEN requests in progress, refused a connection") }
+                        continue
+                    }
                 }
                 thread(isDaemon = true, name = "lan-conn") { try { runCatching { c.use { serve(it) } } } finally { open.decrementAndGet() } }
             }
@@ -99,8 +107,10 @@ class Http(
         // request into it, which it sees as an empty response and retries on another socket.
         c.soTimeout = idleMs
         inp.mark(1)
+        idle.addLast(c)
         val first = try { inp.read() } catch (_: SocketTimeoutException) { return log("idle, closed by us after ${idleMs / 1000} s") }
         catch (e: IOException) { return log("idle, ${e.javaClass.simpleName}: ${e.message}") }
+        finally { idle.remove(c) }
         if (first < 0) return log("idle, closed by the client without a request", quiet = true)
         inp.reset()
         // Once a request has started, it must arrive briskly; from here on every outcome gets an answer
@@ -177,7 +187,8 @@ class Http(
         val head = StringBuilder("HTTP/1.1 ${r.code} ${reason(r.code)}\r\n")
         if (r.type != null) head.append("Content-Type: ${r.type}\r\n")
         for ((k, v) in r.headers) head.append("$k: $v\r\n")
-        head.append("Content-Length: ${r.body.size}\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n")
+        if ("Cache-Control" !in r.headers) head.append("Cache-Control: no-store\r\n")
+        head.append("Content-Length: ${r.body.size}\r\nConnection: close\r\n\r\n")
         out.write(head.toString().toByteArray())
         out.write(r.body)
         out.flush()

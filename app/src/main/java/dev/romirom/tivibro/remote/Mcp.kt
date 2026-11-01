@@ -74,6 +74,13 @@ class Mcp(private val tv: Tv) {
             "control" -> tv.control(a.optString("action"))
             "list_groups" -> tv.groups()
             "list_channels" -> tv.groupChannels(a.optString("group"), a.optInt("offset", 0).coerceAtLeast(0), a.optInt("limit", 50).coerceIn(1, 100))
+            "list_favourites" -> tv.favourites()
+            "add_favourite", "remove_favourite" -> tv.setFavourite(a.optString("channel"), name == "add_favourite")
+            "continue_watching" -> tv.bookmarks()
+            "resume" -> tv.resume(a.optString("channel_id").ifBlank { null }, a.optLong("start", 0).takeIf { it > 0 })
+            "seek" -> tv.seek(if (a.has("seconds")) a.optLong("seconds") else null, a.opt("to")?.toString()?.ifBlank { null })
+            // a person says «track 2»: numbered from 1 here, from 0 in the JSON API
+            "audio_track" -> tv.audio(a.optInt("track", 0).takeIf { it > 0 }?.minus(1))
             else -> return null
         }
         val failed = out is JSONObject && out.has("ok") && !out.optBoolean("ok")
@@ -94,7 +101,8 @@ class Mcp(private val tv: Tv) {
 
         private const val INSTRUCTIONS = "Controls the TiViBro IPTV player on the user's TV. Find things with search_channels / " +
             "search_programmes / whats_on, then start them with play_channel (live) or play_programme (archive, or the current " +
-            "programme from its start) using the channel id and start time returned. Times are epoch milliseconds; the «local» " +
+            "programme from its start) using the channel id and start time returned. While something plays, seek, control and " +
+            "audio_track steer it. Times are epoch milliseconds; the «local» " +
             "fields are the TV's local time. Programme titles are usually Ukrainian or Russian: search in the title's language " +
             "and try a shorter word if nothing is found."
 
@@ -124,10 +132,26 @@ class Mcp(private val tv: Tv) {
                     .put("from_start", prop("boolean", "For the programme on now: start it from its beginning instead of live.")),
                 listOf("channel_id", "start")))
             .put(tool("now_playing", "What the TV is playing: channel, live or archive, paused, and the programme."))
-            .put(tool("control", "Basic remote control while TiViBro is on screen: pause, resume, playpause, next / prev " +
-                "(channel up / down), live (back to the live broadcast).",
-                JSONObject().put("action", JSONObject().put("type", "string").put("enum", JSONArray(listOf("pause", "resume", "playpause", "next", "prev", "live")))
+            .put(tool("control", "Remote control while TiViBro is on screen: pause, resume, playpause, next / prev " +
+                "(channel up / down), live (back to the live broadcast), restart (this programme from its start), " +
+                "previous_programme / next_programme (in the archive).",
+                JSONObject().put("action", JSONObject().put("type", "string").put("enum", JSONArray(Remote.KEYS))
                     .put("description", "What to do.")), listOf("action")))
+            .put(tool("seek", "Rewind or fast-forward what plays: by seconds (negative goes back, e.g. -300 for five minutes), " +
+                "or to a time of day (\"21:30\", the most recent one) or epoch ms. Live TV goes back into the archive; " +
+                "forward past the broadcast returns to live.",
+                JSONObject().put("seconds", prop("integer", "Relative jump in seconds; negative is back.")).put("to", prop("string", "A local time HH:MM, or epoch ms."))))
+            .put(tool("audio_track", "List the audio tracks of what plays, or switch to one (track numbers start at 1).",
+                JSONObject().put("track", prop("integer", "Track number to switch to. Omit to list."))))
+            .put(tool("list_favourites", "The user's favourite channels, in their order, with what is on now."))
+            .put(tool("add_favourite", "Add a channel to the favourites.",
+                JSONObject().put("channel", prop("string", "Channel id (best), number or name.")), listOf("channel")))
+            .put(tool("remove_favourite", "Remove a channel from the favourites.",
+                JSONObject().put("channel", prop("string", "Channel id (best), number or name.")), listOf("channel")))
+            .put(tool("continue_watching", "Archive programmes the user stopped part way, newest first, with progress in percent."))
+            .put(tool("resume", "Continue a programme from continue_watching where the user stopped. Without arguments, the most " +
+                "recent one.",
+                JSONObject().put("channel_id", prop("string", "The channel id.")).put("start", prop("integer", "The programme's start, epoch ms."))))
             .put(tool("list_groups", "The user's channel groups: favourites first (id \"*fav\"), then the playlist's groups, " +
                 "each with id, name and how many channels it has. Hidden groups and channels are left out."))
             .put(tool("list_channels", "The channels of one group, in the user's order, with what is on now. Paged: pass " +

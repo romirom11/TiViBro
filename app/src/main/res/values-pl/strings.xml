@@ -351,7 +351,7 @@
     <!-- phone remote and MCP -->
     <string name="section_remote">Telefon i asystent</string>
     <string name="row_remote">Pilot w telefonie</string>
-    <string name="row_remote_desc">Wyszukiwanie kanałów i programów z telefonu; MCP dla asystenta AI</string>
+    <string name="row_remote_desc">Sterowanie z telefonu: wyszukiwanie, ulubione, przewijanie; MCP dla asystenta AI</string>
     <string name="remote_sub">Zeskanuj kod QR telefonem w tej samej sieci Wi-Fi. Link się nie zmienia, możesz dodać go do zakładek.</string>
     <string name="remote_mcp">MCP dla asystenta AI: %1$s</string>
     <string name="remote_reset">Nowy link</string>
@@ -383,4 +383,18 @@
     <string name="rp_groups">Grupy</string>
     <string name="rp_schedule">Program</string>
     <string name="rp_no_programmes">Brak programu na ten dzień</string>
+    <string name="rp_tv_background">TiViBro na telewizorze działa w tle. Otwórz je, aby przełączać kanały i sterować odtwarzaniem.</string>
+    <string name="rp_edit_order">Zmień kolejność</string>
+    <string name="rp_done">Gotowe</string>
+    <string name="rp_fav_empty">Stuknij ☆ przy kanale, a pojawi się tutaj</string>
+    <string name="rp_behind">%1$s za transmisją na żywo</string>
+    <string name="rp_resume_at">Wznów od %1$s</string>
+    <string name="rp_hide_group">Ukryj grupę</string>
+    <string name="rp_manage">Ukryte grupy i kanały</string>
+    <string name="rp_min">%1$d min</string>
+    <string name="rp_sec">%1$d s</string>
+    <string name="rp_prev_prog">Poprzedni program</string>
+    <string name="rp_next_prog">Następny program</string>
+    <string name="rp_cant_now">Teraz to niemożliwe</string>
+    <string name="rp_nothing_playing">Nic nie jest odtwarzane</string>
 </resources>

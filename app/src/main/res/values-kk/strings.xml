@@ -345,7 +345,7 @@
     <!-- phone remote and MCP -->
     <string name="section_remote">Телефон және көмекші</string>
     <string name="row_remote">Телефондағы пульт</string>
-    <string name="row_remote_desc">Арналар мен хабарларды телефоннан іздеу; AI-көмекшіге арналған MCP</string>
+    <string name="row_remote_desc">Телефоннан басқару: іздеу, таңдаулылар, айналдыру; AI-көмекшіге арналған MCP</string>
     <string name="remote_sub">QR кодты сол Wi-Fi желісіндегі телефонмен сканерлеңіз. Сілтеме өзгермейді: оны бетбелгіге сақтауға болады.</string>
     <string name="remote_mcp">AI-көмекшіге арналған MCP: %1$s</string>
     <string name="remote_reset">Жаңа сілтеме</string>
@@ -377,4 +377,18 @@
     <string name="rp_groups">Топтар</string>
     <string name="rp_schedule">Бағдарлама</string>
     <string name="rp_no_programmes">Бұл күнге бағдарлама жоқ</string>
+    <string name="rp_tv_background">Теледидардағы TiViBro жиналған. Арналарды қосу және көруді басқару үшін оны ашыңыз.</string>
+    <string name="rp_edit_order">Ретін өзгерту</string>
+    <string name="rp_done">Дайын</string>
+    <string name="rp_fav_empty">Арнаның қасындағы ☆ белгісін басыңыз, ол осында пайда болады</string>
+    <string name="rp_behind">Эфирден %1$s артта</string>
+    <string name="rp_resume_at">%1$s бастап жалғастыру</string>
+    <string name="rp_hide_group">Топты жасыру</string>
+    <string name="rp_manage">Жасырылған топтар мен арналар</string>
+    <string name="rp_min">%1$d мин</string>
+    <string name="rp_sec">%1$d с</string>
+    <string name="rp_prev_prog">Алдыңғы хабар</string>
+    <string name="rp_next_prog">Келесі хабар</string>
+    <string name="rp_cant_now">Қазір мүмкін емес</string>
+    <string name="rp_nothing_playing">Қазір ештеңе ойнап тұрған жоқ</string>
 </resources>

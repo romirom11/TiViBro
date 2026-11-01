@@ -28,23 +28,63 @@ import java.util.concurrent.TimeUnit
  * plays; the HTTP threads read those snapshots and run playback on the main thread ([onMain]).
  */
 object Remote {
-    /** What playback the phone and the assistant drive: the live view model, called on the main thread only. */
+    /**
+     * What the phone and the assistant drive: the live view model, called on the main thread only. Every change goes
+     * through the function the TV's own keys use, so it is saved, shown and undone exactly as if made with the remote.
+     */
     interface Target {
-        /** Plays [ch] live ([p] null) or programme [p] (from its start when [fromStart], else resumes a bookmark). */
+        /** Plays [ch] live ([p] null) or programme [p] (from its start when [fromStart], else resumes a bookmark, of a
+         *  programme still on air too: the remote asks for one on air only to resume it). */
         fun play(ch: Channel, p: Programme?, fromStart: Boolean)
-        /** pause, resume, playpause, next, prev, live. False for anything else. */
-        fun key(k: String): Boolean
+        /** One of [KEYS]; null when done, else why it could not be (no programme before this one, say). */
+        fun key(k: String): String?
         fun playing(): Playing?
+        /** Seeks to [to] (epoch ms) or by [byMs] from the position on screen; an error message when it can't. */
+        fun seek(byMs: Long?, to: Long?): String?
+        /** The audio tracks, after switching to track [select] (0-based) when given. */
+        fun audio(select: Int?): List<Track>
+        fun setFav(ch: Channel, on: Boolean)
+        /** Moves favourite [id] one step up ([dir] -1) or down past the next one the user can see. */
+        fun moveFav(id: String, dir: Int)
+        fun setHidden(ch: Channel, hide: Boolean)
+        /** Switches a provider group on or off, as Settings → «Групи каналів» does. */
+        fun setGroupShown(name: String, on: Boolean)
+        /** «Продовжити перегляд» as Home shows it: unfinished bookmarks still in the archive, newest first. */
+        fun bookmarks(): List<dev.romirom.tivibro.data.Mark>
+        /** Removes the bookmark of [chId]'s programme starting at [start]; false when there is none. */
+        fun forgetBookmark(chId: String, start: Long): Boolean
+        /** The guide's programme of [ch] at [t] with its description (null while the guide still reads it) and the
+         *  bookmark's position in it, if any. */
+        fun programme(ch: Channel, t: Long): ProgInfo?
     }
 
-    class Playing(val ch: Channel, val live: Boolean, val paused: Boolean, val pos: Long, val p: Programme?)
+    /** What plays. [pos] is the frame on screen (live is ~20 s behind the clock); [can] lists the actions that make sense
+     *  now (restart, previous_programme, next_programme, live); [desc] is null while the guide still reads it. */
+    class Playing(
+        val ch: Channel, val live: Boolean, val paused: Boolean, val pos: Long, val p: Programme?,
+        val canSeek: Boolean = false, val can: Set<String> = emptySet(), val audio: List<Track> = emptyList(), val desc: String? = null,
+    )
 
-    /** The active playlist as the remote may see it: [shown] is what the user did not hide (ids). */
-    class State(val playlist: String?, val channels: List<Channel>, val shown: Set<String>, val favs: List<String>) {
+    class Track(val index: Int, val name: String, val selected: Boolean)
+
+    /** [desc]: null while the guide still reads it, empty when the programme has none. */
+    class ProgInfo(val p: Programme, val desc: String?, val markPos: Long?)
+
+    /**
+     * The active playlist as the remote may see it: [shown] is what the user did not hide (ids), [favs] and [recent] in
+     * the user's order, [hidden] the channels hidden one by one, [groupsOff] the provider groups switched off.
+     */
+    class State(
+        val playlist: String?, val channels: List<Channel>, val shown: Set<String>, val favs: List<String>,
+        val recent: List<String> = emptyList(), val hidden: Set<String> = emptySet(), val groupsOff: Set<String> = emptySet(),
+    ) {
         val byId: Map<String, Channel> = channels.associateBy { it.id }
         val visible: List<Channel> = channels.filter { it.id in shown }
+        val favSet: Set<String> = favs.toHashSet()
         /** [visible] by group, in playlist order: what the phone browses ([Browse]). Built on first use, once. */
         val groups: Map<String, List<Channel>> by lazy { visible.groupByTo(LinkedHashMap()) { it.group } }
+        /** Every provider group, hidden ones included, with its size: what the phone's «Приховані» lists. */
+        val allGroups: Map<String, Int> by lazy { channels.groupingBy { it.group }.eachCountTo(LinkedHashMap()) }
     }
 
     private lateinit var app: Context
@@ -76,8 +116,11 @@ object Remote {
         app.getSharedPreferences("tivibro", Context.MODE_PRIVATE).edit().putString(KEY, token).apply()
     }
 
-    fun publish(playlist: String?, channels: List<Channel>, shown: List<Channel>, favs: List<String>) {
-        state = State(playlist, channels, shown.mapTo(HashSet(shown.size * 2)) { it.id }, favs)
+    fun publish(
+        playlist: String?, channels: List<Channel>, shown: List<Channel>, favs: List<String>,
+        recent: List<String>, hidden: Set<String>, groupsOff: Set<String>,
+    ) {
+        state = State(playlist, channels, shown.mapTo(HashSet(shown.size * 2)) { it.id }, favs, recent, hidden, groupsOff)
     }
 
     fun guideChanged(channels: List<Channel>, guide: ProgrammeGuide, key: String) = indexer.request(channels, guide, key)
@@ -119,12 +162,18 @@ object Remote {
             return Http.Response.json("""{"error":"forbidden origin"}""", 403)
         }
         return when {
-            rest == "/" || rest == "/index.html" -> Http.Response.html(RemotePage.html())
+            rest == "/" || rest == "/index.html" -> Http.Response.html(RemotePage.html(tok))
+            rest == "/manifest.webmanifest" -> Http.Response(200, "application/manifest+json", RemotePage.manifest(tok).toByteArray())
+            rest == "/icon.png" -> icon()?.let { Http.Response(200, "image/png", it, mapOf("Cache-Control" to "max-age=604800")) } ?: Http.Response.empty(404)
             rest == "/mcp" -> mcp.handle(r.method, r::header, r.text)
             rest.startsWith("/api/") -> api.handle(r.method, rest.removePrefix("/api/"), r.query, r.text)
             else -> Http.Response.empty(404)
         }
     }
+
+    /** The home screen icon of «Add to Home screen», read once from the APK's assets. */
+    private val iconBytes by lazy { runCatching { app.assets.open("remote/icon.png").use { it.readBytes() } }.getOrNull() }
+    private fun icon(): ByteArray? = iconBytes
 
     private fun same(a: String?, b: String) = a != null && MessageDigest.isEqual(a.toByteArray(), b.toByteArray())
 
@@ -143,6 +192,9 @@ object Remote {
     }.onFailure { Log.w("tivibro", "remote: nsd", it) }
 
     private const val KEY = "remoteToken"
+
+    /** What [Target.key] takes: the remote's own keys, and the player panel's buttons. */
+    val KEYS = listOf("pause", "resume", "playpause", "next", "prev", "live", "restart", "previous_programme", "next_programme")
 
     private fun newToken(): String {
         val b = ByteArray(12)
