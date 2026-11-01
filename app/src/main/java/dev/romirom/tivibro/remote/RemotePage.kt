@@ -149,7 +149,7 @@ footer .mid .s{margin-top:1px}
 .toast.on{opacity:1;transform:translate(-50%,0)}.toast.err{background:var(--live);color:#fff}
 .sheet{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.5);display:none;align-items:flex-end}
 .sheet.on{display:flex}
-.card{width:100%;max-height:92vh;overflow-y:auto;padding:10px 14px calc(18px + env(safe-area-inset-bottom));background:rgba(28,29,34,.97);border-radius:22px 22px 0 0;border-top:1px solid var(--hair)}
+.card{width:100%;max-height:92vh;overflow-y:auto;padding:10px 14px calc(18px + env(safe-area-inset-bottom));background:#1c1d22;border-radius:22px 22px 0 0;border-top:1px solid var(--hair)}
 .grab{width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,.25);margin:0 auto 12px}
 .card .t{white-space:normal;margin:0 6px 4px;font-size:18px}.card .s{white-space:normal;margin:0 6px 12px}
 .card .d{color:var(--t2);font-size:14.5px;line-height:1.45;margin:0 6px 14px;white-space:pre-line;-webkit-user-select:text;user-select:text}

@@ -88,6 +88,8 @@ In Search, OK on the text field brings up the keyboard, ▼ goes to the results,
 live, hold OK to start it from the beginning) and BACK closes it. Channel groups and refreshing the TV guide are in
 Settings.
 
+<p align="center"><img src="docs/screenshots/search.png" alt="Search on the TV: channels and programmes as you type"><br>Search on the TV: channels by name or number, programmes on now, in the archive and coming up</p>
+
 ## Phone remote and AI assistant
 
 Open Settings > Phone remote on the TV and scan the QR code with a phone on the same Wi-Fi. The page that opens has
@@ -102,6 +104,14 @@ live into the archive), steps of 30 seconds and 5 minutes, previous / next progr
 channel up / down, and the audio tracks when there are several. If TiViBro is not open on the TV, the page says so.
 The link stays the same, so you can bookmark it or add it to your home screen, where it opens like an app. «New link»
 in the same place makes a new one and the old link stops working.
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/screenshots/phone-home.png" alt="Phone remote: Home tab"><br>Home: continue watching, recent channels, your favourites now</td>
+    <td width="33%"><img src="docs/screenshots/phone-channels.png" alt="Phone remote: a channel group"><br>Channels: a group, ☆ for favourites, › for the schedule</td>
+    <td width="33%"><img src="docs/screenshots/phone-player.png" alt="Phone remote: player"><br>Player: seek, steps, from the start, channel up / down</td>
+  </tr>
+</table>
 
 The same screen shows an MCP address for AI assistants (it ends in `/mcp`). With Claude Code:
 

@@ -71,11 +71,23 @@ build, sign and release the app, and how auto-update works.
   </tr>
   <tr>
     <td><a href="screenshots/player.png"><img src="screenshots/player.png" alt="Player panel"></a><br>Player panel: timeline, restart, previous and next programme, back to live</td>
-    <td><a href="screenshots/main-menu.png"><img src="screenshots/main-menu.png" alt="Main menu"></a><br>Main menu, with Home first</td>
+    <td><a href="screenshots/main-menu.png"><img src="screenshots/main-menu.png" alt="Main menu"></a><br>Main menu: Home, Search, Settings, Exit</td>
   </tr>
   <tr>
-    <td><a href="screenshots/settings.png"><img src="screenshots/settings.png" alt="Settings"></a><br>Settings, with interface size and language</td>
+    <td><a href="screenshots/settings.png"><img src="screenshots/settings.png" alt="Settings"></a><br>Settings, with the phone remote and language</td>
     <td><a href="screenshots/language.png"><img src="screenshots/language.png" alt="Language picker"></a><br>Language picker: each language in its own name</td>
+  </tr>
+  <tr>
+    <td><a href="screenshots/search.png"><img src="screenshots/search.png" alt="Search"></a><br>Search on the TV: channels and programmes as you type</td>
+    <td></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td width="33%"><a href="screenshots/phone-home.png"><img src="screenshots/phone-home.png" alt="Phone remote: Home"></a><br>Phone remote, Home: continue watching, recent, favourites now</td>
+    <td width="33%"><a href="screenshots/phone-channels.png"><img src="screenshots/phone-channels.png" alt="Phone remote: channels of a group"></a><br>Channels of a group, with ☆ and the schedule</td>
+    <td width="33%"><a href="screenshots/phone-player.png"><img src="screenshots/phone-player.png" alt="Phone remote: player"></a><br>The player on the phone</td>
   </tr>
 </table>
 
