@@ -47,6 +47,11 @@ class Prefs(ctx: Context) {
         get() = sp.getString("tmdbKey", null)
         set(v) = sp.edit().putString("tmdbKey", v).apply()
 
+    /** «Пошук»: the last queries that led somewhere, most recent first. Global: words, not channels of one playlist. */
+    var searchRecent: List<String>
+        get() = sp.getString("searchRecent", "")!!.split('\n').filter { it.isNotBlank() }
+        set(v) = sp.edit().putString("searchRecent", v.joinToString("\n")).apply()
+
     var guideAt: Long
         get() = sp.getLong("guideAt", 0)
         set(v) = sp.edit().putLong("guideAt", v).apply()

@@ -36,8 +36,10 @@ back in time: pause, rewind and play any past programme from the archive, all wi
   looks at in Settings > Home page.
 - **Favourites, recent channels and hidden channels.** Hide whole groups you never watch.
 - **Several playlists**, each with its own favourites and settings.
-- **Search from your phone.** Find a channel by name or number, or a programme by title (on now, in the archive,
-  coming up), and start it on the TV with a tap. Your AI assistant can do the same over MCP.
+- **Search on the TV.** Main menu > Search, or the remote's search key: type with the TV's keyboard (or its mic) and
+  results appear as you type, channels by name or number and programmes by title (on now, in the archive, coming up).
+- **Your phone as a remote.** Search, or browse your groups and a channel's schedule day by day, and start it on the TV
+  with a tap. Your AI assistant can do the same over MCP.
 - **Android TV home screen.** A TiViBro row with what to continue and what is on now (Android 8 and newer).
 - **7 languages:** Ukrainian, English, Russian, German, Polish, Spanish and Kazakh.
 - **Bigger or smaller text.** Make the whole interface from 90% to 150% of its normal size.
@@ -78,13 +80,19 @@ playlist.
 | Hold OK | Channel menu: add to favourites, hide |
 | BACK | Home page. BACK on Home returns to the channel. In the channel list or TV guide, BACK closes it |
 | PLAY/PAUSE | Pause, even live TV |
-| MENU | Main menu: Home, channel groups, settings, exit |
+| MENU | Main menu: Home, Search, Settings, Exit |
+| SEARCH (if your remote has it) | Search |
+
+In Search, OK on the text field brings up the keyboard, ▼ goes to the results, OK plays (a programme on now plays
+live, hold OK to start it from the beginning) and BACK closes it. Channel groups and refreshing the TV guide are in
+Settings.
 
 ## Phone remote and AI assistant
 
 Open Settings > Phone remote on the TV and scan the QR code with a phone on the same Wi-Fi. The page that opens
-searches channels and programmes and starts them on the TV; it also shows what the TV is playing, with pause and
-channel up / down. The link stays the same, so you can bookmark it or add it to your home screen. «New link» in the
+searches channels and programmes and starts them on the TV. Its Channels tab lists your favourites and groups; tap a
+channel to watch it live, or its › for its schedule: the days its archive covers, today and tomorrow, with past
+programmes ready to play. It also shows what the TV is playing, with pause and channel up / down. The link stays the same, so you can bookmark it or add it to your home screen. «New link» in the
 same place makes a new one and the old link stops working.
 
 The same screen shows an MCP address for AI assistants (it ends in `/mcp`). With Claude Code:
@@ -111,8 +119,13 @@ In Settings > TV guide, keep "Auto" or choose another guide source. You can also
 phone.
 
 **How do I update?**
-TiViBro checks for new versions by itself and tells you when one is ready. Choose "Update to X.Y.Z" in the main menu,
-or Settings > Check for updates. The first time, Android asks you to allow TiViBro to install apps.
+TiViBro checks for new versions by itself and tells you when one is ready; the Settings item of the main menu then
+shows the new version. Open Settings and choose "Update to X.Y.Z" (or "Check for updates" to look right away). The first time, Android asks you to allow TiViBro to install apps.
+
+**The phone page does not open in Chrome ("This site can't be reached").**
+Check that the phone is on the same Wi-Fi as the TV and has no VPN or proxy turned on (Chrome uses Android's proxy
+settings, some other browsers do not), and type the address with `http://`. If it still fails, the TV logs every
+connection: `adb logcat -s tivibro-http` shows whether Chrome's requests reach it and how they end.
 
 **Is my data sent anywhere?**
 No. There are no accounts, no analytics and no tracking. Your playlist, favourites and history stay on the TV. The app

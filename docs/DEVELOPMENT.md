@@ -12,6 +12,7 @@ build, sign and release the app, and how auto-update works.
 - [TV guide](#tv-guide)
 - [Home](#home)
 - [Remote control](#remote-control)
+- [Search](#search)
 - [Phone remote and MCP](#phone-remote-and-mcp)
 - [Building from source](#building-from-source)
 - [Releasing](#releasing)
@@ -21,8 +22,11 @@ build, sign and release the app, and how auto-update works.
 
 ## Feature details
 
-- **Remote-first.** Everything is driven by the D-pad: no touch, no mouse, no on-screen keyboard. Text such as
-  playlist links is entered on a phone through the QR page.
+- **Remote-first.** Everything is driven by the D-pad: no touch, no mouse. Text such as playlist links is entered on
+  a phone through the QR page; the one place that types on the TV is Search, with the system keyboard.
+- **Search.** Main menu > Search or the remote's SEARCH key: results as you type, channels by name or number and
+  programmes of the whole guide by title (on now, in the archive, coming up), recent queries while the field is empty.
+  See [Search](#search).
 - **Home.** A glass page over the playing video: now watching, continue watching, what is on now, what has just
   started (watch it from the beginning), what starts soon, and movies and TV shows with posters, ratings and genres
   from TMDB. You pick which groups or channels feed it. See [Home](#home).
@@ -188,7 +192,8 @@ The links it uses can also be opened by other apps: `tivibro://home`, `tivibro:/
 BACK always leads back to playback. From playback it opens Home, and BACK on Home closes it again. In the channel list
 and the programme view BACK closes the whole list in one press, wherever the focus is; ◀ walks deeper (programmes >
 days, channels > groups > main menu). The main menu goes back with BACK to where it was opened from: Home if it was
-opened from Home, otherwise playback.
+opened from Home, otherwise playback. The main menu holds Home, Search, Settings and Exit; channel groups, refreshing
+the TV guide and installing an update are in Settings (Channel groups, TV guide > Refresh, Update to X.Y.Z).
 
 Settings sheets go back one sheet at a time, dialogs close back to where they were opened from, and BACK on the player
 panel only hides the panel. "Exit" in the main menu closes the app.
@@ -221,6 +226,7 @@ panel only hides the panel. "Exit" in the main menu closes the app.
 | YELLOW / LAST CHANNEL | Recent channels, on the one you watched before |
 | INFO | Show or hide the channel banner |
 | MENU | Main menu |
+| SEARCH | Search (from anywhere) |
 
 ### Player panel
 
@@ -259,6 +265,28 @@ playback.
 | Hold OK | On air: from the start. Watched archive programme: watch options |
 | BACK | Back to playback |
 
+## Search
+
+Main menu > Search (second, under Home) or the remote's SEARCH key opens a text field over the video, with the system
+keyboard (on Android TV, Gboard or the Leanback keyboard, both with a mic for voice input). Results update as you
+type: up to 12 channels and 40 programmes, the same search as the phone page (see the search index below). With an
+empty field it lists your last 8 searches (those that led to something being played).
+
+| Key | Action |
+| --- | --- |
+| OK (on the field) | Bring up the keyboard |
+| ▼ (on the field) | To the results (with the keyboard up, its own Search key or BACK hides it first) |
+| ▲ ▼ | Move; ▲ on the first result goes back to the field. CH+ / CH- page by 8 |
+| OK | Channel: watch live. Programme on now: watch live. Archive: watch (resumes a bookmark). Upcoming: when it starts. Recent search: search it again |
+| Hold OK | Programme on now: from the start. Half-watched archive programme: watch options. Channel: channel menu |
+| RED | Favourite (on a channel) |
+| BACK | Back to where Search was opened from (Home or playback) |
+
+The field takes Compose focus only while it is lit (and is not focusable otherwise): with focus cleared, Compose hands
+it back to the first focusable it finds, and a text field that gets it brings the keyboard back up over the results.
+Every other key is routed by the view model as on other screens; while the field is lit, keys it does not use (letters,
+digits, ◀ ▶, delete) go through to it, so digits type instead of switching channels.
+
 ## Phone remote and MCP
 
 While the app process runs, TiViBro serves one small HTTP server on the local network, port 8765 (another free port if
@@ -270,21 +298,30 @@ restarts, and replaced by «New link». It can be given three ways: as the first
 (`http://<tv-ip>:8765/<token>/…`, what the QR code and the MCP address use), as `Authorization: Bearer <token>`, or as
 `?t=<token>`. Without it the server answers 404 (401 on `/api` and `/mcp`).
 
-**Phone page** (`/<token>`): a search box with live results, channels and programmes. Tap a channel to tune it live;
-tap a programme in the archive to play it; the programme on now asks «Live» or «From the start»; upcoming ones are
-shown but cannot be played. With an empty box it shows now and next on your favourites. The strip at the bottom shows
-what the TV plays, with channel down, play / pause, channel up and back to live.
+**Phone page** (`/<token>`), two tabs. Search: a search box with live results, channels and programmes; with an empty
+box, now and next on your favourites. Channels: your favourites, then the playlist's groups (switched-off groups and
+hidden channels left out, as in the app); a group lists its channels 40 at a time as you scroll, each with what is on
+now. Tap a channel to tune it live; its › opens its schedule: one day at a time, from as far back as its archive goes
+(at most 14 days) to tomorrow. Everywhere, a programme in the archive plays on tap, the one on now asks «Live» or «From
+the start», upcoming ones are shown but cannot be played. Where you are is kept in the address's `#` part, so the
+phone's back button and a reload work. The strip at the bottom shows what the TV plays, with channel down, play /
+pause, channel up and back to live.
 
 **JSON API** (all under the token): `GET /api/search?q=` (channels and programmes), `GET /api/channels?q=&limit=`,
 `GET /api/programmes?q=&limit=`, `GET /api/whatson?channel=` (no channel: favourites), `GET /api/now`,
+`GET /api/groups` (`{"groups": [{"id", "name", "count"}]}`, favourites first with id `*fav`),
+`GET /api/group?id=&offset=&limit=` (a page of a group's channels with what is on now, and `total`; limit 40 by
+default, 100 at most), `GET /api/schedule?channel=&day=` (`day` 0 is today, -1 yesterday, 1 tomorrow; answers the
+channel, its `days` as `{"day", "start"}` local midnights, and the day's `programmes` with `when` now / archive /
+upcoming),
 `POST /api/play` with `{"channelId": "…", "start": <ms>, "fromStart": true}` (`start` only for a programme), and
 `POST /api/key` with `{"key": "pause" | "resume" | "playpause" | "next" | "prev" | "live"}`.
 
 **MCP** (`POST /<token>/mcp`, or `/mcp` with the Bearer header): Streamable HTTP, stateless, plain JSON responses, no
 SSE and no sessions. Legacy clients (protocol 2024-11-05 to 2025-11-25) start with `initialize`; 2026-07-28 clients
 send the version in each request's `_meta` and may call `server/discover`. Tools: `search_channels`,
-`search_programmes`, `whats_on`, `play_channel`, `play_programme`, `now_playing` and `control` (pause, resume, channel
-up / down, back to live). Results carry channel ids and programme start times (epoch ms) to pass back to the play
+`search_programmes`, `whats_on`, `play_channel`, `play_programme`, `now_playing`, `control` (pause, resume, channel
+up / down, back to live), `list_groups` and `list_channels` (a group's channels, paged). Results carry channel ids and programme start times (epoch ms) to pass back to the play
 tools, plus the TV's local time for the assistant to say.
 
 ```sh
@@ -298,6 +335,26 @@ npx mcp-remote http://<tv-ip>:8765/<token>/mcp
 
 The TV's address can change when the router hands out a new one; give the TV a fixed address (a DHCP reservation in
 the router) if an assistant or a bookmark should keep working.
+
+**Connections and Chrome.** The server reads one request per connection and closes it (`Connection: close`). A
+connection may sit idle for up to 15 minutes before its request: Chrome opens spare connections ahead of time (the
+omnibox does while an address is typed) and Chrome for Android was seen keeping an unused one for 277 s. At most 64
+connections are open at once; more are closed right away. A TLS ClientHello (https:// typed, or Chrome's
+HTTPS upgrade with «Always use secure connections» on for private sites) gets a TLS alert at once, so Chrome falls back
+or shows its «not secure» page without waiting. Every connection ends in one line under the logcat tag
+`tivibro-http`, with the token masked:
+
+```
+10.10.0.42:51234 GET /3f9a…/api/now HTTP/1.1 -> 200 648 B; closed by the client (31 ms)
+10.10.0.42:51240 TLS ClientHello, refused with a TLS alert; closed by the client (4 ms)
+10.10.0.42:51236 idle, closed by the client without a request (10012 ms)
+```
+
+Chrome's `ERR_TOO_MANY_RETRIES` on a plain HTTP page means it retried the request 50 times on connections it took
+for reusable that then ended without a response. If a phone's Chrome shows it while other browsers work, check these
+lines while it loads: no lines at all from the phone's address mean the requests never reach the TV (a VPN, a proxy
+in the Wi-Fi settings, which Chrome uses and some browsers ignore); lines ending without a request mean the
+connections arrive and are dropped on the way back.
 
 **Starting playback when TiViBro is not on screen.** When the app is in the foreground, a play request switches
 playback at once and closes whatever was open (menu, list, Home). When it is in the background, TiViBro tries to bring
@@ -408,8 +465,9 @@ On start, and at most once every 12 hours, TiViBro asks the GitHub API for the l
 attached:
 
 - a short message says "Update available: X.Y.Z";
-- the main menu gets an "Update to X.Y.Z" item;
-- Settings > Check for updates checks right away, or installs the update when one is waiting.
+- the main menu's Settings item shows "↑ X.Y.Z", and Settings opens on the update row;
+- Settings > Check for updates checks right away; with an update waiting the row reads "Update to X.Y.Z" and installs
+  it.
 
 Choosing the update downloads the APK to the app's cache, showing progress, and hands it to Android's package
 installer, which asks you to confirm. On Android 8 and newer, the first time, Android has to allow TiViBro to install

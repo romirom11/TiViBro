@@ -178,7 +178,6 @@
     <!-- menu -->
     <string name="menu_summary">%1$s · показано групп: %2$d из %3$d</string>
     <string name="menu_groups">Группы каналов</string>
-    <string name="menu_guide">Обновить телепрограмму</string>
     <string name="menu_settings">Настройки</string>
     <string name="menu_exit">Выход</string>
     <string name="menu_update">Обновить до %1$s</string>
@@ -375,4 +374,13 @@
     <string name="rp_no_playlist">Откройте TiViBro на телевизоре</string>
     <string name="rp_not_started">Ещё не началось</string>
     <string name="rp_cancel">Отмена</string>
+    <string name="menu_search">Поиск</string>
+    <string name="search_hint">Название канала или передачи</string>
+    <string name="search_recent">Недавние запросы</string>
+    <string name="search_empty">Каналы по названию или номеру, передачи по названию: в эфире, в архиве и скоро</string>
+    <string name="hint_keyboard">Клавиатура</string>
+    <string name="hint_results">К результатам</string>
+    <string name="rp_groups">Группы</string>
+    <string name="rp_schedule">Программа</string>
+    <string name="rp_no_programmes">На этот день программы нет</string>
 </resources>

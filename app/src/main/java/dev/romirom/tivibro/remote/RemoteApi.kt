@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.SystemClock
 import dev.romirom.tivibro.MainActivity
+import dev.romirom.tivibro.R
 import dev.romirom.tivibro.data.Channel
 import dev.romirom.tivibro.data.Programme
 import dev.romirom.tivibro.data.inArchive
@@ -12,6 +13,7 @@ import dev.romirom.tivibro.data.now
 import dev.romirom.tivibro.search.ProgrammeHit
 import dev.romirom.tivibro.search.When
 import dev.romirom.tivibro.search.searchChannels
+import dev.romirom.tivibro.str
 import dev.romirom.tivibro.tvhome.DeepLink
 import org.json.JSONArray
 import org.json.JSONObject
@@ -36,6 +38,12 @@ interface Tv {
     fun play(channel: String, start: Long?, fromStart: Boolean): JSONObject
     /** pause, resume, playpause, next, prev, live. */
     fun control(action: String): JSONObject
+    /** The favourites, then the playlist's groups, with what the user hid left out: id, name, count. */
+    fun groups(): JSONObject
+    /** One page of a group's channels ([group]: an id from [groups], or a name), each with what is on now. */
+    fun groupChannels(group: String, offset: Int, limit: Int): JSONObject
+    /** [channel]'s programmes on day [day] (0 today, -1 yesterday, 1 tomorrow) and the days it has. */
+    fun schedule(channel: String, day: Int): JSONObject
 }
 
 /** [Tv] over [Remote]'s snapshots, plus the JSON routes the phone page calls (`/api/…`). */
@@ -53,6 +61,9 @@ class RemoteApi(private val app: Context) : Tv {
             "channels" -> channels(q["q"].orEmpty(), limit)
             "programmes" -> programmes(q["q"].orEmpty(), limit)
             "whatson" -> whatsOn(q["channel"])
+            "groups" -> groups()
+            "group" -> groupChannels(q["id"].orEmpty(), q["offset"]?.toIntOrNull() ?: 0, q["limit"]?.toIntOrNull()?.coerceIn(1, 100) ?: 40)
+            "schedule" -> schedule(q["channel"].orEmpty(), q["day"]?.toIntOrNull() ?: 0)
             "now" -> nowPlaying()
             "play", "key" -> {
                 if (method != "POST") return Http.Response.json("""{"error":"POST only"}""", 405)
@@ -142,6 +153,37 @@ class RemoteApi(private val app: Context) : Tv {
         val tg = Remote.target?.takeIf { Remote.foreground } ?: return fail("TiViBro is not on screen on the TV.")
         val done = Remote.onMain { tg.key(action) } ?: return fail("The TV app did not respond.")
         return if (done) ok().put("message", "Done: $action.") else fail("Unknown action «$action». Use pause, resume, playpause, next, prev or live.")
+    }
+
+    override fun groups(): JSONObject {
+        if (st.channels.isEmpty()) return fail(NO_PLAYLIST)
+        val a = JSONArray()
+        for (g in Browse.groups(st, str(R.string.group_fav))) a.put(JSONObject().put("id", g.id).put("name", g.name).put("count", g.channels.size))
+        return ok().put("groups", a)
+    }
+
+    override fun groupChannels(group: String, offset: Int, limit: Int): JSONObject {
+        if (st.channels.isEmpty()) return fail(NO_PLAYLIST)
+        val chs = Browse.channels(st, group) ?: return fail("No group «$group». Use list_groups.")
+        val t = now()
+        val from = offset.coerceIn(0, chs.size)
+        val a = JSONArray()
+        // a page at a time: «now» costs a title read per channel, and a provider group can hold a thousand channels
+        for (ch in chs.subList(from, minOf(chs.size, from + limit))) a.put(channelJson(ch, t))
+        return ok().put("total", chs.size).put("offset", from).put("channels", a)
+    }
+
+    override fun schedule(channel: String, day: Int): JSONObject {
+        if (st.channels.isEmpty()) return fail(NO_PLAYLIST)
+        val ch = resolve(channel) ?: return fail(noChannel(channel))
+        val t = now()
+        val days = Browse.days(ch.archiveDays, t)
+        val d = day.coerceIn(days.first().first, days.last().first)
+        val a = JSONArray()
+        for (h in idx.range(ch, Browse.midnight(t, d), Browse.midnight(t, d + 1), t)) a.put(progJson(h, withChannel = false))
+        return ok().put("channel", channelJson(ch, t, now = false)).put("day", d)
+            .put("days", JSONArray().also { j -> days.forEach { (k, start) -> j.put(JSONObject().put("day", k).put("start", start)) } })
+            .put("programmes", a).put("indexing", indexing)
     }
 
     // ------------------------------------------------------------------ helpers

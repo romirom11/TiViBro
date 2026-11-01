@@ -172,7 +172,6 @@
     <!-- menu -->
     <string name="menu_summary">%1$s · көрсетілген топтар: %2$d / %3$d</string>
     <string name="menu_groups">Арна топтары</string>
-    <string name="menu_guide">Бағдарламаны жаңарту</string>
     <string name="menu_settings">Баптаулар</string>
     <string name="menu_exit">Шығу</string>
     <string name="menu_update">%1$s нұсқасына жаңарту</string>
@@ -369,4 +368,13 @@
     <string name="rp_no_playlist">Теледидарда TiViBro ашыңыз</string>
     <string name="rp_not_started">Әлі басталған жоқ</string>
     <string name="rp_cancel">Болдырмау</string>
+    <string name="menu_search">Іздеу</string>
+    <string name="search_hint">Арна немесе хабар атауы</string>
+    <string name="search_recent">Соңғы іздеулер</string>
+    <string name="search_empty">Арналар атауы не нөмірі бойынша, хабарлар атауы бойынша: эфирде, мұрағатта және жақында</string>
+    <string name="hint_keyboard">Пернетақта</string>
+    <string name="hint_results">Нәтижелерге</string>
+    <string name="rp_groups">Топтар</string>
+    <string name="rp_schedule">Бағдарлама</string>
+    <string name="rp_no_programmes">Бұл күнге бағдарлама жоқ</string>
 </resources>

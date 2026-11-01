@@ -61,6 +61,10 @@ import dev.romirom.tivibro.tmdb.Tmdb
 import dev.romirom.tivibro.tmdb.TmdbInfo
 import dev.romirom.tivibro.tvhome.DeepLink
 import dev.romirom.tivibro.tvhome.TvHome
+import dev.romirom.tivibro.search.SearchItem
+import dev.romirom.tivibro.search.SearchResults
+import dev.romirom.tivibro.search.SearchScreen
+import dev.romirom.tivibro.search.When
 import dev.romirom.tivibro.ui.channelsWord
 import dev.romirom.tivibro.ui.dayWord
 import dev.romirom.tivibro.ui.hm
@@ -87,13 +91,14 @@ import kotlin.math.min
 
 enum class Mode { LIVE, ARCHIVE }
 /** What covers the video: nothing, the channel list (with the programme view), or Home. */
-enum class Layer { NONE, LIST, HOME }
+enum class Layer { NONE, LIST, HOME, SEARCH }
 enum class Focus { GROUPS, CHANNELS, DAYS, PROGS }
 /** Layers above the list / video, stacked: the menu stays visible under a settings sheet opened from it. */
 enum class Sheet { MENU, SETTINGS, GROUPS, HIDDEN, PLAYLISTS, PLAYLIST, GUIDE, LINK, LANGUAGE, HOME, HOME_SOURCES, HOME_GROUP, REMOTE }
 /** Rows of «Головна сторінка» (Sheet.HOME). */
 enum class HomeSetting { SOURCES, TMDB, TMDB_KEY }
-enum class MenuItem { HOME, GROUPS, GUIDE, SETTINGS, UPDATE, EXIT }
+/** The main menu. Groups, guide refresh and the update live in Settings: rare, and the menu stays short. */
+enum class MenuItem { HOME, SEARCH, SETTINGS, EXIT }
 enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, HOME, STARTUP, REMOTE, LANGUAGE, SCALE, UPDATE, ABOUT }
 /** Actions on one playlist (Sheet.PLAYLIST), top to bottom. */
 enum class PlaylistAction { USE, REFRESH, RENAME, DELETE }
@@ -111,7 +116,7 @@ enum class CtxItem { FAV, HIDE }
 enum class MarkAction { FROM_START, FORGET, DONE }
 /** The player control panel's button row, left to right. */
 enum class OsdButton { RESTART, PREV, NEXT, LIVE, AUDIO }
-enum class Key { UP, DOWN, LEFT, RIGHT, OK, BACK, CHUP, CHDOWN, PLAYPAUSE, RED, GREEN, YELLOW, BLUE, INFO, MENU, D0, D1, D2, D3, D4, D5, D6, D7, D8, D9 }
+enum class Key { UP, DOWN, LEFT, RIGHT, OK, BACK, CHUP, CHDOWN, PLAYPAUSE, RED, GREEN, YELLOW, BLUE, INFO, MENU, SEARCH, D0, D1, D2, D3, D4, D5, D6, D7, D8, D9 }
 
 /**
  * All app state and remote-control logic. Mirrors prototype/index.html: one focus owner, every key routed
@@ -284,6 +289,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var homeLoading by mutableStateOf(false); private set
     /** Sources are picked, nothing is loading, and still nothing to show from them. */
     val homeEmpty: Boolean get() { cfgVersion; return !homeLoading && homeRows.none { it.kind != HomeKind.CONTINUE && it.kind != HomeKind.WATCHING } && (homeGroups.isNotEmpty() || homeChannels.isNotEmpty()) }
+
+    // ---------- search (Layer.SEARCH) ----------
+    var searchQuery by mutableStateOf(""); private set
+    /** The text field has the focus (typing goes to it); else the results do, on [searchIdx]. */
+    var searchOnField by mutableStateOf(true); private set
+    var searchIdx by mutableIntStateOf(0); private set
+    var searchRes by mutableStateOf(SearchResults.EMPTY); private set
+    /** The programme index is (re)built: programme results may be missing for a while. */
+    var searchIndexing by mutableStateOf(false); private set
+    /** Bumped to bring the on-screen keyboard up: on opening, and on OK on the field. */
+    var searchKeyboard by mutableIntStateOf(0); private set
+    /** What search was opened over, and goes back to with BACK. */
+    private var searchFrom = Layer.NONE
+    private var searchJob: Job? = null
 
     // ---------- menu, settings sheets, channel context menu ----------
     var sheets by mutableStateOf<List<Sheet>>(emptyList()); private set
@@ -1461,12 +1480,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Sheet.PLAYLISTS -> max(0, playlists.indexOfFirst { it.id == playlist?.id })
             Sheet.GUIDE -> playlist?.guideMode?.ordinal ?: 0
             Sheet.LANGUAGE -> L10n.lang(getApplication()).ordinal
+            // the menu's Settings item says an update is waiting: land on the row that installs it
+            Sheet.SETTINGS -> if (updater.available != null) SettingsRow.UPDATE.ordinal else 0
             else -> 0
         }
     }
 
     /** The side menu's rows, top to bottom. */
-    fun menuItems(): List<MenuItem> = MenuItem.entries.filter { it != MenuItem.UPDATE || updater.available != null }
+    fun menuItems(): List<MenuItem> = MenuItem.entries
 
     /** ▲▼ choose, OK opens, ▶ back to what is under it; BACK back to where the menu was opened from (Home if from
      *  Home, else playback; Home also when nothing plays yet), MENU closes back to playback. */
@@ -1479,10 +1500,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Key.DOWN -> menuIdx = (menuIdx + 1) % n
             Key.OK -> when (items[menuIdx]) {
                 MenuItem.HOME -> openHome()
-                MenuItem.GROUPS -> openSheet(Sheet.GROUPS)
+                MenuItem.SEARCH -> openSearch()
                 MenuItem.SETTINGS -> openSheet(Sheet.SETTINGS)
-                MenuItem.GUIDE -> { closeSheets(); refreshGuide(force = true) }
-                MenuItem.UPDATE -> updater.install()
                 MenuItem.EXIT -> exitApp()
             }
             Key.RIGHT -> pop()
@@ -2101,6 +2120,130 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         showToast(str(R.string.remote_reset_done))
     }
 
+    // ============================================================ search
+
+    /**
+     * «Пошук» (main menu, or the remote's SEARCH key): a text field over the video, results below as you type. The
+     * field gets the focus and the system keyboard (on Android TV, Gboard or the Leanback keyboard, with its own mic);
+     * ▼ leaves it for the results, ▲ on the first result comes back. BACK goes back to what search was opened over.
+     */
+    fun openSearch() {
+        closeSheets(); closeCtx(); markCtx = null
+        banner = false; osd = false
+        if (layer != Layer.SEARCH) {
+            searchFrom = layer
+            layer = Layer.SEARCH
+            searchQuery = ""
+            runSearch("", now = true)
+        }
+        searchOnField = true
+        searchIdx = 0
+        searchKeyboard++
+    }
+
+    private fun closeSearch() {
+        searchJob?.cancel()
+        layer = searchFrom
+        if (layer == Layer.HOME) refreshHome()
+        else if (layer == Layer.NONE && cur == null) openHome() // nothing plays: Home rather than a black screen
+    }
+
+    /** The field's text changed (typed, dictated, or picked from the keyboard's suggestions). */
+    fun onSearchText(q: String) {
+        if (q == searchQuery) return
+        searchQuery = q
+        searchIdx = 0
+        runSearch(q)
+    }
+
+    /** The keyboard's search / done key: on to the results, if there are any. */
+    fun onSearchSubmit() {
+        if (searchRes.items.isEmpty() || searchRes.query != searchQuery) return
+        searchOnField = false
+        searchIdx = 0
+    }
+
+    private fun runSearch(q: String, now: Boolean = false) {
+        searchJob?.cancel()
+        val visible = shown
+        val ids = visible.mapTo(HashSet(visible.size * 2)) { it.id }
+        searchJob = viewModelScope.launch {
+            if (!now && q.isNotBlank()) delay(180) // typing: wait for a pause
+            searchIndexing = Remote.indexer.building
+            val r = withContext(Dispatchers.Default) {
+                SearchScreen.run(q, visible, ids, Remote.indexer.index, prefs.searchRecent, now())
+            }
+            searchRes = r
+            searchIdx = searchIdx.coerceIn(0, max(0, r.items.size - 1))
+            if (r.items.isEmpty()) searchOnField = true
+        }
+    }
+
+    /** Keys while the field has the focus: true when handled here, false to let them through to the field (letters,
+     *  digits, ◀ ▶ to move the cursor, delete), null to route them as anywhere else (MENU). Runs before [map], so that
+     *  digits type rather than switch channels. */
+    private fun fieldKey(e: KeyEvent): Boolean? {
+        lastKeyAt = SystemClock.uptimeMillis()
+        val down = e.action == KeyEvent.ACTION_DOWN
+        return when (e.keyCode) {
+            KeyEvent.KEYCODE_DPAD_DOWN -> { if (down && searchRes.items.isNotEmpty() && searchRes.query == searchQuery) { searchOnField = false; searchIdx = 0 }; true }
+            KeyEvent.KEYCODE_DPAD_UP -> true // nothing above the field; and focus must not wander off it
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> { if (down && e.repeatCount == 0) searchKeyboard++; true }
+            KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> { if (down && e.repeatCount == 0) closeSearch(); true }
+            KeyEvent.KEYCODE_SEARCH -> { if (down && e.repeatCount == 0) searchKeyboard++; true }
+            KeyEvent.KEYCODE_MENU -> null // the main menu, as everywhere
+            else -> false
+        }
+    }
+
+    /** ▲▼ move (▲ on the first row back to the field), OK plays, long OK from the start, BACK closes. */
+    private fun searchKey(k: Key) {
+        val items = searchRes.items
+        val n = items.size
+        when (k) {
+            Key.UP -> if (searchIdx <= 0) searchOnField = true else searchIdx--
+            Key.DOWN -> if (searchIdx < n - 1) searchIdx++
+            Key.CHUP -> searchIdx = max(0, searchIdx - 8)
+            Key.CHDOWN -> searchIdx = max(0, min(n - 1, searchIdx + 8))
+            Key.OK -> items.getOrNull(searchIdx)?.let(::searchOk)
+            Key.BACK -> closeSearch()
+            Key.RED -> (items.getOrNull(searchIdx) as? SearchItem.Ch)?.let { toggleFav(it.ch) }
+            Key.LEFT, Key.RIGHT -> Unit
+            else -> Unit
+        }
+        if (n == 0) searchOnField = true
+    }
+
+    /** A channel plays live, a programme on now live, one in the archive from the archive (resuming a bookmark), one to
+     *  come only says when it starts. A recent query goes back into the field. */
+    private fun searchOk(it: SearchItem) {
+        when (it) {
+            is SearchItem.Recent -> { searchQuery = it.query; searchOnField = true; searchIdx = 0; runSearch(it.query, now = true) }
+            is SearchItem.Ch -> {
+                rememberSearch()
+                layer = Layer.NONE
+                if (cur != it.ch || mode != Mode.LIVE) tune(it.ch) else showBanner()
+            }
+            is SearchItem.Prog -> {
+                val h = it.hit
+                if (h.kind == When.UPCOMING) { showToast(str(R.string.home_starts_at, dayWord(h.p.start).lowercase(), hm(h.p.start), h.ch.name)); return }
+                rememberSearch()
+                playProgramme(h.ch, h.p)
+            }
+        }
+    }
+
+    /** Long OK: the programme on now from its start, the bookmark menu of a half-watched one; a channel's menu. */
+    private fun searchLongOk() {
+        when (val it = searchRes.items.getOrNull(searchIdx)) {
+            is SearchItem.Ch -> openCtx(it.ch)
+            is SearchItem.Prog -> if (it.hit.kind != When.UPCOMING) { rememberSearch(); longOkProgramme(it.hit.ch, it.hit.p) }
+            else -> Unit
+        }
+    }
+
+    private fun rememberSearch() { prefs.searchRecent = SearchScreen.remember(prefs.searchRecent, searchQuery) }
+
     // ============================================================ keys
 
     private var keyAt = 0L
@@ -2112,6 +2255,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Returns true if the key was consumed. */
     fun onKey(e: KeyEvent): Boolean {
+        if (layer == Layer.SEARCH && searchOnField && sheets.isEmpty() && ctx == null && markCtx == null) fieldKey(e)?.let { return it }
         val k = map(e.keyCode) ?: return false
         lastKeyAt = SystemClock.uptimeMillis()
         keyAt = e.eventTime
@@ -2143,6 +2287,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Key.OK -> when (layer) {
                 Layer.LIST -> listLongOk()
                 Layer.HOME -> homeLongOk()
+                Layer.SEARCH -> searchLongOk()
                 Layer.NONE -> cur?.let(::openCtx)
             }
             else -> Unit
@@ -2153,9 +2298,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (k == Key.PLAYPAUSE) { togglePause(); return } // media keys pause anywhere
         if (ctx != null) { ctxKey(k); return }
         if (markCtx != null) { markCtxKey(k); return }
+        if (k == Key.SEARCH) { openSearch(); return } // the remote's search key: from anywhere, over whatever is open
         sheets.lastOrNull()?.let { sheetKey(it, k); return }
-        if (k.ordinal >= Key.D0.ordinal) { digit(k.ordinal - Key.D0.ordinal); return }
         if (k == Key.MENU) { openMenu(); return }
+        if (layer == Layer.SEARCH) { searchKey(k); return }
+        if (k.ordinal >= Key.D0.ordinal) { digit(k.ordinal - Key.D0.ordinal); return }
         if (layer == Layer.LIST) { listKey(k); return }
         if (layer == Layer.HOME) { homeKey(k); return }
         if (osd) { panelKey(k, repeat); return }
@@ -2258,6 +2405,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             KeyEvent.KEYCODE_PROG_BLUE -> Key.BLUE
             KeyEvent.KEYCODE_INFO -> Key.INFO
             KeyEvent.KEYCODE_MENU -> Key.MENU
+            KeyEvent.KEYCODE_SEARCH -> Key.SEARCH
             in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> Key.entries[Key.D0.ordinal + code - KeyEvent.KEYCODE_0]
             else -> null
         }

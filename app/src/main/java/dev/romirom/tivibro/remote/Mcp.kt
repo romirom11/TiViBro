@@ -72,6 +72,8 @@ class Mcp(private val tv: Tv) {
                 else tv.play(a.optString("channel_id"), start, a.optBoolean("from_start", false))
             }
             "control" -> tv.control(a.optString("action"))
+            "list_groups" -> tv.groups()
+            "list_channels" -> tv.groupChannels(a.optString("group"), a.optInt("offset", 0).coerceAtLeast(0), a.optInt("limit", 50).coerceIn(1, 100))
             else -> return null
         }
         val failed = out is JSONObject && out.has("ok") && !out.optBoolean("ok")
@@ -126,5 +128,11 @@ class Mcp(private val tv: Tv) {
                 "(channel up / down), live (back to the live broadcast).",
                 JSONObject().put("action", JSONObject().put("type", "string").put("enum", JSONArray(listOf("pause", "resume", "playpause", "next", "prev", "live")))
                     .put("description", "What to do.")), listOf("action")))
+            .put(tool("list_groups", "The user's channel groups: favourites first (id \"*fav\"), then the playlist's groups, " +
+                "each with id, name and how many channels it has. Hidden groups and channels are left out."))
+            .put(tool("list_channels", "The channels of one group, in the user's order, with what is on now. Paged: pass " +
+                "offset to get more (the answer says total).",
+                JSONObject().put("group", prop("string", "Group id from list_groups (or its name).")).put("offset", prop("integer", "Skip this many, default 0."))
+                    .put("limit", prop("integer", "Max channels, default 50.")), listOf("group")))
     }
 }

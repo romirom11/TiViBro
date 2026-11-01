@@ -55,4 +55,18 @@ class HttpTest {
         val r = exchange("GET / HTTP/1.1\r\nHost: x\r\n")
         assertEquals("HTTP/1.1 408 Request Timeout", r.substringBefore("\r\n"))
     }
+
+    @Test fun aTlsClientHelloIsRefusedAtOnceWithAnAlert() {
+        // https:// typed to this plain port (or an HTTPS upgrade): no line break in it, so it used to sit out requestMs
+        val hello = ByteArray(1700) { 0x41 }.also { it[0] = 0x16; it[1] = 0x03; it[2] = 0x01 }
+        val t0 = System.nanoTime()
+        val r = Socket("127.0.0.1", http.port).use { s ->
+            s.soTimeout = 5_000
+            s.getOutputStream().write(hello)
+            s.shutdownOutput()
+            s.getInputStream().readBytes()
+        }
+        assertEquals(listOf(0x15, 0x03, 0x01, 0x00, 0x02, 0x02, 0x28), r.map { it.toInt() and 0xFF })
+        assertTrue((System.nanoTime() - t0) / 1_000_000 < 250)
+    }
 }

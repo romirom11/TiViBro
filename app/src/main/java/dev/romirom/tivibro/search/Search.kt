@@ -256,6 +256,34 @@ class ProgrammeIndex private constructor(
         return null
     }
 
+    /**
+     * [ch]'s programmes that overlap [from, to) (ms), in time order, as of [t]: the phone's schedule of one day. What
+     * the index has is what can be acted on (the archive the channel has, what is on, what is coming), so nothing older
+     * than the archive shows up; one that aged out of it since the index was built is left out too.
+     */
+    fun range(ch: Channel, from: Long, to: Long, t: Long): List<ProgrammeHit> {
+        val c = chIdx[ch.id] ?: return emptyList()
+        val f = (from / 1000).toInt()
+        val z = (to / 1000).toInt()
+        val ts = (t / 1000).toInt()
+        var lo = chAt[c]
+        var hi = chAt[c + 1]
+        while (lo < hi) { val m = (lo + hi) ushr 1; if (end(m) <= f) lo = m + 1 else hi = m } // first ending after from
+        val out = ArrayList<ProgrammeHit>()
+        var i = lo
+        while (i < chAt[c + 1] && pStart[i] < z) {
+            val kind = when {
+                pStart[i] > ts -> When.UPCOMING
+                end(i) > ts -> When.NOW
+                ch.archiveDays > 0 && pStart[i] * 1000L >= t - ch.archiveDays * DAY -> When.ARCHIVE
+                else -> null
+            }
+            if (kind != null) out += ProgrammeHit(ch, prog(i), kind)
+            i++
+        }
+        return out
+    }
+
     private fun titleOf(pos: Int): Int {
         var lo = 0
         var hi = titleCount - 1

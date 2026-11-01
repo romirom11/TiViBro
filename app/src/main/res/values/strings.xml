@@ -182,7 +182,6 @@
     <!-- menu -->
     <string name="menu_summary">%1$s · показано груп: %2$d з %3$d</string>
     <string name="menu_groups">Групи каналів</string>
-    <string name="menu_guide">Оновити програму передач</string>
     <string name="menu_settings">Налаштування</string>
     <string name="menu_exit">Вихід</string>
     <string name="menu_update">Оновити до %1$s</string>
@@ -379,4 +378,13 @@
     <string name="rp_no_playlist">Відкрийте TiViBro на телевізорі</string>
     <string name="rp_not_started">Ще не почалось</string>
     <string name="rp_cancel">Скасувати</string>
+    <string name="menu_search">Пошук</string>
+    <string name="search_hint">Назва каналу або передачі</string>
+    <string name="search_recent">Нещодавні пошуки</string>
+    <string name="search_empty">Канали за назвою чи номером, передачі за назвою: в ефірі, в архіві й незабаром</string>
+    <string name="hint_keyboard">Клавіатура</string>
+    <string name="hint_results">До результатів</string>
+    <string name="rp_groups">Групи</string>
+    <string name="rp_schedule">Програма</string>
+    <string name="rp_no_programmes">Програми на цей день немає</string>
 </resources>

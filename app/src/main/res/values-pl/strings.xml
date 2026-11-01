@@ -178,7 +178,6 @@
     <!-- menu -->
     <string name="menu_summary">%1$s · widoczne grupy: %2$d z %3$d</string>
     <string name="menu_groups">Grupy kanałów</string>
-    <string name="menu_guide">Zaktualizuj program TV</string>
     <string name="menu_settings">Ustawienia</string>
     <string name="menu_exit">Wyjdź</string>
     <string name="menu_update">Zaktualizuj do %1$s</string>
@@ -375,4 +374,13 @@
     <string name="rp_no_playlist">Otwórz TiViBro na telewizorze</string>
     <string name="rp_not_started">Jeszcze się nie zaczął</string>
     <string name="rp_cancel">Anuluj</string>
+    <string name="menu_search">Szukaj</string>
+    <string name="search_hint">Nazwa kanału lub programu</string>
+    <string name="search_recent">Ostatnie wyszukiwania</string>
+    <string name="search_empty">Kanały po nazwie lub numerze, programy po tytule: teraz, w archiwum i wkrótce</string>
+    <string name="hint_keyboard">Klawiatura</string>
+    <string name="hint_results">Do wyników</string>
+    <string name="rp_groups">Grupy</string>
+    <string name="rp_schedule">Program</string>
+    <string name="rp_no_programmes">Brak programu na ten dzień</string>
 </resources>

@@ -138,6 +138,7 @@ private fun BoxScope.Overlays(vm: AppViewModel) {
     AnimatedVisibility(vm.layer == Layer.NONE && vm.osd, Modifier.align(Alignment.BottomCenter), enter = fadeIn() + slideInVertically { it / 6 }, exit = fadeOut()) { Osd(vm) }
     if (vm.layer == Layer.LIST) ListOverlay(vm)
     if (vm.layer == Layer.HOME) HomeOverlay(vm)
+    if (vm.layer == Layer.SEARCH) SearchOverlay(vm)
     if (Sheet.MENU in vm.sheets) Menu(vm)
     vm.sheets.lastOrNull { it != Sheet.MENU }?.let { SideSheet(vm, it) }
     vm.ctx?.let { ChannelMenu(vm, it) }
@@ -363,6 +364,20 @@ private fun Hints(vm: AppViewModel, modifier: Modifier) {
                 )
                 c.p.isPast() -> listOfNotNull(h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_watch), back)
                 else -> listOfNotNull(h("◀▶", R.string.hint_card), h("▲▼", R.string.hint_row), h("OK", R.string.hint_when), h("OK", R.string.hint_long_channel_menu), back)
+            }
+        }
+        vm.layer == Layer.SEARCH -> {
+            val back = h("BACK", if (vm.cur == null) R.string.menu_home else R.string.hint_close)
+            val it = vm.searchRes.items.getOrNull(vm.searchIdx)
+            when {
+                vm.searchOnField -> listOfNotNull(h("OK", R.string.hint_keyboard), h("▼", R.string.hint_results).takeIf { vm.searchRes.items.isNotEmpty() }, back)
+                it is dev.romirom.tivibro.search.SearchItem.Recent -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_open), back)
+                it is dev.romirom.tivibro.search.SearchItem.Prog && it.hit.kind == dev.romirom.tivibro.search.When.UPCOMING ->
+                    listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_when), back)
+                it is dev.romirom.tivibro.search.SearchItem.Prog && it.hit.kind == dev.romirom.tivibro.search.When.NOW && vm.canArchive(it.hit.ch) ->
+                    listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_watch), h("OK", R.string.hint_long_restart), back)
+                it is dev.romirom.tivibro.search.SearchItem.Ch -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_watch), h("OK", R.string.hint_long_channel_menu), back)
+                else -> listOf(h("▲▼", R.string.hint_choose), h("OK", R.string.hint_watch), back)
             }
         }
         // ◀ walks deeper, BACK closes the whole list

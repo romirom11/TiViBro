@@ -43,10 +43,12 @@ object Remote {
     class State(val playlist: String?, val channels: List<Channel>, val shown: Set<String>, val favs: List<String>) {
         val byId: Map<String, Channel> = channels.associateBy { it.id }
         val visible: List<Channel> = channels.filter { it.id in shown }
+        /** [visible] by group, in playlist order: what the phone browses ([Browse]). Built on first use, once. */
+        val groups: Map<String, List<Channel>> by lazy { visible.groupByTo(LinkedHashMap()) { it.group } }
     }
 
     private lateinit var app: Context
-    val http = Http(::route)
+    val http = Http(::route, mask = { t -> token.let { if (it.isEmpty()) t else t.replace(it, it.take(4) + "…") } })
     val indexer by lazy { SearchIndexer(java.io.File(app.noBackupFilesDir, "search")) }
     /** The QR setup page, while a screen shows it. */
     @Volatile var setup: SetupServer? = null

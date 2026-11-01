@@ -103,20 +103,25 @@ fun Menu(vm: AppViewModel) {
                     Row(Modifier.fillMaxSize().padding(horizontal = 26.px), verticalAlignment = Alignment.CenterVertically) {
                         val (glyph, title) = when (m) {
                             MenuItem.HOME -> "⌂" to str(R.string.menu_home)
-                            MenuItem.GROUPS -> "☰" to str(R.string.menu_groups)
-                            MenuItem.GUIDE -> "↻" to str(R.string.menu_guide)
+                            MenuItem.SEARCH -> "⌕" to str(R.string.menu_search)
                             MenuItem.SETTINGS -> "⚙︎" to str(R.string.menu_settings)
-                            MenuItem.UPDATE -> "↑" to str(R.string.menu_update, vm.updater.available?.version?.toString().orEmpty())
                             MenuItem.EXIT -> "✕" to str(R.string.menu_exit)
                         }
                         T(glyph, 30, if (foc) Tok.OnPlate else Tok.T2, modifier = Modifier.width(54.px))
                         T(title, 28, if (foc) Tok.OnPlate else Tok.T1, FontWeight.Medium, Modifier.weight(1f))
-                        val small = when (m) {
-                            MenuItem.GUIDE -> vm.status?.substringAfterLast("… ", "")?.takeIf { it.endsWith("%") }.orEmpty()
-                            MenuItem.UPDATE -> vm.updater.progress?.let { "$it%" }.orEmpty()
+                        // the update lives in Settings now: its item says one is waiting (and how far the download is)
+                        val u = vm.updater
+                        val small = when {
+                            m != MenuItem.SETTINGS -> ""
+                            u.progress != null -> "${u.progress}%"
+                            u.available != null -> "↑ ${u.available!!.version}"
                             else -> ""
                         }
-                        if (small.isNotEmpty()) T(small, 21, if (foc) Tok.OnPlate2 else Tok.T2, FontWeight.Medium)
+                        if (small.isNotEmpty()) {
+                            Box(Modifier.background(if (foc) Color(0x1F000000) else Color(0x2930D158), RoundedCornerShape(9.px)).padding(horizontal = 12.px, vertical = 4.px)) {
+                                T(small, 21, if (foc) Tok.OnPlate else Tok.Ok, FontWeight.SemiBold)
+                            }
+                        }
                     }
                 }
             } }
@@ -270,7 +275,7 @@ private fun SettingsSheet(vm: AppViewModel) {
                     u.available != null -> str(R.string.update_ready, u.available!!.version.toString())
                     else -> str(R.string.version, BuildConfig.VERSION_NAME)
                 }
-                SheetRow(foc, str(R.string.row_update), desc)
+                SheetRow(foc, u.available?.let { str(R.string.menu_update, it.version.toString()) } ?: str(R.string.row_update), desc)
             }
             SettingsRow.ABOUT -> AboutRow(foc)
         }

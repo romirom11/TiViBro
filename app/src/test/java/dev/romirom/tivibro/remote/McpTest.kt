@@ -20,6 +20,12 @@ class McpTest {
             return if (channel == "bad") JSONObject().put("ok", false).put("error", "no") else JSONObject().put("ok", true)
         }
         override fun control(action: String) = JSONObject().put("ok", true)
+        override fun groups() = JSONObject().put("ok", true).put("groups", JSONArray().put(JSONObject().put("id", "*fav")))
+        override fun groupChannels(group: String, offset: Int, limit: Int): JSONObject {
+            played += "group $group $offset $limit"
+            return JSONObject().put("ok", true)
+        }
+        override fun schedule(channel: String, day: Int) = JSONObject().put("ok", true)
     }
     private val mcp = Mcp(tv)
 
@@ -45,7 +51,7 @@ class McpTest {
     @Test fun toolsAreListed() {
         val tools = json(post("""{"jsonrpc":"2.0","id":3,"method":"tools/list"}""")).getJSONObject("result").getJSONArray("tools")
         val names = (0 until tools.length()).map { tools.getJSONObject(it).getString("name") }
-        assertEquals(listOf("search_channels", "search_programmes", "whats_on", "play_channel", "play_programme", "now_playing", "control"), names)
+        assertEquals(listOf("search_channels", "search_programmes", "whats_on", "play_channel", "play_programme", "now_playing", "control", "list_groups", "list_channels"), names)
     }
 
     @Test fun toolCallReturnsTextAndPlays() {
@@ -58,6 +64,9 @@ class McpTest {
         assertEquals("ch1@1000/true", played.last())
         val bad = json(post("""{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"play_channel","arguments":{"channel":"bad"}}}"""))
         assertTrue(bad.getJSONObject("result").getBoolean("isError"))
+
+        post("""{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"list_channels","arguments":{"group":"Кіно","offset":-3}}}""")
+        assertEquals("group Кіно 0 50", played.last())
     }
 
     @Test fun modernRequestsAreServedAndUnknownVersionsRefused() {

@@ -120,6 +120,19 @@ class SearchTest {
         assertNull(idx.find(ictv, t))
     }
 
+    @Test fun rangeGivesOneChannelsProgrammesOfADayInTimeOrder() {
+        val idx = index()
+        val r = idx.range(shallow, t - HOUR, t + HOUR, t)
+        assertEquals(listOf("Шерлок", "Новини"), r.map { it.p.title })
+        assertEquals(listOf(When.NOW, When.UPCOMING), r.map { it.kind })
+        // a programme that started before the window but runs into it belongs to it
+        assertEquals(listOf("Шерлок"), idx.range(shallow, t, t + 15 * MIN, t).map { it.p.title })
+        assertEquals(listOf(When.ARCHIVE), idx.range(ictv, t - DAY - HOUR, t - DAY + 2 * HOUR, t).map { it.kind })
+        assertTrue(idx.range(ictv, t, t + DAY, t).isEmpty())
+        // the index was built a while ago: what aged out of the 1-day archive since is not offered any more
+        assertTrue(idx.range(shallow, t - HOUR, t + HOUR, t + 2 * DAY).none { it.kind == When.ARCHIVE })
+    }
+
     @Test fun shortOrEmptyQueriesFindNothing() {
         assertTrue(index().search("", t).isEmpty())
         assertTrue(index().search("ф", t).isEmpty())
