@@ -333,7 +333,13 @@ from the start, back to live, channel down / up, and the audio tracks when there
 with the player's new state; otherwise the page polls `/api/now` every 2 s with the panel open and every 8 s without,
 and not while the page is hidden. The TV's clock comes with each answer (`serverNow`), so a phone whose clock is off
 still draws the live edge right. When TiViBro is not in front on the TV (`foreground: false`) a banner says so and
-taps that would play or steer playback are refused with it; favourites, hiding and bookmarks still work.
+taps that would play or steer playback are refused with it; favourites, hiding, bookmarks and the volume still work.
+
+The TV's system volume (`STREAM_MUSIC`, what the remote's volume keys change, not the player's own) is at the top of
+Home and in the player panel: mute, − and + one step of the TV's scale (held, they repeat every 110 ms after 400 ms), a
+slider over the TV's steps (0 to max) and the level. The page draws a change at once and sends it as an absolute level,
+one request at a time with the latest wish merged into the next; it reads `/api/volume` again with each poll of
+`/api/now`. Every change shows the TV's own volume bar (`FLAG_SHOW_UI`), and works with TiViBro in the background.
 
 «Add to Home screen» uses `/<token>/manifest.webmanifest` (standalone, the token in `start_url`) and
 `/<token>/icon.png` (192 px, from `assets/remote`). Chrome treats a plain-http LAN page as insecure, so on Android it
@@ -347,8 +353,8 @@ default, 100 at most), `GET /api/schedule?channel=&day=` (`day` 0 is today, -1 y
 channel, its `days` as `{"day", "start"}` local midnights, and the day's `programmes` with `when` now / archive /
 upcoming), `GET /api/home` (`bookmarks`, `recent`, `favourites`, `foreground`), `GET /api/hidden` (every provider
 group with `shown`, and the hidden channels), `GET /api/programme?channel=&start=` (one programme with `desc`,
-`resumeAt` and `inArchive`; `pending` while the guide still reads the description: ask again shortly). Every channel
-object carries `fav`.
+`resumeAt` and `inArchive`; `pending` while the guide still reads the description: ask again shortly),
+`GET /api/volume` (`level`, `max`, `percent`, `muted`, `fixed`). Every channel object carries `fav`.
 
 `GET /api/now` answers `playing`, `foreground`, `serverNow`, the `channel`, `mode` (live / archive), `paused`,
 `position` (the frame on screen, epoch ms), the `programme` (with `desc` once read), `canSeek`, `earliest` (the oldest
@@ -367,7 +373,11 @@ POST, with a JSON body:
 - `/api/fav` `{"channelId", "on": true | false}`, answered with the new `favs` list; `/api/fav/move`
   `{"channelId", "dir": -1 | 1}` (one step past the next favourite the user can see);
 - `/api/hide` `{"channelId", "hidden": true | false}`; `/api/group/show` `{"group", "shown": true | false}`;
-- `/api/bookmark/forget` `{"channelId", "start"}`.
+- `/api/bookmark/forget` `{"channelId", "start"}`;
+- `/api/volume` `{"level": 0..max}` or `{"by": ±steps}` (what the page sends), or `{"set": 0..100}` / `{"change": ±n}`
+  in percent, and/or `{"mute": true | false}`, answered with the new state as `GET` gives it. Android unmutes on any
+  level above 0, mutes at 0 and reads a muted stream as 0; a step (`by`, `change`) of a muted TV unmutes first and
+  goes from the level that brings back; a TV whose volume is fixed (`fixed: true`) answers `ok: false`.
 
 Playback control (`key`, `seek`, choosing an audio track) needs TiViBro on screen; the rest works while it is in the
 background as long as its process lives.
@@ -379,7 +389,9 @@ send the version in each request's `_meta` and may call `server/discover`. Tools
 up / down, back to live, restart, previous / next programme), `seek` (`seconds`, negative back, or `to` a time of day
 like "21:30" or epoch ms), `audio_track` (lists the tracks, or switches to `track`, numbered from 1),
 `list_favourites`, `add_favourite`, `remove_favourite`, `continue_watching`, `resume` (a bookmark by `channel_id` and
-`start`, or the most recent one), `list_groups` and `list_channels` (a group's channels, paged). Results carry channel
+`start`, or the most recent one), `list_groups`, `list_channels` (a group's channels, paged) and `volume` (the TV's
+system volume: `set` 0 to 100 percent, `change` relative in percent, `mute`; without arguments only the state, always
+answered with `level`, `max`, `percent` and `muted`). Results carry channel
 ids and programme start times (epoch ms) to pass back to the play tools, plus the TV's local time for the assistant to
 say.
 

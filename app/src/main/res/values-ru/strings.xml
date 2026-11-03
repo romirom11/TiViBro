@@ -397,4 +397,8 @@
     <string name="rp_next_prog">Следующая передача</string>
     <string name="rp_cant_now">Сейчас это невозможно</string>
     <string name="rp_nothing_playing">Сейчас ничего не играет</string>
+    <string name="rp_volume">Громкость</string>
+    <string name="rp_mute">Выключить звук</string>
+    <string name="rp_unmute">Включить звук</string>
+    <string name="rp_muted">Без звука</string>
 </resources>

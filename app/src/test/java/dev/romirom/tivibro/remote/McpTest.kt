@@ -32,6 +32,7 @@ class McpTest {
         override fun resume(channel: String?, start: Long?) = JSONObject().put("ok", true).also { played += "resume $channel $start" }
         override fun seek(seconds: Long?, to: String?) = JSONObject().put("ok", true).also { played += "seek $seconds $to" }
         override fun audio(index: Int?) = JSONObject().put("ok", true).also { played += "audio $index" }
+        override fun volume(set: Int?, change: Int?, mute: Boolean?) = JSONObject().put("ok", true).also { played += "volume $set $change $mute" }
     }
     private val mcp = Mcp(tv)
 
@@ -60,7 +61,7 @@ class McpTest {
         assertEquals(
             listOf(
                 "search_channels", "search_programmes", "whats_on", "play_channel", "play_programme", "now_playing", "control", "seek",
-                "audio_track", "list_favourites", "add_favourite", "remove_favourite", "continue_watching", "resume", "list_groups", "list_channels",
+                "audio_track", "volume", "list_favourites", "add_favourite", "remove_favourite", "continue_watching", "resume", "list_groups", "list_channels",
             ),
             names, // the order is what clients show: keep it deliberate
         )
@@ -97,6 +98,9 @@ class McpTest {
         // «track 2» is the second track: 0-based underneath
         call("audio_track", """{"track":2}"""); assertEquals("audio 1", played.last())
         call("audio_track", "{}"); assertEquals("audio null", played.last())
+        call("volume", "{}"); assertEquals("volume null null null", played.last())
+        call("volume", """{"change":-10}"""); assertEquals("volume null -10 null", played.last())
+        call("volume", """{"set":30,"mute":false}"""); assertEquals("volume 30 null false", played.last())
         assertFalse(call("continue_watching", "{}").getBoolean("isError"))
     }
 

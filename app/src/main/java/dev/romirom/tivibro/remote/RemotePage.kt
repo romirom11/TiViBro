@@ -23,6 +23,10 @@ import org.json.JSONObject
  * follows at once; otherwise it polls, every 2 s while open, every 8 s while not, and not at all while the page is
  * hidden. The TV's clock is taken from each answer, so a phone whose clock is off still draws the live edge right.
  *
+ * The TV's own volume (the system's, what the remote's volume keys change) sits at the top of «Головна» and in the
+ * player panel: mute, − and + (held, they repeat), a slider over the TV's steps and the level. Each change shows the
+ * TV's volume bar; it is drawn at once and sent latest first (one request in flight), and read again with each poll.
+ *
  * When TiViBro is not in front on the TV (the answer says `foreground: false`) a banner says so and taps that would
  * play are refused with that message instead of failing a few seconds later; favourites and the rest still work.
  *
@@ -53,7 +57,8 @@ object RemotePage {
             "tvBg" to R.string.rp_tv_background, "order" to R.string.rp_edit_order, "done" to R.string.rp_done,
             "favEmpty" to R.string.rp_fav_empty, "behind" to R.string.rp_behind, "resumeAt" to R.string.rp_resume_at,
             "hideGroup" to R.string.rp_hide_group, "manage" to R.string.rp_manage, "min" to R.string.rp_min, "sec" to R.string.rp_sec,
-            "prevProg" to R.string.rp_prev_prog, "nextProg" to R.string.rp_next_prog,
+            "prevProg" to R.string.rp_prev_prog, "nextProg" to R.string.rp_next_prog, "volume" to R.string.rp_volume,
+            "mute" to R.string.rp_mute, "unmute" to R.string.rp_unmute, "muted" to R.string.rp_muted,
         )) s.put(k, str(id).replace("%1\$s", "{1}").replace("%1\$d", "{1}"))
         return PAGE.replace("{lang}", L10n.locale.language).replace("{base}", "/$token")
             .replace("{S}", s.toString().replace("</", "<\\/"))
@@ -179,6 +184,20 @@ footer .mid .s{margin-top:1px}
 .chips span{color:var(--t3);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-right:4px}
 .chips button{border:1px solid var(--hair);background:rgba(255,255,255,.06);color:var(--t2);border-radius:12px;padding:8px 12px;font-weight:600;font-size:14px}
 .chips button.on{background:var(--t1);color:var(--bg);border-color:var(--t1)}
+.vol{display:flex;align-items:center;gap:8px}
+.vol button{flex:none;width:44px;height:44px;border-radius:22px;border:0;background:rgba(255,255,255,.1);color:var(--t1);font-size:24px;line-height:44px;padding:0;touch-action:manipulation}
+.vol button svg{display:block;margin:auto}
+.vol button:active{background:rgba(255,255,255,.22)}
+.vol.mu button[data-vm]{background:rgba(255,69,58,.16);color:var(--live)}
+.vol input{flex:1;min-width:0;height:40px;margin:0 2px;background:none;-webkit-appearance:none;appearance:none}
+.vol input::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--t1) var(--p,0%),rgba(255,255,255,.12) var(--p,0%))}
+.vol input::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-8px;border-radius:11px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.vol input::-moz-range-track{height:6px;border-radius:3px;background:rgba(255,255,255,.12)}
+.vol input::-moz-range-progress{height:6px;border-radius:3px;background:var(--t1)}
+.vol input::-moz-range-thumb{width:22px;height:22px;border:0;border-radius:11px;background:#fff}
+.vol.mu input{opacity:.4}
+.vol .n{flex:none;min-width:30px;text-align:right;color:var(--t2);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.vol.off{opacity:.4;pointer-events:none}
 </style></head><body>
 <header><div class="top"><div class="brand">TiViBro</div><div class="tabs"><button id="tH"></button><button id="tS"></button><button id="tC"></button></div></div>
 <div class="sb" id="sb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -277,10 +296,11 @@ const fail=(my,m)=>{if(my===seq)Q('m').innerHTML='<div class="empty">'+esc(m||S.
 // ---------------------------------------------------------------- home: continue watching, recent channels, favourites now
 async function home(){const my=++seq;
  try{const r=await get('home');if(my!==seq)return;items.length=0;if(!r.ready)return fail(my,S.noPlaylist);let h='';
+  h+='<div class="list" style="padding:8px 12px 8px 10px">'+volBox()+'</div>';
   if(r.bookmarks.length)h+='<h2>'+esc(S.cont)+'</h2><div class="list">'+r.bookmarks.map(bmRow).join('')+'</div>';
   if(r.recent.length)h+='<h2>'+esc(S.recent)+'</h2><div class="tiles">'+r.recent.map(tile).join('')+'</div>';
   h+='<h2>'+esc(S.favsNow)+'</h2>'+(r.favourites.length?'<div class="list">'+r.favourites.map(favRow).join('')+'</div>':'<div class="note">'+esc(S.favEmpty)+'</div>');
-  Q('m').innerHTML=h}catch(e){fail(my)}}
+  Q('m').innerHTML=h;paintVol();volGet(true)}catch(e){fail(my)}}
 
 // ---------------------------------------------------------------- search
 async function search(){const q=Q('q').value.trim();Q('x').style.display=q?'block':'none';const my=++seq;items.length=0;
@@ -425,9 +445,10 @@ function drawPanel(full){if(!np||!np.playing)return;const c=np.channel,p=np.prog
    '<div class="pb"><button data-k="previous_programme" aria-label="'+esc(S.prevProg)+'">⏮</button><button data-by="-300000">−'+esc(fmt(S.min,5))+'</button><button data-by="-30000">−'+esc(fmt(S.sec,30))+'</button>'+
    '<button class="big" id="pp" data-k="playpause"></button><button data-by="30000">+'+esc(fmt(S.sec,30))+'</button><button data-by="300000">+'+esc(fmt(S.min,5))+'</button><button data-k="next_programme" aria-label="'+esc(S.nextProg)+'">⏭</button></div>'+
    '<div class="pb"><button data-k="restart">⟲ '+esc(S.fromStart)+'</button><button data-k="live" style="color:var(--live)">● '+esc(S.live)+'</button><button data-k="prev">'+esc(S.channel)+' ▼</button><button data-k="next">'+esc(S.channel)+' ▲</button></div>'+
+   '<div style="margin:0 6px 14px">'+volBox()+'</div>'+
    (au.length>1?'<div class="chips"><span>'+esc(S.audio)+'</span>'+au.map(t=>'<button data-au="'+t.index+'" class="'+(t.selected?'on':'')+'">'+esc(t.name)+'</button>').join('')+'</div>':'')+
    '<div class="d" id="pds"></div>';
-  seekable()}
+  seekable();paintVol()}
  Q('pbn').textContent=S.tvBg;Q('pbn').classList.toggle('on',!fg());Q('pcn').textContent=c.name;Q('pcs').textContent=c.num+' · '+c.group;Q('ptt').textContent=p?p.title:c.name;
  Q('pmm').innerHTML='<span class="bd '+(np.paused?'paused':live?'live':'archive')+'">'+esc(np.paused?S.paused:live?S.live:S.archive)+'</span>'+(p?'<span>'+day(p.start)+', '+hm(p.start)+'–'+hm(p.end)+'</span>':'')+(!live&&behind>60e3?'<span>· '+esc(fmt(S.behind,'−'+dur(behind)))+'</span>':'');
  Q('skav').style.left=pct(lo);Q('skav').style.width=(Math.max(0,(hi-lo)/(b-a))*100).toFixed(2)+'%';Q('skfl').style.width=pct(x);Q('skth').style.left=pct(x);Q('skbb').style.left=pct(x);Q('skbb').textContent=hms(x);
@@ -444,15 +465,48 @@ function seekable(){const sk=Q('sk');
  sk.onpointermove=e=>{if(dragT==null)return;dragT=at(e);drawPanel(false)};
  sk.onpointerup=async e=>{if(dragT==null)return;const t=Math.round(at(e));dragT=null;np.position=t;npAt=Date.now();drawPanel(false);buzz();await post('seek',{to:t})};
  sk.onpointercancel=()=>{dragT=null;drawPanel(false)}}
-Q('psc').addEventListener('click',async e=>{const f=e.target.closest('[data-f]');if(f)return toggleFav(f.dataset.f,f.dataset.n);
+Q('psc').addEventListener('click',async e=>{if(e.target.closest('.vol'))return;const f=e.target.closest('[data-f]');if(f)return toggleFav(f.dataset.f,f.dataset.n);
  const b=e.target.closest('button');if(!b||b.disabled)return;
  if(b.dataset.au!=null){if(!canPlay())return;buzz();const j=await post('audio',{index:+b.dataset.au});if(j&&j.tracks){np.audio=j.tracks;drawPanel(true)}return}
  if(!canPlay())return;
  if(b.dataset.by){buzz();np.position=Math.min(nowT(),pos()+(+b.dataset.by));npAt=Date.now();drawPanel(false);return post('seek',{by:+b.dataset.by})}
  if(b.dataset.k)key(b.dataset.k)});
+// ---------------------------------------------------------------- the TV's volume: mute, − / + (held, they repeat), a slider over the TV's steps
+const SPK='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>';
+const volBox=()=>'<div class="vol off" data-vol><button data-vm></button><button data-vb="-1" aria-label="−">−</button><input type="range" min="0" max="100" value="0" data-vr aria-label="'+esc(S.volume)+'"><button data-vb="1" aria-label="+">+</button><div class="n" data-vn></div></div>';
+let vol=null,vAt=0,vBusy=false,vNext=null,vHold=null;
+function paintVol(){document.querySelectorAll('[data-vol]').forEach(v=>{v.classList.toggle('off',!vol);if(!vol)return;v.classList.toggle('mu',vol.muted);
+ const r=v.querySelector('[data-vr]');r.max=vol.max;r.value=vol.level;r.style.setProperty('--p',(vol.max?vol.level*100/vol.max:0).toFixed(1)+'%');
+ v.querySelector('[data-vn]').textContent=vol.level;const m=v.querySelector('[data-vm]');m.setAttribute('aria-label',vol.muted?S.unmute:S.mute);m.title=vol.muted?S.muted:'';
+ m.innerHTML=SPK+(vol.muted?'<path d="m17 9 5 6m0-6-5 6"/></svg>':'<path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>')})}
+// what the TV says, unless the user just moved it here (an answer to an older request must not pull the slider back)
+function volGet(force){if(document.hidden||vBusy||vHold||Date.now()-vAt<1500||!(force||document.querySelector('[data-vol]')))return;
+ get('volume').then(v=>{if(v&&v.max!=null&&!vBusy&&!vHold&&Date.now()-vAt>=1500){vol=v;paintVol()}}).catch(()=>{})}
+// one request at a time, the latest wish merged into the next one; an answer is drawn with what is still to be sent
+const vClamp=l=>Math.max(0,Math.min(vol.max,l));
+function vShow(j){vol=Object.assign({},j);const w=vNext;
+ if(w){if(w.level!=null||w.by){vol.level=w.level!=null?w.level:vClamp(vol.level+w.by);vol.muted=vol.level===0}if(w.mute!=null)vol.muted=w.mute}paintVol()}
+async function vSend(b){const w=vNext||{};
+ if(b.level!=null){delete w.by;delete w.mute;w.level=b.level}
+ else if(b.by){delete w.mute;if(w.level!=null)w.level=vClamp(w.level+b.by);else w.by=(w.by||0)+b.by}
+ else w.mute=b.mute;
+ vNext=w;if(vBusy)return;vBusy=true;
+ try{while(vNext){const x=vNext;vNext=null;const j=await post('volume',x);vAt=Date.now();if(j&&j.max!=null)vShow(j)}}finally{vBusy=false}}
+// as the TV does it: a level above 0 unmutes, 0 mutes; − / + of a muted TV go from the level it had (the TV knows it, the page sees 0)
+function volSet(l){if(!vol)return;vol.level=vClamp(l);vol.muted=vol.level===0;vAt=Date.now();paintVol();vSend({level:vol.level})}
+function volStep(d){if(!vol)return;vAt=Date.now();if(vol.muted)vol.muted=false;else{vol.level=vClamp(vol.level+d);vol.muted=vol.level===0}paintVol();vSend({by:d})}
+function volStop(){if(vHold){clearTimeout(vHold.t);clearInterval(vHold.i);vHold=null}}
+document.addEventListener('pointerdown',e=>{const b=e.target.closest('[data-vb]');if(!b||!vol)return;e.preventDefault();volStop();const d=+b.dataset.vb;buzz(8);volStep(d);
+ vHold={t:setTimeout(()=>{vHold.i=setInterval(()=>{buzz(4);volStep(d)},110)},400)}});
+for(const ev of ['pointerup','pointercancel'])document.addEventListener(ev,volStop);
+window.addEventListener('blur',volStop);
+document.addEventListener('contextmenu',e=>{if(e.target.closest('.vol'))e.preventDefault()});
+document.addEventListener('input',e=>{if(e.target.matches('[data-vr]'))volSet(+e.target.value)});
+document.addEventListener('click',e=>{const m=e.target.closest('[data-vm]');if(!m||!vol)return;buzz();vol.muted=!vol.muted;vAt=Date.now();paintVol();vSend({mute:vol.muted})});
+
 // polling: gently while the panel is closed, often while it is open, never while the page is hidden
 let pollT;
-async function now(){clearTimeout(pollT);if(document.hidden)return;
+async function now(){clearTimeout(pollT);if(document.hidden)return;volGet();
  try{applyNow(await get('now'))}catch(e){reach=false;banner()}
  pollT=setTimeout(now,open()?2000:8000)}
 setInterval(()=>{if(!document.hidden&&np&&np.playing&&!np.paused){if(open())drawPanel(false);else draw()}},1000);

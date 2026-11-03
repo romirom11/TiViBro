@@ -390,4 +390,8 @@
     <string name="rp_next_prog">Next programme</string>
     <string name="rp_cant_now">Not possible right now</string>
     <string name="rp_nothing_playing">Nothing is playing</string>
+    <string name="rp_volume">Volume</string>
+    <string name="rp_mute">Mute</string>
+    <string name="rp_unmute">Unmute</string>
+    <string name="rp_muted">Muted</string>
 </resources>

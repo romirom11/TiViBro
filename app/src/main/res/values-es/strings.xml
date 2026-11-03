@@ -394,4 +394,8 @@
     <string name="rp_next_prog">Programa siguiente</string>
     <string name="rp_cant_now">Ahora no es posible</string>
     <string name="rp_nothing_playing">No se está reproduciendo nada</string>
+    <string name="rp_volume">Volumen</string>
+    <string name="rp_mute">Silenciar</string>
+    <string name="rp_unmute">Activar sonido</string>
+    <string name="rp_muted">Silenciado</string>
 </resources>
