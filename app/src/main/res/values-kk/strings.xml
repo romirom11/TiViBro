@@ -391,4 +391,8 @@
     <string name="rp_next_prog">Келесі хабар</string>
     <string name="rp_cant_now">Қазір мүмкін емес</string>
     <string name="rp_nothing_playing">Қазір ештеңе ойнап тұрған жоқ</string>
+    <string name="rp_volume">Дыбыс қаттылығы</string>
+    <string name="rp_mute">Дыбысты өшіру</string>
+    <string name="rp_unmute">Дыбысты қосу</string>
+    <string name="rp_muted">Дыбыссыз</string>
 </resources>

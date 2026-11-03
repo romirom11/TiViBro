@@ -401,4 +401,8 @@
     <string name="rp_next_prog">Наступна передача</string>
     <string name="rp_cant_now">Зараз це неможливо</string>
     <string name="rp_nothing_playing">Зараз нічого не грає</string>
+    <string name="rp_volume">Гучність</string>
+    <string name="rp_mute">Вимкнути звук</string>
+    <string name="rp_unmute">Увімкнути звук</string>
+    <string name="rp_muted">Без звуку</string>
 </resources>

@@ -55,12 +55,15 @@ interface Tv {
     fun seek(seconds: Long?, to: String?): JSONObject
     /** The audio tracks, after switching to [index] (0-based) when given. */
     fun audio(index: Int?): JSONObject
+    /** The TV's system volume, after [set] (0..100 %), [change] (± %) and [mute] when given. */
+    fun volume(set: Int?, change: Int?, mute: Boolean?): JSONObject
 }
 
 /** [Tv] over [Remote]'s snapshots, plus the JSON routes the phone page calls (`/api/…`). */
 class RemoteApi(private val app: Context) : Tv {
     private val st get() = Remote.state
     private val idx get() = Remote.indexer.index
+    private val vol by lazy { Volume(app) }
 
     override val indexing get() = Remote.indexer.building
 
@@ -79,6 +82,13 @@ class RemoteApi(private val app: Context) : Tv {
             "home" -> home()
             "hidden" -> hiddenList()
             "programme" -> programme(q["channel"].orEmpty(), q["start"]?.toLongOrNull() ?: 0)
+            // GET: the state; POST: `level` (0..max) or `by` (steps) as the page's slider and ± send, `set` / `change` in %, `mute`
+            "volume" -> if (method != "POST") volume(null, null, null) else {
+                val o = runCatching { JSONObject(body) }.getOrElse { return Http.Response.json("""{"error":"bad json"}""", 400) }
+                val mute = if (o.has("mute")) o.optBoolean("mute") else null
+                fun int(k: String) = if (o.has(k)) o.optInt(k) else null
+                if (o.has("level") || o.has("by")) onVolume { it.apply(int("level"), int("by"), mute) } else volume(int("set"), int("change"), mute)
+            }
             "play", "key", "seek", "audio", "fav", "fav/move", "hide", "group/show", "bookmark/forget" -> {
                 if (method != "POST") return Http.Response.json("""{"error":"POST only"}""", 405)
                 val o = runCatching { JSONObject(body) }.getOrElse { return Http.Response.json("""{"error":"bad json"}""", 400) }
@@ -278,6 +288,10 @@ class RemoteApi(private val app: Context) : Tv {
         if (index != null && index !in ts.indices) return fail("There is no audio track ${index + 1}: there ${if (ts.size == 1) "is 1" else "are ${ts.size}"}.")
         return ok().put("tracks", JSONArray().also { a -> ts.forEach { a.put(trackJson(it)) } })
     }
+
+    override fun volume(set: Int?, change: Int?, mute: Boolean?): JSONObject = onVolume { it.applyPercent(set, change, mute) }
+
+    private fun onVolume(f: (Volume) -> JSONObject): JSONObject = Remote.onMain { f(vol) } ?: fail(NO_ANSWER)
 
     // ------------------------------------------------------------------ the phone page only
 

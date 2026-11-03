@@ -391,4 +391,8 @@
     <string name="rp_next_prog">Nächste Sendung</string>
     <string name="rp_cant_now">Gerade nicht möglich</string>
     <string name="rp_nothing_playing">Es läuft nichts</string>
+    <string name="rp_volume">Lautstärke</string>
+    <string name="rp_mute">Ton aus</string>
+    <string name="rp_unmute">Ton an</string>
+    <string name="rp_muted">Stumm</string>
 </resources>

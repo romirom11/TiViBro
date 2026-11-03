@@ -81,6 +81,10 @@ class Mcp(private val tv: Tv) {
             "seek" -> tv.seek(if (a.has("seconds")) a.optLong("seconds") else null, a.opt("to")?.toString()?.ifBlank { null })
             // a person says «track 2»: numbered from 1 here, from 0 in the JSON API
             "audio_track" -> tv.audio(a.optInt("track", 0).takeIf { it > 0 }?.minus(1))
+            "volume" -> tv.volume(
+                a.takeIf { !it.isNull("set") }?.optInt("set"), a.takeIf { !it.isNull("change") }?.optInt("change"),
+                a.takeIf { !it.isNull("mute") }?.optBoolean("mute"),
+            )
             else -> return null
         }
         val failed = out is JSONObject && out.has("ok") && !out.optBoolean("ok")
@@ -102,7 +106,7 @@ class Mcp(private val tv: Tv) {
         private const val INSTRUCTIONS = "Controls the TiViBro IPTV player on the user's TV. Find things with search_channels / " +
             "search_programmes / whats_on, then start them with play_channel (live) or play_programme (archive, or the current " +
             "programme from its start) using the channel id and start time returned. While something plays, seek, control and " +
-            "audio_track steer it. Times are epoch milliseconds; the «local» " +
+            "audio_track steer it; volume sets the TV's own sound level. Times are epoch milliseconds; the «local» " +
             "fields are the TV's local time. Programme titles are usually Ukrainian or Russian: search in the title's language " +
             "and try a shorter word if nothing is found."
 
@@ -143,6 +147,15 @@ class Mcp(private val tv: Tv) {
                 JSONObject().put("seconds", prop("integer", "Relative jump in seconds; negative is back.")).put("to", prop("string", "A local time HH:MM, or epoch ms."))))
             .put(tool("audio_track", "List the audio tracks of what plays, or switch to one (track numbers start at 1).",
                 JSONObject().put("track", prop("integer", "Track number to switch to. Omit to list."))))
+            .put(tool("volume", "The TV's system volume (what the TV remote's volume keys change, for everything the TV " +
+                "plays). Without arguments it only reports it. change is relative, in percent: \"make it quieter\" or \"a bit " +
+                "lower\" is about -10, \"louder\" +10, \"much louder\" +25; set is an absolute level in percent (\"volume to " +
+                "30\"); mute = true / false silences or brings back the sound. Changing the level to anything above 0 " +
+                "also unmutes, and a change while muted goes from the level the TV had. The TV shows its volume bar. Always " +
+                "answers level, max (the TV's steps), percent and muted (while muted, level and percent read 0).",
+                JSONObject().put("set", prop("integer", "Absolute volume, 0 to 100 percent."))
+                    .put("change", prop("integer", "Relative change in percent; negative is quieter, e.g. -10."))
+                    .put("mute", prop("boolean", "true mutes, false unmutes."))))
             .put(tool("list_favourites", "The user's favourite channels, in their order, with what is on now."))
             .put(tool("add_favourite", "Add a channel to the favourites.",
                 JSONObject().put("channel", prop("string", "Channel id (best), number or name.")), listOf("channel")))
