@@ -5,7 +5,9 @@ import dev.romirom.tivibro.str
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.MarqueeSpacing
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -160,12 +162,17 @@ fun T(
     modifier: Modifier = Modifier,
     maxLines: Int = 1,
     letterSpacing: TextUnit = TextUnit.Unspecified,
+    marquee: Boolean = false,
 ) = BasicText(
     text,
-    modifier,
+    // [marquee]: a line that doesn't fit runs past like a ticker (only one that doesn't fit, and only after a pause, so
+    // a quick run down a list doesn't set every row moving); it only moves the drawn line, nothing is laid out again
+    if (marquee) modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 1200, repeatDelayMillis = 1800, spacing = MarqueeSpacing(64.px), velocity = 42.dp)
+    else modifier,
     style = TextStyle(fontFamily = AppFont, color = color, fontSize = size.tx, fontWeight = weight, letterSpacing = letterSpacing, lineHeight = (size * 1.35f).toInt().tx),
-    maxLines = maxLines,
-    overflow = TextOverflow.Ellipsis,
+    maxLines = if (marquee) 1 else maxLines,
+    softWrap = !marquee,
+    overflow = if (marquee) TextOverflow.Clip else TextOverflow.Ellipsis,
 )
 
 @Composable

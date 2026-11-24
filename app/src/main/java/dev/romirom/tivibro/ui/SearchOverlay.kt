@@ -188,7 +188,7 @@ private fun SearchResults(vm: AppViewModel, active: Boolean) {
                     when (it) {
                         is SearchItem.Recent -> Row(Modifier.fillMaxSize().padding(horizontal = 26.px), verticalAlignment = Alignment.CenterVertically) {
                             T("↺", 26, if (foc) Tok.OnPlate2 else Tok.T3, modifier = Modifier.width(52.px))
-                            T(it.query, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.Medium)
+                            T(it.query, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.Medium, marquee = foc)
                         }
                         is SearchItem.Ch -> ChannelHitRow(vm, it, foc)
                         is SearchItem.Prog -> ProgrammeHitRow(vm, it, foc)
@@ -206,10 +206,10 @@ private fun ChannelHitRow(vm: AppViewModel, it: SearchItem.Ch, foc: Boolean) {
         Logo(it.ch, 64)
         Column(Modifier.weight(1f).padding(start = 22.px)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                T(it.ch.name, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold, Modifier.weight(1f, fill = false))
+                T(it.ch.name, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold, Modifier.weight(1f, fill = false), marquee = foc)
                 if (vm.isFav(it.ch)) T(" ★", 20, Color(0xFFFFD60A))
             }
-            T(p?.let { "${hm(it.start)} · ${it.title}" } ?: it.ch.group, 21, if (foc) Tok.OnPlate2 else Tok.T2, modifier = Modifier.padding(top = 2.px, bottom = 6.px))
+            T(p?.let { "${hm(it.start)} · ${it.title}" } ?: it.ch.group, 21, if (foc) Tok.OnPlate2 else Tok.T2, modifier = Modifier.padding(top = 2.px, bottom = 6.px), marquee = foc)
             if (p != null) Ticking(vm) { t -> Progress((t - p.start).toFloat() / p.duration, Modifier.fillMaxWidth(.6f), if (foc) Tok.OnPlate else Tok.T1, if (foc) Color(0x1F000000) else Color(0x24FFFFFF), 3) }
         }
         T("${it.ch.num}", 22, if (foc) Tok.OnPlate2 else Tok.T3, FontWeight.SemiBold, Modifier.padding(start = 20.px))
@@ -222,7 +222,7 @@ private fun ProgrammeHitRow(vm: AppViewModel, it: SearchItem.Prog, foc: Boolean)
     Row(Modifier.fillMaxSize().padding(horizontal = 22.px), verticalAlignment = Alignment.CenterVertically) {
         Logo(h.ch, 64)
         Column(Modifier.weight(1f).padding(start = 22.px)) {
-            T(h.p.title, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold)
+            T(h.p.title, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold, marquee = foc)
             val time = if (h.kind == When.NOW) "${hm(h.p.start)}–${hm(h.p.end)}" else "${dayWord(h.p.start)}, ${hm(h.p.start)}"
             T("${h.ch.name} · $time", 21, if (foc) Tok.OnPlate2 else Tok.T2, modifier = Modifier.padding(top = 2.px, bottom = 6.px))
             if (h.kind == When.NOW) Ticking(vm) { t -> Progress((t - h.p.start).toFloat() / h.p.duration, Modifier.fillMaxWidth(.6f), if (foc) Tok.OnPlate else Tok.T1, if (foc) Color(0x1F000000) else Color(0x24FFFFFF), 3) }
