@@ -143,6 +143,8 @@ object Remote {
     // ------------------------------------------------------------------ routing
 
     private fun route(r: Http.Request): Http.Response {
+        // the app's typeface for the phone pages (the remote, the setup page): not secret, so no token
+        if (r.path.startsWith("/font/")) return font(r.path.removePrefix("/font/"))
         setup?.handle(r)?.let { return it }
         val tok = token
         val path = r.path
@@ -169,6 +171,20 @@ object Remote {
             rest.startsWith("/api/") -> api.handle(r.method, rest.removePrefix("/api/"), r.query, r.text)
             else -> Http.Response.empty(404)
         }
+    }
+
+    /** Onest, the TV's own typeface, so the phone pages match it without reaching for a font service. */
+    private val fonts = HashMap<String, ByteArray>()
+    private fun font(name: String): Http.Response {
+        val id = when (name) {
+            "onest-400.ttf" -> dev.romirom.tivibro.R.font.onest_regular
+            "onest-500.ttf" -> dev.romirom.tivibro.R.font.onest_medium
+            "onest-600.ttf" -> dev.romirom.tivibro.R.font.onest_semibold
+            "onest-700.ttf" -> dev.romirom.tivibro.R.font.onest_bold
+            else -> return Http.Response.empty(404)
+        }
+        val b = synchronized(fonts) { fonts.getOrPut(name) { app.resources.openRawResource(id).use { it.readBytes() } } }
+        return Http.Response(200, "font/ttf", b, mapOf("Cache-Control" to "max-age=31536000, immutable"))
     }
 
     /** The home screen icon of «Add to Home screen», read once from the APK's assets. */
