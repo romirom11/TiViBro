@@ -23,8 +23,7 @@ import org.json.JSONObject
  * follows at once; otherwise it polls, every 2 s while open, every 8 s while not, and not at all while the page is
  * hidden. The TV's clock is taken from each answer, so a phone whose clock is off still draws the live edge right.
  *
- * The TV's own volume (the system's, what the remote's volume keys change) sits at the top of «Головна» and in the
- * player panel: mute, − and + (held, they repeat), a slider over the TV's steps and the level. Each change shows the
+ * The TV's own volume (the system's, what the remote's volume keys change) sits in the player panel: mute, − and + (held, they repeat), a slider over the TV's steps and the level. Each change shows the
  * TV's volume bar; it is drawn at once and sent latest first (one request in flight), and read again with each poll.
  *
  * When TiViBro is not in front on the TV (the answer says `foreground: false`) a banner says so and taps that would
@@ -303,11 +302,10 @@ const fail=(my,m)=>{if(my===seq)Q('m').innerHTML='<div class="empty">'+esc(m||S.
 // ---------------------------------------------------------------- home: continue watching, recent channels, favourites now
 async function home(){const my=++seq;
  try{const r=await get('home');if(my!==seq)return;items.length=0;if(!r.ready)return fail(my,S.noPlaylist);let h='';
-  h+='<div class="list" style="padding:8px 12px 8px 10px">'+volBox()+'</div>';
   if(r.bookmarks.length)h+='<h2>'+esc(S.cont)+'</h2><div class="list">'+r.bookmarks.map(bmRow).join('')+'</div>';
   if(r.recent.length)h+='<h2>'+esc(S.recent)+'</h2><div class="tiles">'+r.recent.map(tile).join('')+'</div>';
   h+='<h2>'+esc(S.favsNow)+'</h2>'+(r.favourites.length?'<div class="list">'+r.favourites.map(favRow).join('')+'</div>':'<div class="note">'+esc(S.favEmpty)+'</div>');
-  Q('m').innerHTML=h;paintVol();volGet(true)}catch(e){fail(my)}}
+  Q('m').innerHTML=h}catch(e){fail(my)}}
 
 // ---------------------------------------------------------------- search
 async function search(){const q=Q('q').value.trim();Q('x').style.display=q?'block':'none';const my=++seq;items.length=0;
@@ -462,7 +460,7 @@ function drawPanel(full){if(!np||!np.playing)return;const c=np.channel,p=np.prog
    '<div style="margin:0 6px 14px">'+volBox()+'</div>'+
    (au.length>1?'<div class="chips"><span>'+esc(S.audio)+'</span>'+au.map(t=>'<button data-au="'+t.index+'" class="'+(t.selected?'on':'')+'">'+esc(t.name)+'</button>').join('')+'</div>':'')+
    '<div class="d" id="pds"></div>';
-  seekable();paintVol()}
+  seekable();paintVol();volGet(true)}
  Q('pbn').textContent=S.tvBg;Q('pbn').classList.toggle('on',!fg());Q('pcn').textContent=c.name;Q('pcs').textContent=c.num+' · '+c.group;Q('ptt').textContent=p?p.title:c.name;
  Q('pmm').innerHTML='<span class="bd '+(np.paused?'paused':live?'live':'archive')+'">'+esc(np.paused?S.paused:live?S.live:S.archive)+'</span>'+(p?'<span>'+day(p.start)+', '+hm(p.start)+'–'+hm(p.end)+'</span>':'')+(!live&&behind>60e3?'<span>· '+esc(fmt(S.behind,'−'+dur(behind)))+'</span>':'');
  Q('skav').style.left=pct(lo);Q('skav').style.width=(Math.max(0,(hi-lo)/(b-a))*100).toFixed(2)+'%';Q('skfl').style.width=pct(x);Q('skth').style.left=pct(x);Q('skbb').style.left=pct(x);Q('skbb').textContent=hms(x);
