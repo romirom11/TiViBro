@@ -83,21 +83,23 @@ object RemotePage {
 :root{--bg:#07080b;--t1:#f5f5f7;--t2:#a3a3ab;--t3:#6b6b73;--glass:rgba(255,255,255,.06);--hair:rgba(255,255,255,.1);--live:#ff453a;--ok:#ff9f5a;--acc:#ff9f5a;--arc:#ffb340;--star:#ffd60a;--blur:blur(28px) saturate(1.7)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--t1);font:16px/1.35 Onest,-apple-system,BlinkMacSystemFont,Roboto,sans-serif}
-body{background:radial-gradient(75% 45% at 0% 100%,rgba(194,86,15,.34),transparent 72%),radial-gradient(75% 45% at 100% 0%,rgba(30,91,216,.32),transparent 72%),#07080b fixed;min-height:100vh;padding-bottom:120px;-webkit-user-select:none;user-select:none}
+body{background:radial-gradient(75% 45% at 0% 100%,rgba(194,86,15,.34),transparent 72%),radial-gradient(75% 45% at 100% 0%,rgba(30,91,216,.32),transparent 72%),#07080b fixed;min-height:100vh;padding-bottom:calc(170px + env(safe-area-inset-bottom));-webkit-user-select:none;user-select:none}
 button{font-family:inherit;cursor:pointer}
 header{position:sticky;top:0;z-index:5;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;background:rgba(7,8,11,.55);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-bottom:1px solid var(--hair)}
 .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px}
-.brand{font-weight:700;letter-spacing:.2px;font-size:15px}
-@media(max-width:390px){.brand{display:none}.top{justify-content:center}}
-.tabs{display:flex;padding:3px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--hair)}
-.tabs button{border:0;background:none;color:var(--t2);font-weight:600;font-size:14px;padding:7px 14px;border-radius:999px}
-.tabs button.on{background:rgba(255,255,255,.16);color:var(--t1)}
+.ttl{font-weight:700;font-size:28px;letter-spacing:-.2px;line-height:1.15}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:7;display:flex;justify-content:space-around;padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:rgba(12,13,17,.62);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-top:1px solid var(--hair)}
+.tabbar button{flex:1;max-width:140px;display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;color:var(--t3);font-size:11.5px;font-weight:600;padding:6px 0 4px;border-radius:14px;transition:color .15s}
+.tabbar button svg{display:block;transition:transform .15s}
+.tabbar button.on{color:var(--t1)}
+.tabbar button.on svg{transform:scale(1.08)}
+.tabbar button:active{background:rgba(255,255,255,.06)}
 .sb{display:flex;align-items:center;gap:10px;height:46px;padding:0 16px;margin-top:12px;border-radius:23px;background:rgba(255,255,255,.09);border:1px solid var(--hair)}
 .sb svg{flex:none;opacity:.6}
 .sb input{flex:1;min-width:0;border:0;outline:0;background:none;color:var(--t1);font:17px Onest,-apple-system,BlinkMacSystemFont,Roboto,sans-serif}
 .sb input::placeholder{color:var(--t3)}
 .x{border:0;background:rgba(255,255,255,.18);color:var(--bg);width:20px;height:20px;border-radius:10px;font-size:13px;line-height:20px;display:none;padding:0}
-.nav{display:flex;align-items:center;gap:10px;margin-top:12px;min-height:40px}
+.nav{display:flex;align-items:center;gap:10px;margin-top:2px;min-height:40px}
 .back{flex:none;border:0;background:rgba(255,255,255,.1);color:var(--t1);height:36px;padding:0 12px 0 10px;border-radius:18px;font-weight:600;font-size:14px}
 .nav .t{flex:1}
 .pill{flex:none;border:0;background:rgba(255,255,255,.1);color:var(--t1);height:36px;padding:0 14px;border-radius:18px;font-weight:600;font-size:14px}
@@ -145,7 +147,7 @@ h2+.list,h2+.tiles{margin-top:0}
 .empty{color:var(--t2);text-align:center;padding:40px 20px}
 .note{color:var(--t3);font-size:13px;margin:10px 8px}
 .more{height:1px}
-footer{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:6;display:none;align-items:center;gap:10px;padding:10px 10px 10px 12px;border-radius:26px;background:rgba(22,24,30,.6);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--hair);box-shadow:0 12px 40px rgba(0,0,0,.45);overflow:hidden;cursor:pointer}
+footer{position:fixed;left:10px;right:10px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:6;display:none;align-items:center;gap:10px;padding:10px 10px 10px 12px;border-radius:26px;background:rgba(22,24,30,.6);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--hair);box-shadow:0 12px 40px rgba(0,0,0,.45);overflow:hidden;cursor:pointer}
 footer .pg{position:absolute;left:0;top:0;height:2px;background:var(--t1);opacity:.7}
 footer .mid .s{margin-top:1px}
 .ctl{flex:none;display:flex;gap:6px}
@@ -203,12 +205,13 @@ footer .mid .s{margin-top:1px}
 .vol .n{flex:none;min-width:30px;text-align:right;color:var(--t2);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
 .vol.off{opacity:.4;pointer-events:none}
 </style></head><body>
-<header><div class="top"><div class="brand">TiViBro</div><div class="tabs"><button id="tH"></button><button id="tS"></button><button id="tC"></button></div></div>
+<header><div class="top"><div class="ttl" id="ttl">TiViBro</div></div>
 <div class="sb" id="sb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
 <input id="q" type="search" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search"><button class="x" id="x">✕</button></div>
 <div class="nav" id="nav" style="display:none"><button class="back" id="bk"></button><div class="t" id="navt"></div><div id="nava"></div></div>
 <div class="days" id="days" style="display:none"></div><div class="bn" id="bn"></div></header>
 <main id="m"></main>
+<nav class="tabbar"><button id="tH"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3.5 10.2 12 3.5l8.5 6.7V19a1.5 1.5 0 0 1-1.5 1.5h-4.2v-6h-5.6v6H5A1.5 1.5 0 0 1 3.5 19z"/></svg><span></span></button><button id="tS"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg><span></span></button><button id="tC"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="13" rx="3"/><path d="m8.5 2.5 3.5 3.5 3.5-3.5M8 22h8"/></svg><span></span></button></nav>
 <footer id="np"><div class="pg" id="npg"></div><div class="logo" id="npl"></div><div class="mid"><div class="t" id="npt"></div><div class="s" id="nps"></div></div>
 <div class="ctl"><button id="bp" aria-label="prev">▼</button><button id="bpp" aria-label="play/pause">⏯</button><button id="bn2" aria-label="next">▲</button></div></footer>
 <div class="sheet" id="sh"><div class="card" id="shc"></div></div>
@@ -282,7 +285,7 @@ function go(h){depth++;location.hash=h}
 function back(fallback){if(depth>0){depth--;history.back()}else location.replace('#'+fallback)}
 function parts(){const h=location.hash.slice(1);const i=h.indexOf('/');return i<0?[h]:[h.slice(0,i)].concat(h.slice(i+1).split('/').map(decodeURIComponent))}
 const TAB={home:'tH',search:'tS'};
-function chrome(v,title,backTo){for(const id of ['tH','tS','tC'])Q(id).className=(TAB[v]||'tC')===id?'on':'';Q('sb').style.display=v==='search'?'flex':'none';
+function chrome(v,title,backTo){const tab=TAB[v]||'tC';for(const id of ['tH','tS','tC'])Q(id).className=tab===id?'on':'';Q('ttl').textContent=tab==='tH'?S.tabHome:tab==='tS'?S.tabSearch:S.channels;Q('ttl').parentElement.style.display=title==null?'':'none';Q('sb').style.display=v==='search'?'flex':'none';
  Q('nav').style.display=title==null?'none':'flex';Q('navt').textContent=title||'';Q('nava').innerHTML='';Q('days').style.display=v==='s'?'flex':'none';Q('bk').textContent='‹ '+S.groups;Q('bk').onclick=()=>back(backTo)}
 function route(){const p=parts();const v=['search','groups','g','s','hidden'].includes(p[0])?p[0]:'home';view=v;items.length=0;window.scrollTo(0,0);closeSheet();
  if(v==='home'){chrome(v,null);return home()}
@@ -418,7 +421,7 @@ Q('m').addEventListener('click',async e=>{if(lpFired){lpFired=false;return}
  if(it.k==='c')return play({channelId:it.c.id});
  if(it.k==='b')return play({channelId:it.b.channelId,start:it.b.start,resume:true});
  progSheet(it.p)});
-Q('q').placeholder=S.search;Q('tH').textContent=S.tabHome;Q('tS').textContent=S.tabSearch;Q('tC').textContent=S.channels;
+Q('q').placeholder=S.search;Q('tH').lastChild.textContent=S.tabHome;Q('tS').lastChild.textContent=S.tabSearch;Q('tC').lastChild.textContent=S.channels;
 
 // ---------------------------------------------------------------- the player: the strip at the bottom, and the panel it opens
 const key=k=>{buzz();if(k==='playpause'&&np){np.paused=!np.paused;draw()}return post('key',{key:k})};
