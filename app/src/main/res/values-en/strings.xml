@@ -102,7 +102,7 @@
     <string name="archive">Archive</string>
     <string name="osd_restart">Restart</string>
     <string name="osd_live">Live</string>
-    <string name="osd_audio">Audio</string>
+    <string name="osd_audio">Audio track</string>
 
     <!-- hints -->
     <string name="key_ok_long">Hold OK</string>

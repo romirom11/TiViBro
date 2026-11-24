@@ -115,10 +115,11 @@ sealed class GuideSource {
 enum class CtxItem { FAV, HIDE }
 /** The «Продовжити перегляд» context menu (long OK on a bookmark or a watched programme), top to bottom. */
 enum class MarkAction { FROM_START, FORGET, DONE }
-/** The player control panel's buttons, in focus order: the transport in the middle ([primary], round icons), then the
- *  rest as small chips on the right. [seekSec]: a fixed jump back (−) or forward (+), 0 for the rest. */
+/** The player control panel's buttons, in focus order, left to right: «from the start» on the left, the transport in
+ *  the middle ([primary], round icons), «live» (and the audio track, when there is a choice) on the right.
+ *  [seekSec]: a fixed jump back (−) or forward (+), 0 for the rest. */
 enum class OsdButton(val seekSec: Int = 0, val primary: Boolean = false) {
-    PREV(primary = true), BACK15(-15, true), PLAY(primary = true), FWD15(15, true), NEXT(primary = true), RESTART, LIVE, AUDIO
+    RESTART, PREV(primary = true), BACK15(-15, true), PLAY(primary = true), FWD15(15, true), NEXT(primary = true), LIVE, AUDIO
 }
 enum class Key { UP, DOWN, LEFT, RIGHT, OK, BACK, CHUP, CHDOWN, PLAYPAUSE, RED, GREEN, YELLOW, BLUE, INFO, MENU, SEARCH, D0, D1, D2, D3, D4, D5, D6, D7, D8, D9 }
 
@@ -240,6 +241,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var osdOnButtons by mutableStateOf(false); private set
     var osdBtn by mutableStateOf(OsdButton.PLAY); private set
     var audioTracks by mutableIntStateOf(0); private set
+    /** Which of them plays, from 1; 0 when unknown. */
+    var audioTrack by mutableIntStateOf(0); private set
     private var seekRun = 0
     private var lastSeekAt = 0L
     var seekAcc by mutableLongStateOf(0L); private set
@@ -363,7 +366,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
 
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
-                audioTracks = audioGroups().size
+                val gs = audioGroups()
+                audioTracks = gs.size
+                audioTrack = gs.indexOfFirst { it.isSelected } + 1
             }
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {

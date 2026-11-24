@@ -109,7 +109,7 @@
     <string name="archive">Archiwum</string>
     <string name="osd_restart">Od początku</string>
     <string name="osd_live">Na żywo</string>
-    <string name="osd_audio">Dźwięk</string>
+    <string name="osd_audio">Ścieżka dźwiękowa</string>
 
     <!-- hints -->
     <string name="key_ok_long">Przytrzymaj OK</string>

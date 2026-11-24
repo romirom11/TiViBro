@@ -113,7 +113,7 @@
     <string name="archive">Архів</string>
     <string name="osd_restart">З початку</string>
     <string name="osd_live">Наживо</string>
-    <string name="osd_audio">Звук</string>
+    <string name="osd_audio">Аудіодоріжка</string>
 
     <!-- hints -->
     <string name="key_ok_long">OK довго</string>

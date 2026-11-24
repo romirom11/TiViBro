@@ -77,14 +77,21 @@ class SetupServer(@Volatile var onSubmit: (String) -> Unit) {
         private val PAGE = """
             <!doctype html><html lang={lang}><meta name=viewport content="width=device-width,initial-scale=1">
             <title>TiViBro</title>
-            <style>body{font:17px -apple-system,Roboto,sans-serif;background:#0a0b0e;color:#f5f5f7;margin:0;padding:28px}
-            h1{font-size:24px}p{color:#a3a3ab;line-height:1.5}textarea,input{width:100%;box-sizing:border-box;border-radius:14px;border:0;padding:14px;font:15px monospace;background:#1c1d22;color:#fff}textarea{height:120px}input{font:17px -apple-system,Roboto,sans-serif}
-            button{margin-top:14px;width:100%;height:52px;border:0;border-radius:14px;background:#f5f5f7;color:#0a0b0e;font-size:17px;font-weight:600}
-            .ok{color:#30d158}.err{color:#ff453a}</style>
+            <meta name=theme-color content="#07080b">
+            <style>@font-face{font-family:Onest;font-weight:400;font-display:swap;src:url(/font/onest-400.ttf)}@font-face{font-family:Onest;font-weight:500;font-display:swap;src:url(/font/onest-500.ttf)}@font-face{font-family:Onest;font-weight:600;font-display:swap;src:url(/font/onest-600.ttf)}@font-face{font-family:Onest;font-weight:700;font-display:swap;src:url(/font/onest-700.ttf)}
+            body{font:17px Onest,-apple-system,BlinkMacSystemFont,Roboto,sans-serif;background:radial-gradient(75% 45% at 0% 100%,rgba(194,86,15,.34),transparent 72%),radial-gradient(75% 45% at 100% 0%,rgba(30,91,216,.32),transparent 72%),#07080b fixed;color:#f5f5f7;margin:0;padding:28px 18px;min-height:100vh;box-sizing:border-box}
+            .card{max-width:560px;margin:0 auto;padding:24px 20px;border-radius:28px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(28px) saturate(1.7);-webkit-backdrop-filter:blur(28px) saturate(1.7)}
+            .brand{font-weight:700;font-size:15px;color:#a3a3ab;margin:0 4px 18px}
+            h1{font-size:24px;font-weight:700;margin:0 4px 6px}p{color:#a3a3ab;line-height:1.5;margin:0 4px 18px}
+            textarea,input{width:100%;box-sizing:border-box;border-radius:18px;border:1px solid rgba(255,255,255,.12);padding:14px 16px;font:15px ui-monospace,monospace;background:rgba(0,0,0,.28);color:#fff;outline:0}textarea{height:120px;resize:vertical}input{font:17px Onest,-apple-system,BlinkMacSystemFont,Roboto,sans-serif}
+            textarea:focus,input:focus{border-color:rgba(255,159,90,.7)}
+            button{margin-top:14px;width:100%;height:54px;border:0;border-radius:27px;background:#f5f5f7;color:#07080b;font:600 17px Onest,-apple-system,BlinkMacSystemFont,Roboto,sans-serif;box-shadow:0 0 24px rgba(255,255,255,.2)}
+            .ok,.err{margin:16px 4px 0;font-weight:600}.ok{color:#ff9f5a}.err{color:#ff453a}</style>
+            <div class=card><div class=brand>TiViBro</div>
             <h1>{title}</h1>
             <p>{hint}</p>
             <form method=post>{field}<button>{button}</button></form>
-            {msg}
+            {msg}</div>
         """.trimIndent()
     }
 }
