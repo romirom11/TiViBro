@@ -106,7 +106,7 @@
     <string name="archive">Archivo</string>
     <string name="osd_restart">Reiniciar</string>
     <string name="osd_live">Directo</string>
-    <string name="osd_audio">Audio</string>
+    <string name="osd_audio">Pista de audio</string>
 
     <!-- hints -->
     <string name="key_ok_long">Mantén OK</string>

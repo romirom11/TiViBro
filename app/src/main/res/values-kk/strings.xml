@@ -103,7 +103,7 @@
     <string name="archive">Мұрағат</string>
     <string name="osd_restart">Басынан</string>
     <string name="osd_live">Тікелей</string>
-    <string name="osd_audio">Дыбыс</string>
+    <string name="osd_audio">Аудио жолы</string>
 
     <!-- hints -->
     <string name="key_ok_long">OK ұзақ</string>

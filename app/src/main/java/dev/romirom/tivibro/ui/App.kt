@@ -315,32 +315,39 @@ private fun Osd(vm: AppViewModel) {
                 Spacer(Modifier.weight(1f))
                 T(hm(end), 22, Tok.T2)
             }
-            // the transport, round and in the middle of what the chips leave; the chips on the right
+            // the transport exactly in the middle of the panel; «from the start» against it on the left, «live» (and the
+            // audio track, only when there is more than one) against it on the right: the two sides take equal room
             Row(Modifier.padding(top = 18.px).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(22.px, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) { OsdChip(vm, OsdButton.RESTART) }
+                Row(Modifier.padding(horizontal = 36.px), horizontalArrangement = Arrangement.spacedBy(22.px), verticalAlignment = Alignment.CenterVertically) {
                     for (b in OsdButton.entries.filter { it.primary }) {
                         val on = vm.osdEnabled(b)
                         RoundButton(vm.osdOnButtons && vm.osdBtn == b && on, on, if (b == OsdButton.PLAY) 104 else 84, if (b.seekSec != 0) "${kotlin.math.abs(b.seekSec)}" else null) { c -> drawOsdIcon(b, c, vm.paused) }
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.px)) {
-                    for (b in OsdButton.entries.filter { !it.primary }) {
-                        val on = vm.osdEnabled(b)
-                        val foc = vm.osdOnButtons && vm.osdBtn == b && on
-                        Plate(foc, Modifier.height(56.px).alpha(if (on) 1f else 0.35f), quiet = on && !foc, radius = 28, lift = 1.05f) {
-                            Row(Modifier.align(Alignment.Center).padding(horizontal = 24.px), verticalAlignment = Alignment.CenterVertically) {
-                                if (b == OsdButton.LIVE) Box(Modifier.padding(end = 10.px).size(10.px).background(if (foc) Tok.LiveOnPlate else if (on) Tok.Live else Tok.T2, CircleShape))
-                                val label = when (b) {
-                                    OsdButton.RESTART -> str(R.string.osd_restart)
-                                    OsdButton.LIVE -> str(R.string.osd_live)
-                                    else -> str(R.string.osd_audio) + if (vm.audioTracks > 1) " · ${vm.audioTracks}" else ""
-                                }
-                                T(label, 21, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold)
-                            }
-                        }
-                    }
+                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.px)) {
+                    OsdChip(vm, OsdButton.LIVE)
+                    if (vm.osdEnabled(OsdButton.AUDIO)) OsdChip(vm, OsdButton.AUDIO)
                 }
             }
+        }
+    }
+}
+
+/** A small pill beside the transport: «from the start», «live», the audio track. */
+@Composable
+private fun OsdChip(vm: AppViewModel, b: OsdButton) {
+    val on = vm.osdEnabled(b)
+    val foc = vm.osdOnButtons && vm.osdBtn == b && on
+    Plate(foc, Modifier.height(56.px).alpha(if (on) 1f else 0.35f), quiet = on && !foc, radius = 28, lift = 1.05f) {
+        Row(Modifier.align(Alignment.Center).padding(horizontal = 24.px), verticalAlignment = Alignment.CenterVertically) {
+            if (b == OsdButton.LIVE) Box(Modifier.padding(end = 10.px).size(10.px).background(if (foc) Tok.LiveOnPlate else if (on) Tok.Live else Tok.T2, CircleShape))
+            val label = when (b) {
+                OsdButton.RESTART -> str(R.string.osd_restart)
+                OsdButton.LIVE -> str(R.string.osd_live)
+                else -> str(R.string.osd_audio) + if (vm.audioTrack > 0) " ${vm.audioTrack}/${vm.audioTracks}" else ""
+            }
+            T(label, 21, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold)
         }
     }
 }
