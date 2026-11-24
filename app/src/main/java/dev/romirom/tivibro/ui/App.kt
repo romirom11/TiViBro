@@ -31,6 +31,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -110,17 +113,22 @@ fun Ticking(vm: AppViewModel, content: @Composable (now: Long) -> Unit) {
 @Composable
 fun App(vm: AppViewModel) {
     val base = LocalDensity.current
+    val backdrop = remember { Backdrop() }
+    RunBackdrop(backdrop)
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         val ready = vm.playlistUrl != null
-        if (ready) Video(vm) // full screen whatever the UI scale: only what is drawn over it is scaled
+        if (ready) Video(vm, backdrop) // full screen whatever the UI scale: only what is drawn over it is scaled
         // Settings → «Масштаб інтерфейсу»: one factor for every overlay, through the density (dp and sp alike). The stage
         // is worked out here from the pixel size and the scale: a BoxWithConstraints under the scaled density would not
         // re-run on a scale change alone (its pixel constraints stay the same) and would keep the old stage.
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val d = base.density * vm.uiScale / 100f
             val stage = IntSize((constraints.maxWidth / d * 2).toInt(), (constraints.maxHeight / d * 2).toInt())
-            CompositionLocalProvider(LocalDensity provides Density(d, base.fontScale), LocalStage provides stage) {
+            CompositionLocalProvider(LocalDensity provides Density(d, base.fontScale), LocalStage provides stage, LocalBackdrop provides backdrop) {
                 Box(Modifier.fillMaxSize()) { if (!ready) Setup(vm) else Overlays(vm) }
+                // once per process: not again after a language change recreates the activity
+                var intro by remember { mutableStateOf(!vm.introShown) }
+                if (intro) Intro { vm.introShown = true; intro = false }
             }
         }
     }
@@ -150,7 +158,7 @@ private fun BoxScope.Overlays(vm: AppViewModel) {
     if (vm.numBuf.isNotEmpty()) {
         Column(
             Modifier.align(Alignment.TopEnd).padding(top = 120.px, end = 72.px)
-                .background(Tok.GlassHi, RoundedCornerShape(28.px)).padding(horizontal = 36.px, vertical = 20.px),
+                .glass(RoundedCornerShape(28.px), Tok.GlassHi).padding(horizontal = 36.px, vertical = 20.px),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             T(vm.numBuf, 72, Tok.T1, FontWeight.Bold)
@@ -158,7 +166,7 @@ private fun BoxScope.Overlays(vm: AppViewModel) {
         }
     }
     AnimatedVisibility(vm.toast != null, Modifier.align(Alignment.TopCenter).padding(top = 56.px, start = 72.px, end = 72.px), enter = fadeIn() + slideInVertically { -it / 2 }, exit = fadeOut()) {
-        Box(Modifier.background(Tok.GlassHi, RoundedCornerShape(50)).border(1.dp, Tok.Hair, RoundedCornerShape(50)).padding(horizontal = 30.px, vertical = 18.px)) {
+        Box(Modifier.glass(RoundedCornerShape(50), Tok.GlassHi).padding(horizontal = 30.px, vertical = 18.px)) {
             T(vm.toast ?: "", 25, Tok.T1, FontWeight.Medium)
         }
     }
@@ -169,7 +177,7 @@ private fun BoxScope.Overlays(vm: AppViewModel) {
 
 @OptIn(UnstableApi::class)
 @Composable
-private fun Video(vm: AppViewModel) {
+private fun Video(vm: AppViewModel, backdrop: Backdrop) {
     AndroidView(
         factory = { ctx ->
             PlayerView(ctx).apply {
@@ -179,6 +187,7 @@ private fun Video(vm: AppViewModel) {
                 setShutterBackgroundColor(android.graphics.Color.BLACK)
                 isFocusable = false
                 keepScreenOn = true
+                backdrop.attach(videoSurfaceView as? android.view.SurfaceView)
             }
         },
         modifier = Modifier.fillMaxSize(),
@@ -187,7 +196,7 @@ private fun Video(vm: AppViewModel) {
 
 @Composable
 private fun Loading(status: String?) {
-    Box(Modifier.fillMaxSize().background(Tok.Ink), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().ambient(), contentAlignment = Alignment.Center) {
         T(status ?: str(R.string.loading_list), 28, Tok.T2)
     }
 }
@@ -199,7 +208,7 @@ private fun Banner(vm: AppViewModel) {
     val next = p?.let { vm.progAt(ch, it.end + 1) }
     Row(
         Modifier.padding(start = 72.px, end = 72.px, bottom = 100.px).fillMaxWidth()
-            .background(Tok.Glass, RoundedCornerShape(28.px)).border(1.dp, Tok.Hair, RoundedCornerShape(28.px))
+            .glass(RoundedCornerShape(36.px))
             .padding(horizontal = 36.px, vertical = 30.px),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -249,13 +258,13 @@ private fun Osd(vm: AppViewModel) {
     Box {
         if (vm.seekAcc != 0L) {
             Box(
-                Modifier.align(Alignment.TopCenter).offset(y = (-20).px).background(Tok.GlassHi, RoundedCornerShape(18.px))
+                Modifier.align(Alignment.TopCenter).offset(y = (-20).px).glass(RoundedCornerShape(24.px), Tok.GlassHi)
                     .padding(horizontal = 28.px, vertical = 12.px),
             ) { T((if (vm.seekAcc > 0) "+" else "−") + hms(kotlin.math.abs(vm.seekAcc)), 42, Tok.T1, FontWeight.Bold) }
         }
         Column(
             Modifier.padding(start = 72.px, end = 72.px, bottom = 100.px, top = if (vm.seekAcc != 0L) 110.px else 0.px).fillMaxWidth()
-                .background(Tok.Glass, RoundedCornerShape(28.px)).border(1.dp, Tok.Hair, RoundedCornerShape(28.px))
+                .glass(RoundedCornerShape(36.px))
                 .padding(start = 36.px, end = 36.px, top = 30.px, bottom = 26.px),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -464,7 +473,7 @@ private fun Setup(vm: AppViewModel) {
     val address = remember(vm.setupServer) { vm.setupServer.start(); vm.setupServer.address }
     val qr = remember(address) { address?.let(::qrBitmap) }
     val stage = LocalStage.current
-    Row(Modifier.fillMaxSize().background(Tok.Ink).padding(horizontal = min(160, stage.width / 12).px), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxSize().ambient().padding(horizontal = min(160, stage.width / 12).px), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f).padding(end = 48.px)) {
             T(str(R.string.setup_title), 56, Tok.T1, FontWeight.Bold, maxLines = 2)
             T(str(R.string.setup_steps), 26, Tok.T2, modifier = Modifier.padding(top = 32.px), maxLines = 10)

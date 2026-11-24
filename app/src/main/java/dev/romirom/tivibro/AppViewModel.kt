@@ -960,6 +960,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private var recentJob: Job? = null
 
+    /** The launch animation has played in this process (a recreated activity doesn't play it again). */
+    var introShown = false
+
     /** A channel picked on purpose goes to the top of «Нещодавні» at once; one reached by zapping only after it has
      *  stayed on screen for [RECENT_DWELL], so a run of CH+/CH− doesn't push what was really watched out of the list. */
     private fun noteRecent(ch: Channel, zapping: Boolean) {

@@ -41,6 +41,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -50,12 +52,26 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import dev.romirom.tivibro.data.Channel
 
-/** Design tokens from prototype/style.css. The prototype is drawn on a 1920×1080 stage; TV dp is half of that. */
+/** Onest: a geometric face drawn for Cyrillic, with every letter of the seven languages (Kazakh's Ә Ғ Қ Ң Ұ too). */
+val AppFont = FontFamily(
+    Font(R.font.onest_regular, FontWeight.Normal),
+    Font(R.font.onest_medium, FontWeight.Medium),
+    Font(R.font.onest_semibold, FontWeight.SemiBold),
+    Font(R.font.onest_bold, FontWeight.Bold),
+    Font(R.font.onest_extrabold, FontWeight.ExtraBold),
+)
+
+/** Design tokens. Drawn on a 1920×1080 stage; TV dp is half of that. Glass: frosted panes over the video ([glass],
+ *  [Frosted]); the accents are the two glows of the logo, a warm amber and a blue. */
 object Tok {
-    val Ink = Color(0xFF0A0B0E)
-    val Glass = Color(0xD0141519)
-    val GlassHi = Color(0xEB101115)
-    val Hair = Color(0x17FFFFFF)
+    val Ink = Color(0xFF07080B)
+    /** The tint over the blurred video in a glass pane; [GlassHi] where text sits densest (dialogs, sheets). */
+    val Glass = Color(0x7A0D0F14)
+    val GlassHi = Color(0xA80B0D11)
+    /** A pane drawn over glass: a lighter sheet with a hairline edge. */
+    val Card = Color(0x14FFFFFF)
+    val CardHi = Color(0x24FFFFFF)
+    val Hair = Color(0x1FFFFFFF)
     val Fill = Color(0x12FFFFFF)
     val Fill2 = Color(0x1FFFFFFF)
     val T1 = Color(0xFFF5F5F7)
@@ -69,8 +85,14 @@ object Tok {
     val Arch = Color(0xFFFFB340)
     val ArchOnPlate = Color(0xFFB86E00)
     val LogoPlate = Color(0xFFE4E4E6)
-    val Ok = Color(0xFF30D158)
+    val Accent = Color(0xFFFF9F5A)
+    val AccentDeep = Color(0xFFC2560F)
+    val Blue = Color(0xFF5B8CFF)
+    val Ok = Accent
 }
+
+/** A card's hairline: brighter at the top, where the light falls. */
+val CardEdge = Brush.verticalGradient(0f to Color(0x38FFFFFF), 1f to Color(0x0FFFFFFF))
 
 /** Prototype pixels → dp / sp. The UI scale (Settings → «Масштаб інтерфейсу») is applied once, at the root of [App],
  *  through a scaled LocalDensity: these stay plain, and every overlay grows and shrinks together. */
@@ -141,7 +163,7 @@ fun T(
 ) = BasicText(
     text,
     modifier,
-    style = TextStyle(color = color, fontSize = size.tx, fontWeight = weight, letterSpacing = letterSpacing, lineHeight = (size * 1.35f).toInt().tx),
+    style = TextStyle(fontFamily = AppFont, color = color, fontSize = size.tx, fontWeight = weight, letterSpacing = letterSpacing, lineHeight = (size * 1.35f).toInt().tx),
     maxLines = maxLines,
     overflow = TextOverflow.Ellipsis,
 )
@@ -165,8 +187,9 @@ fun Plate(
     Box(
         modifier
             .graphicsLayer { scaleX = s; scaleY = s }
-            .then(if (focused) Modifier.shadow(12.dp, shape) else Modifier)
-            .background(if (focused) Tok.Plate else if (quiet) Tok.Fill2 else Color.Transparent, shape),
+            .then(if (focused) Modifier.shadow(18.dp, shape, ambientColor = Color.White, spotColor = Color.White) else Modifier)
+            .background(if (focused) Tok.Plate else if (quiet) Tok.CardHi else Color.Transparent, shape)
+            .then(if (quiet) Modifier.border(1.dp, CardEdge, shape) else Modifier),
         content = content,
     )
 }
@@ -227,4 +250,15 @@ fun Switch(on: Boolean, onPlate: Boolean = false, modifier: Modifier = Modifier)
     ) {
         Box(Modifier.offset(x = x, y = 3.px).size(30.px).shadow(3.dp, CircleShape).background(Color.White, CircleShape))
     }
+}
+
+/** A small light pane in a pill: the clock, counters. */
+@Composable
+fun GlassPill(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+    val shape = RoundedCornerShape(50)
+    Box(
+        modifier.background(Tok.Card, shape).border(1.dp, CardEdge, shape).padding(horizontal = 24.px, vertical = 8.px),
+        contentAlignment = Alignment.Center,
+        content = content,
+    )
 }

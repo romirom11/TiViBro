@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -76,15 +77,14 @@ fun HomeOverlay(vm: AppViewModel) {
     val rows = vm.homeRows
     // a sheet, the menu or a context menu over Home: its focus is the lit one, Home's goes quiet
     val active = vm.sheets.isEmpty() && vm.ctx == null && vm.markCtx == null
-    Box(
-        Modifier.fillMaxSize()
-            .background(Brush.horizontalGradient(0f to Color(0xF0060709), .45f to Color(0xC8060709), 1f to Color(0x5A060709)))
-            .background(Brush.verticalGradient(0f to Color.Transparent, .38f to Color(0x66060709), .5f to Color(0xD8060709), 1f to Color(0xF5060709))),
-    ) {
+    Box(Modifier.fillMaxSize()) {
+        // frosted over the whole picture, lighter up on the right where the picture is
+        Frosted(Brush.horizontalGradient(0f to Color(0xC8060709), .5f to Color(0x9C060709), 1f to Color(0x52060709)))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, .4f to Color(0x2E060709), .55f to Color(0x9E060709), 1f to Color(0xE0060709))))
         Column(Modifier.fillMaxSize().padding(bottom = 84.px)) {
-            Row(Modifier.fillMaxWidth().padding(start = 96.px, end = 72.px, top = 48.px), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(start = 96.px, end = 72.px, top = 44.px), verticalAlignment = Alignment.CenterVertically) {
                 Eyebrow(str(R.string.menu_home) + (vm.playlist?.title?.let { " · $it" } ?: ""), Modifier.weight(1f))
-                Ticking(vm) { t -> T(hm(t), 34, Tok.T1, FontWeight.SemiBold) }
+                Ticking(vm) { t -> GlassPill { T(hm(t), 30, Tok.T1, FontWeight.SemiBold) } }
             }
             Box(Modifier.fillMaxWidth().height(380.px).padding(start = 96.px, end = 72.px)) {
                 val c = vm.homeCard()
@@ -147,15 +147,15 @@ private fun CardRow(vm: AppViewModel, r: HomeRow, focusedRow: Boolean, col: Int,
 @Composable
 private fun HomeCardView(vm: AppViewModel, c: HomeCard, foc: Boolean, sel: Boolean) {
     val s by animateFloatAsState(if (foc) 1.06f else 1f, tween(140), label = "lift")
-    val shape = RoundedCornerShape(18.px)
+    val shape = RoundedCornerShape(24.px)
     val info = vm.tmdbInfo(c.p)
     val picture = info?.backdropUrl != null
     Box(
         Modifier.size(CARD_W.px, CARD_H.px)
             .graphicsLayer { scaleX = s; scaleY = s }
-            .then(if (foc) Modifier.shadow(14.dp, shape) else Modifier)
+            .then(if (foc) Modifier.shadow(14.dp, shape, ambientColor = Color.White, spotColor = Color.White) else Modifier)
             .clip(shape)
-            .background(if (foc && !picture) Tok.Plate else if (sel) Color(0x38FFFFFF) else Color(0x1FFFFFFF)),
+            .background(if (foc && !picture) Tok.Plate else if (sel) Tok.CardHi else Tok.Card),
     ) {
         when {
             picture -> PictureCard(vm, c, info!!, foc)
@@ -167,7 +167,7 @@ private fun HomeCardView(vm: AppViewModel, c: HomeCard, foc: Boolean, sel: Boole
         }
         // on a picture the lit plate would hide it: a white frame instead
         if (foc && picture) Box(Modifier.fillMaxSize().border(4.px, Tok.Plate, shape))
-        else if (!foc) Box(Modifier.fillMaxSize().border(1.dp, if (sel) Color(0x66FFFFFF) else Tok.Hair, shape))
+        else if (!foc) Box(Modifier.fillMaxSize().border(1.dp, if (sel) SolidColor(Color(0x66FFFFFF)) else CardEdge, shape))
     }
 }
 

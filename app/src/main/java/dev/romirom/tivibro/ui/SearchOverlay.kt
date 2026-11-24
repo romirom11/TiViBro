@@ -68,14 +68,12 @@ fun SearchOverlay(vm: AppViewModel) {
     // a sheet, the menu or a context menu over search: their focus is the lit one, and typing must not reach the field
     val active = vm.sheets.isEmpty() && vm.ctx == null && vm.markCtx == null
     val typing = active && vm.searchOnField
-    Box(
-        Modifier.fillMaxSize()
-            .background(Brush.horizontalGradient(0f to Color(0xF5060709), .55f to Color(0xE6060709), 1f to Color(0xA0060709))),
-    ) {
-        Column(Modifier.fillMaxSize().padding(start = 96.px, end = 72.px, top = 48.px, bottom = 84.px)) {
+    Box(Modifier.fillMaxSize()) {
+        Frosted(Brush.horizontalGradient(0f to Color(0xD6060709), .55f to Color(0xC4060709), 1f to Color(0x8A060709)))
+        Column(Modifier.fillMaxSize().padding(start = 96.px, end = 72.px, top = 44.px, bottom = 84.px)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Eyebrow(str(R.string.menu_search) + (vm.playlist?.title?.let { " · $it" } ?: ""), Modifier.weight(1f))
-                Ticking(vm) { t -> T(hm(t), 34, Tok.T1, FontWeight.SemiBold) }
+                Ticking(vm) { t -> GlassPill { T(hm(t), 30, Tok.T1, FontWeight.SemiBold) } }
             }
             SearchField(vm, typing, Modifier.padding(top = 28.px))
             SearchResults(vm, active && !vm.searchOnField)
@@ -98,12 +96,12 @@ private fun SearchField(vm: AppViewModel, typing: Boolean, modifier: Modifier) {
         else { keyboard?.hide(); focusManager.clearFocus(force = true) }
     }
     LaunchedEffect(vm.searchKeyboard) { if (typing) { focus.requestFocus(); keyboard?.show() } }
-    val shape = RoundedCornerShape(22.px)
+    val shape = RoundedCornerShape(48.px)
     val fg = if (typing) Tok.OnPlate else Tok.T1
     Row(
         modifier.fillMaxWidth().height(96.px)
-            .background(if (typing) Tok.Plate else Tok.Fill2, shape)
-            .border(1.dp, if (typing) Color.Transparent else Tok.Hair, shape)
+            .background(if (typing) Tok.Plate else Tok.CardHi, shape)
+            .border(1.dp, if (typing) SolidColor(Color.Transparent) else CardEdge, shape)
             .padding(horizontal = 32.px),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -117,7 +115,7 @@ private fun SearchField(vm: AppViewModel, typing: Boolean, modifier: Modifier) {
                 // and a text field that gets it brings the keyboard back up over the results (seen on the TV)
                 modifier = Modifier.fillMaxWidth().focusProperties { canFocus = typing }.focusRequester(focus),
                 singleLine = true,
-                textStyle = TextStyle(color = fg, fontSize = 34.tx, fontWeight = FontWeight.Medium),
+                textStyle = TextStyle(fontFamily = AppFont, color = fg, fontSize = 34.tx, fontWeight = FontWeight.Medium),
                 cursorBrush = SolidColor(if (typing) Tok.OnPlate else Color.Transparent),
                 keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Text, imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { keyboard?.hide(); vm.onSearchSubmit() }, onDone = { keyboard?.hide(); vm.onSearchSubmit() }),
