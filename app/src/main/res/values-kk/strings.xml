@@ -198,6 +198,8 @@
     <string name="language_sub">TiViBro интерфейсінің тілі</string>
     <string name="row_scale">Интерфейс өлшемі</string>
     <string name="row_scale_desc">Мәтін, тізімдер мен панельдер өлшемі</string>
+    <string name="row_glass">Шыны әсерлері</string>
+    <string name="row_glass_desc">Панельдер астындағы бұлдыр бейне. Теледидар баяуласа, өшіріңіз</string>
     <string name="scale_value">%1$d%%</string>
     <string name="row_update">Жаңартуларды тексеру</string>
     <string name="version">Нұсқа %1$s</string>

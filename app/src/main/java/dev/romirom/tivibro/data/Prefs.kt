@@ -37,6 +37,11 @@ class Prefs(ctx: Context) {
         get() = sp.getBoolean("startHome", false)
         set(v) = sp.edit().putBoolean("startHome", v).apply()
 
+    /** Settings → «Ефекти скла»; null: never set, so it follows the device (off on a low-RAM TV). Global. */
+    var glass: Boolean?
+        get() = if (sp.contains("glass")) sp.getBoolean("glass", true) else null
+        set(v) = sp.edit().apply { if (v == null) remove("glass") else putBoolean("glass", v) }.apply()
+
     /** «Постери й описи з TMDB». Global. */
     var tmdbEnabled: Boolean
         get() = sp.getBoolean("tmdbOn", true)

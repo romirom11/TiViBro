@@ -57,9 +57,13 @@ import kotlin.math.roundToInt
 class Backdrop {
     /** The blurred frame, or null before the first copy (or where PixelCopy is missing: Android 6). */
     var frame by mutableStateOf<ImageBitmap?>(null); private set
+    /** How bright the frame is, 0..1: glass over a bright scene gets a darker tint, so its text stays readable. */
+    var bright by mutableStateOf(0f); private set
     /** Where the video surface is, in window pixels: the frame is drawn into this rectangle. */
     var rect by mutableStateOf(Rect.Zero); private set
     private var users by mutableIntStateOf(0)
+    /** Settings → «Ефекти скла». Off: no copies at all, and the panes are plain dark glass. */
+    var enabled by mutableStateOf(true)
     private var view: SurfaceView? = null
     private var busy = false
     private val thread by lazy { HandlerThread("glass").apply { start() } }
@@ -72,7 +76,8 @@ class Backdrop {
     /** Copies and blurs a frame at once when glass comes on screen, then every [EVERY] ms while it stays; asleep
      *  (no timer at all) while there is none. */
     suspend fun run() {
-        snapshotFlow { users > 0 }.collectLatest { shown ->
+        snapshotFlow { users > 0 && enabled }.collectLatest { shown ->
+            if (!enabled) frame = null
             while (shown) {
                 capture()
                 delay(EVERY)
@@ -91,9 +96,9 @@ class Backdrop {
         runCatching {
             PixelCopy.request(v, bmp, { res ->
                 if (res == PixelCopy.SUCCESS) {
-                    blur(bmp)
+                    val l = blur(bmp)
                     val img = bmp.asImageBitmap()
-                    v.post { frame = img; rect = r; busy = false }
+                    v.post { frame = img; rect = r; bright = l; busy = false }
                 } else v.post { busy = false }
             }, handler)
         }.onFailure { busy = false }
@@ -101,7 +106,7 @@ class Backdrop {
 
     /** Two passes of a 7-wide box blur each way (≈ a gaussian), in place, on a [W]×[H] bitmap; then the colour is
      *  lifted the way frosted glass does it (more saturated), so the pane takes on the picture's colours. */
-    private fun blur(b: Bitmap) {
+    private fun blur(b: Bitmap): Float {
         val px = IntArray(W * H)
         b.getPixels(px, 0, W, 0, 0, W, H)
         val tmp = IntArray(W * H)
@@ -109,14 +114,17 @@ class Backdrop {
             boxBlur(px, tmp, W, H, R, horizontal = true)
             boxBlur(tmp, px, W, H, R, horizontal = false)
         }
+        var sum = 0L
         for (i in px.indices) {
             val p = px[i]
             val r = (p shr 16) and 255; val g = (p shr 8) and 255; val bl = p and 255
             val l = (r * 77 + g * 150 + bl * 29) shr 8
+            sum += l
             fun sat(c: Int) = (l + (c - l) * SATURATE / 100).coerceIn(0, 255)
             px[i] = (0xFF shl 24) or (sat(r) shl 16) or (sat(g) shl 8) or sat(bl)
         }
         b.setPixels(px, 0, W, 0, 0, W, H)
+        return sum / (px.size * 255f)
     }
 
     private fun boxBlur(src: IntArray, dst: IntArray, w: Int, h: Int, r: Int, horizontal: Boolean) {
@@ -144,7 +152,7 @@ class Backdrop {
         const val W = 96
         const val H = 54
         private const val R = 3
-        private const val SATURATE = 150 // percent
+        private const val SATURATE = 135 // percent
         const val EVERY = 2000L
     }
 }
@@ -178,6 +186,7 @@ fun Modifier.glass(shape: Shape, tint: Color = Tok.Glass, edge: Boolean = true):
                 val r = b?.rect ?: Rect.Zero
                 if (!drawFrame(b, at)) drawRect(NO_FRAME)
                 drawRect(tint)
+                b?.let { if (it.frame != null) drawRect(Color.Black.copy(alpha = it.bright * BRIGHT_SHADE)) }
                 drawRect(Brush.linearGradient(0f to Color(0x1AFFFFFF), .45f to Color(0x05FFFFFF), 1f to Color.Transparent, end = Offset(size.width * .6f, size.height)))
             }
             if (edge) drawPath(
@@ -185,6 +194,9 @@ fun Modifier.glass(shape: Shape, tint: Color = Tok.Glass, edge: Boolean = true):
             )
         }
 }
+
+/** Extra shade over a frame as bright as it gets (white): text on glass reads the same over a sunny field as at night. */
+private const val BRIGHT_SHADE = .45f
 
 /** No frame to frost with (Android 6, the first moments, a protected stream): a plain dark pane instead. */
 private val NO_FRAME = Color(0x8C07080B)
@@ -218,6 +230,7 @@ fun Frosted(tint: Brush, mask: Brush? = null, modifier: Modifier = Modifier) {
             .drawBehind {
                 if (!drawFrame(b, at)) drawRect(NO_FRAME)
                 drawRect(tint)
+                b?.let { if (it.frame != null) drawRect(Color.Black.copy(alpha = it.bright * BRIGHT_SHADE)) }
                 if (mask != null) drawRect(mask, blendMode = BlendMode.DstIn)
             },
     )

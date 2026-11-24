@@ -100,7 +100,7 @@ enum class Sheet { MENU, SETTINGS, GROUPS, HIDDEN, PLAYLISTS, PLAYLIST, GUIDE, L
 enum class HomeSetting { SOURCES, TMDB, TMDB_KEY }
 /** The main menu. Groups, guide refresh and the update live in Settings: rare, and the menu stays short. */
 enum class MenuItem { HOME, SEARCH, SETTINGS, EXIT }
-enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, HOME, STARTUP, REMOTE, LANGUAGE, SCALE, UPDATE, ABOUT }
+enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, HOME, STARTUP, REMOTE, LANGUAGE, SCALE, GLASS, UPDATE, ABOUT }
 /** Actions on one playlist (Sheet.PLAYLIST), top to bottom. */
 enum class PlaylistAction { USE, REFRESH, RENAME, DELETE }
 /** Rows of «Програма передач» (Sheet.GUIDE): the three sources, then the refresh. */
@@ -262,6 +262,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val homeCols = HashMap<HomeKind, Int>()
     /** Settings → «При запуску»; Home also opens on a playlist's first start, when it has no last channel yet. */
     var startHome by mutableStateOf(prefs.startHome); private set
+    /** Settings → «Ефекти скла»: the blurred picture under the panes. Off by default on a TV Android calls low-RAM. */
+    var glassOn by mutableStateOf(
+        prefs.glass ?: !(app.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager).isLowRamDevice,
+    ); private set
     private var startupPending = true
     /** A home screen link waiting for its playlist's channels (see [openDeepLink]). */
     private var pendingLink: DeepLink? = null
@@ -1628,6 +1632,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     SettingsRow.REMOTE -> openSheet(Sheet.REMOTE)
                     SettingsRow.LANGUAGE -> openSheet(Sheet.LANGUAGE)
                     SettingsRow.SCALE -> stepScale(1, wrap = true)
+                    SettingsRow.GLASS -> { glassOn = !glassOn; prefs.glass = glassOn; cfgVersion++ }
                     SettingsRow.UPDATE -> if (updater.available != null) updater.install() else updater.check(manual = true)
                     SettingsRow.ABOUT -> Unit
                 }

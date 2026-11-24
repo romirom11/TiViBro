@@ -114,6 +114,8 @@ fun Ticking(vm: AppViewModel, content: @Composable (now: Long) -> Unit) {
 fun App(vm: AppViewModel) {
     val base = LocalDensity.current
     val backdrop = remember { Backdrop() }
+    val glassOn = vm.glassOn
+    androidx.compose.runtime.SideEffect { backdrop.enabled = glassOn }
     RunBackdrop(backdrop)
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         val ready = vm.playlistUrl != null
@@ -428,7 +430,7 @@ private fun Hints(vm: AppViewModel, modifier: Modifier) {
         )
         else -> return
     }
-    HintRow(items, modifier.fillMaxWidth().height(84.px).background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xB3000000)))).padding(horizontal = 72.px))
+    HintRow(items, modifier.fillMaxWidth().height(84.px).background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xD9000000)))).padding(horizontal = 72.px))
 }
 
 /** A key and what it does. [drop]: which go first when the bar is too narrow (a large UI scale), 2 before 1; the

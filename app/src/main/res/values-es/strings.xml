@@ -201,6 +201,8 @@
     <string name="language_sub">Idioma de la interfaz de TiViBro</string>
     <string name="row_scale">Tamaño de la interfaz</string>
     <string name="row_scale_desc">Tamaño del texto, las listas y los paneles</string>
+    <string name="row_glass">Efectos de cristal</string>
+    <string name="row_glass_desc">Imagen difuminada bajo los paneles. Desactívalo si la TV va lenta</string>
     <string name="scale_value">%1$d %%</string>
     <string name="row_update">Buscar actualizaciones</string>
     <string name="version">Versión %1$s</string>

@@ -267,6 +267,9 @@ private fun SettingsSheet(vm: AppViewModel) {
                 val v = str(R.string.scale_value, vm.uiScale)
                 Value(if (foc) "◀  $v  ▶" else v, foc)
             }
+            SettingsRow.GLASS -> SheetRow(foc, str(R.string.row_glass), str(R.string.row_glass_desc)) {
+                Switch(vm.glassOn, onPlate = foc, modifier = Modifier.padding(start = 24.px))
+            }
             SettingsRow.UPDATE -> {
                 val u = vm.updater
                 val desc = when {

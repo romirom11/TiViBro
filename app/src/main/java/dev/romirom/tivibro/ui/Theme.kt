@@ -67,7 +67,7 @@ object Tok {
     val Ink = Color(0xFF07080B)
     /** The tint over the blurred video in a glass pane; [GlassHi] where text sits densest (dialogs, sheets). */
     val Glass = Color(0x7A0D0F14)
-    val GlassHi = Color(0xA80B0D11)
+    val GlassHi = Color(0xB40B0D11)
     /** A pane drawn over glass: a lighter sheet with a hairline edge. */
     val Card = Color(0x14FFFFFF)
     val CardHi = Color(0x24FFFFFF)

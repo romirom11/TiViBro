@@ -198,6 +198,8 @@
     <string name="language_sub">Sprache der TiViBro-Oberfläche</string>
     <string name="row_scale">Größe der Oberfläche</string>
     <string name="row_scale_desc">Größe von Text, Listen und Feldern</string>
+    <string name="row_glass">Glaseffekte</string>
+    <string name="row_glass_desc">Unscharfes Bild unter den Bedienfeldern. Ausschalten, wenn der Fernseher langsam wirkt</string>
     <string name="scale_value">%1$d %%</string>
     <string name="row_update">Nach Updates suchen</string>
     <string name="version">Version %1$s</string>

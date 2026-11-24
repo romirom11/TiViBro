@@ -197,6 +197,8 @@
     <string name="language_sub">TiViBro\'s interface language</string>
     <string name="row_scale">Interface size</string>
     <string name="row_scale_desc">Size of text, lists and panels</string>
+    <string name="row_glass">Glass effects</string>
+    <string name="row_glass_desc">Blurred picture under the panels. Turn off if the TV feels slow</string>
     <string name="scale_value">%1$d%%</string>
     <string name="row_update">Check for updates</string>
     <string name="version">Version %1$s</string>

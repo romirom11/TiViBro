@@ -204,6 +204,8 @@
     <string name="language_sub">Язык интерфейса TiViBro</string>
     <string name="row_scale">Масштаб интерфейса</string>
     <string name="row_scale_desc">Размер текста, списков и панелей</string>
+    <string name="row_glass">Эффекты стекла</string>
+    <string name="row_glass_desc">Размытое видео под панелями. Выключите, если телевизор подтормаживает</string>
     <string name="scale_value">%1$d %%</string>
     <string name="row_update">Проверить обновления</string>
     <string name="version">Версия %1$s</string>
