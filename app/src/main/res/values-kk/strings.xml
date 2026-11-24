@@ -101,13 +101,9 @@
     <string name="paused">❚❚ Кідіріс</string>
     <string name="behind_live">Эфирден −%1$s</string>
     <string name="archive">Мұрағат</string>
-    <string name="osd_restart">⟲  Басынан</string>
-    <string name="osd_prev">⏮  Алдыңғы</string>
-    <string name="osd_next">⏭  Келесі</string>
-    <string name="osd_live">●  Тікелей</string>
+    <string name="osd_restart">Басынан</string>
+    <string name="osd_live">Тікелей</string>
     <string name="osd_audio">Дыбыс</string>
-    <string name="osd_seek_back">−%1$d с</string>
-    <string name="osd_seek_fwd">+%1$d с</string>
 
     <!-- hints -->
     <string name="key_ok_long">OK ұзақ</string>

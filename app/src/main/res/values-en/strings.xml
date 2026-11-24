@@ -100,13 +100,9 @@
     <string name="paused">❚❚ Paused</string>
     <string name="behind_live">−%1$s behind live</string>
     <string name="archive">Archive</string>
-    <string name="osd_restart">⟲  Restart</string>
-    <string name="osd_prev">⏮  Previous</string>
-    <string name="osd_next">⏭  Next</string>
-    <string name="osd_live">●  Live</string>
+    <string name="osd_restart">Restart</string>
+    <string name="osd_live">Live</string>
     <string name="osd_audio">Audio</string>
-    <string name="osd_seek_back">−%1$d s</string>
-    <string name="osd_seek_fwd">+%1$d s</string>
 
     <!-- hints -->
     <string name="key_ok_long">Hold OK</string>

@@ -104,13 +104,9 @@
     <string name="paused">❚❚ En pausa</string>
     <string name="behind_live">−%1$s tras el directo</string>
     <string name="archive">Archivo</string>
-    <string name="osd_restart">⟲  Reiniciar</string>
-    <string name="osd_prev">⏮  Anterior</string>
-    <string name="osd_next">⏭  Siguiente</string>
-    <string name="osd_live">●  Directo</string>
+    <string name="osd_restart">Reiniciar</string>
+    <string name="osd_live">Directo</string>
     <string name="osd_audio">Audio</string>
-    <string name="osd_seek_back">−%1$d s</string>
-    <string name="osd_seek_fwd">+%1$d s</string>
 
     <!-- hints -->
     <string name="key_ok_long">Mantén OK</string>
