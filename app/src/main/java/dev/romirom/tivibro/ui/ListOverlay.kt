@@ -56,18 +56,20 @@ fun ListOverlay(vm: AppViewModel) {
     val g = vm.currentGroup() ?: return
     val ch = vm.listChannel()
     val progMode = ch != null && (vm.focus == Focus.DAYS || vm.focus == Focus.PROGS)
-    Box(
-        Modifier.fillMaxSize().background(
-            Brush.horizontalGradient(
-                if (progMode) listOf(Color(0xF0060709), Color(0xEB060709), Color(0xD9060709))
-                else listOf(Color(0xE6060709), Color(0xDB060709), Color(0x66060709)),
-            ),
-        ),
-    ) {
+    Box(Modifier.fillMaxSize()) {
+        if (progMode) Frosted(Brush.horizontalGradient(listOf(Color(0xDC060709), Color(0xD2060709), Color(0xB8060709))))
+        else {
+            // the picture stays on the right, shaded enough under the detail
+            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0x99060709), Color(0x4D060709)))))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, .45f to Color.Transparent, 1f to Color(0xB3060709))))
+        }
         Row(Modifier.fillMaxSize().padding(bottom = 84.px)) {
             if (progMode) ProgrammeView(vm, ch!!, g.channels) else {
-                GroupsRail(vm)
-                ChannelColumn(vm)
+                // groups and channels on one pane of glass, floating off the left edge
+                Row(Modifier.padding(top = 20.px, bottom = 4.px).fillMaxHeight().glass(SIDE_PANE)) {
+                    GroupsRail(vm)
+                    ChannelColumn(vm)
+                }
                 val m = vm.listMark()
                 // what is left of the stage; too narrow for a readable detail (open rail at a large UI scale): leave it out
                 BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
@@ -83,6 +85,9 @@ fun ListOverlay(vm: AppViewModel) {
 
 // ---------------------------------------------------------------- groups + channels
 
+/** A pane that comes in from the left edge: square there, round on the open side. */
+val SIDE_PANE = androidx.compose.foundation.shape.RoundedCornerShape(topEnd = 40.px, bottomEnd = 40.px)
+
 /** Narrowest detail column (prototype px) worth showing; below it the column is left empty. */
 private const val MIN_DETAIL = 340
 
@@ -93,7 +98,7 @@ private fun GroupsRail(vm: AppViewModel) {
     val w by animateDpAsState(if (open) min(460, stage.width * 3 / 10).px else 40.px, label = "rail")
     val state = rememberLazyListState()
     LaunchedEffect(vm.groupIdx, stage) { state.scrollNear(vm.groupIdx, 5) }
-    Box(Modifier.width(w).fillMaxHeight().background(if (open) Color(0xB30A0B0E) else Color.Transparent)) { LazyColumn(
+    Box(Modifier.width(w).fillMaxHeight().background(if (open) Color(0x40000000) else Color.Transparent)) { LazyColumn(
         Modifier.fillMaxWidth().wholeRows(74, 96),
         state = state,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 48.px, bottom = 48.px),
@@ -105,7 +110,7 @@ private fun GroupsRail(vm: AppViewModel) {
                     val c = if (open && sel) Tok.OnPlate else if (sel) Tok.T1 else Tok.T2
                     if (open) {
                         T(groupGlyph(x.id), 26, c, FontWeight.SemiBold, Modifier.width(44.px))
-                        T(groupTitle(x.name), 26, c, FontWeight.Medium, Modifier.weight(1f).padding(start = 12.px))
+                        T(groupTitle(x.name), 26, c, FontWeight.Medium, Modifier.weight(1f).padding(start = 12.px), marquee = open && sel)
                         T("${x.channels.size}", 20, if (sel) Tok.OnPlate2 else Tok.T3)
                     }
                 }
@@ -156,10 +161,10 @@ private fun ChannelRow(vm: AppViewModel, c: Channel, foc: Boolean) {
         Logo(c, 64)
         Column(Modifier.weight(1f).padding(start = 22.px)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                T(c.name, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold, Modifier.weight(1f, fill = false))
+                T(c.name, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold, Modifier.weight(1f, fill = false), marquee = foc)
                 if (vm.isFav(c)) T(" ★", 20, Color(0xFFFFD60A))
             }
-            T(p?.let { "${hm(it.start)} · ${it.title}" } ?: "", 21, if (foc) Tok.OnPlate2 else Tok.T2, modifier = Modifier.padding(top = 2.px, bottom = 6.px))
+            T(p?.let { "${hm(it.start)} · ${it.title}" } ?: "", 21, if (foc) Tok.OnPlate2 else Tok.T2, modifier = Modifier.padding(top = 2.px, bottom = 6.px), marquee = foc)
             if (p != null) Ticking(vm) { t -> Progress((t - p.start).toFloat() / p.duration, Modifier.fillMaxWidth(), if (foc) Tok.OnPlate else Tok.T1, if (foc) Color(0x1F000000) else Color(0x24FFFFFF), 3) }
         }
     }
@@ -170,8 +175,8 @@ private fun ContinueRow(vm: AppViewModel, m: Mark, foc: Boolean) {
     Row(Modifier.fillMaxSize().padding(horizontal = 20.px), verticalAlignment = Alignment.CenterVertically) {
         Logo(m.ch, 64)
         Column(Modifier.weight(1f).padding(start = 22.px)) {
-            T(m.p.title, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold)
-            T("${m.ch.name} · ${dayWord(m.p.start)}, ${hm(m.p.start)} · " + str(R.string.remaining, ago(m.p.end - m.pos)), 21, if (foc) Tok.OnPlate2 else Tok.T2, modifier = Modifier.padding(top = 2.px, bottom = 6.px))
+            T(m.p.title, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold, marquee = foc)
+            T("${m.ch.name} · ${dayWord(m.p.start)}, ${hm(m.p.start)} · " + str(R.string.remaining, ago(m.p.end - m.pos)), 21, if (foc) Tok.OnPlate2 else Tok.T2, modifier = Modifier.padding(top = 2.px, bottom = 6.px), marquee = foc)
             Progress(m.watched, Modifier.fillMaxWidth(), if (foc) Tok.ArchOnPlate else Tok.Arch, if (foc) Color(0x1F000000) else Color(0x24FFFFFF), 3)
         }
     }
@@ -294,7 +299,7 @@ private fun ProgRow(vm: AppViewModel, ch: Channel, p: Programme, foc: Boolean) {
     Box(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxSize().padding(horizontal = 22.px), verticalAlignment = Alignment.CenterVertically) {
             T(hm(p.start), 24, if (foc) Tok.OnPlate2 else if (now) Tok.Live else Tok.T3, FontWeight.SemiBold, Modifier.width(100.px))
-            T(p.title, 24, if (foc) Tok.OnPlate else if (done) Tok.T3 else if (p.isPast()) Tok.T2 else Tok.T1, modifier = Modifier.weight(1f))
+            T(p.title, 24, if (foc) Tok.OnPlate else if (done) Tok.T3 else if (p.isPast()) Tok.T2 else Tok.T1, modifier = Modifier.weight(1f), marquee = foc)
             when {
                 now -> LivePill(foc)
                 else -> T(str(R.string.dur_min, (p.duration / 60_000).toInt()), 20, if (foc) Tok.OnPlate2 else Tok.T3, modifier = Modifier.padding(start = 16.px))

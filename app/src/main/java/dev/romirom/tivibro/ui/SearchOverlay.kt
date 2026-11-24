@@ -68,14 +68,12 @@ fun SearchOverlay(vm: AppViewModel) {
     // a sheet, the menu or a context menu over search: their focus is the lit one, and typing must not reach the field
     val active = vm.sheets.isEmpty() && vm.ctx == null && vm.markCtx == null
     val typing = active && vm.searchOnField
-    Box(
-        Modifier.fillMaxSize()
-            .background(Brush.horizontalGradient(0f to Color(0xF5060709), .55f to Color(0xE6060709), 1f to Color(0xA0060709))),
-    ) {
-        Column(Modifier.fillMaxSize().padding(start = 96.px, end = 72.px, top = 48.px, bottom = 84.px)) {
+    Box(Modifier.fillMaxSize()) {
+        Frosted(Brush.horizontalGradient(0f to Color(0xD6060709), .55f to Color(0xC4060709), 1f to Color(0x8A060709)))
+        Column(Modifier.fillMaxSize().padding(start = 96.px, end = 72.px, top = 44.px, bottom = 84.px)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Eyebrow(str(R.string.menu_search) + (vm.playlist?.title?.let { " · $it" } ?: ""), Modifier.weight(1f))
-                Ticking(vm) { t -> T(hm(t), 34, Tok.T1, FontWeight.SemiBold) }
+                Ticking(vm) { t -> GlassPill { T(hm(t), 30, Tok.T1, FontWeight.SemiBold) } }
             }
             SearchField(vm, typing, Modifier.padding(top = 28.px))
             SearchResults(vm, active && !vm.searchOnField)
@@ -98,12 +96,12 @@ private fun SearchField(vm: AppViewModel, typing: Boolean, modifier: Modifier) {
         else { keyboard?.hide(); focusManager.clearFocus(force = true) }
     }
     LaunchedEffect(vm.searchKeyboard) { if (typing) { focus.requestFocus(); keyboard?.show() } }
-    val shape = RoundedCornerShape(22.px)
+    val shape = RoundedCornerShape(48.px)
     val fg = if (typing) Tok.OnPlate else Tok.T1
     Row(
         modifier.fillMaxWidth().height(96.px)
-            .background(if (typing) Tok.Plate else Tok.Fill2, shape)
-            .border(1.dp, if (typing) Color.Transparent else Tok.Hair, shape)
+            .background(if (typing) Tok.Plate else Tok.CardHi, shape)
+            .border(1.dp, if (typing) SolidColor(Color.Transparent) else CardEdge, shape)
             .padding(horizontal = 32.px),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -117,7 +115,7 @@ private fun SearchField(vm: AppViewModel, typing: Boolean, modifier: Modifier) {
                 // and a text field that gets it brings the keyboard back up over the results (seen on the TV)
                 modifier = Modifier.fillMaxWidth().focusProperties { canFocus = typing }.focusRequester(focus),
                 singleLine = true,
-                textStyle = TextStyle(color = fg, fontSize = 34.tx, fontWeight = FontWeight.Medium),
+                textStyle = TextStyle(fontFamily = AppFont, color = fg, fontSize = 34.tx, fontWeight = FontWeight.Medium),
                 cursorBrush = SolidColor(if (typing) Tok.OnPlate else Color.Transparent),
                 keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Text, imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { keyboard?.hide(); vm.onSearchSubmit() }, onDone = { keyboard?.hide(); vm.onSearchSubmit() }),
@@ -190,7 +188,7 @@ private fun SearchResults(vm: AppViewModel, active: Boolean) {
                     when (it) {
                         is SearchItem.Recent -> Row(Modifier.fillMaxSize().padding(horizontal = 26.px), verticalAlignment = Alignment.CenterVertically) {
                             T("↺", 26, if (foc) Tok.OnPlate2 else Tok.T3, modifier = Modifier.width(52.px))
-                            T(it.query, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.Medium)
+                            T(it.query, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.Medium, marquee = foc)
                         }
                         is SearchItem.Ch -> ChannelHitRow(vm, it, foc)
                         is SearchItem.Prog -> ProgrammeHitRow(vm, it, foc)
@@ -208,10 +206,10 @@ private fun ChannelHitRow(vm: AppViewModel, it: SearchItem.Ch, foc: Boolean) {
         Logo(it.ch, 64)
         Column(Modifier.weight(1f).padding(start = 22.px)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                T(it.ch.name, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold, Modifier.weight(1f, fill = false))
+                T(it.ch.name, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold, Modifier.weight(1f, fill = false), marquee = foc)
                 if (vm.isFav(it.ch)) T(" ★", 20, Color(0xFFFFD60A))
             }
-            T(p?.let { "${hm(it.start)} · ${it.title}" } ?: it.ch.group, 21, if (foc) Tok.OnPlate2 else Tok.T2, modifier = Modifier.padding(top = 2.px, bottom = 6.px))
+            T(p?.let { "${hm(it.start)} · ${it.title}" } ?: it.ch.group, 21, if (foc) Tok.OnPlate2 else Tok.T2, modifier = Modifier.padding(top = 2.px, bottom = 6.px), marquee = foc)
             if (p != null) Ticking(vm) { t -> Progress((t - p.start).toFloat() / p.duration, Modifier.fillMaxWidth(.6f), if (foc) Tok.OnPlate else Tok.T1, if (foc) Color(0x1F000000) else Color(0x24FFFFFF), 3) }
         }
         T("${it.ch.num}", 22, if (foc) Tok.OnPlate2 else Tok.T3, FontWeight.SemiBold, Modifier.padding(start = 20.px))
@@ -224,7 +222,7 @@ private fun ProgrammeHitRow(vm: AppViewModel, it: SearchItem.Prog, foc: Boolean)
     Row(Modifier.fillMaxSize().padding(horizontal = 22.px), verticalAlignment = Alignment.CenterVertically) {
         Logo(h.ch, 64)
         Column(Modifier.weight(1f).padding(start = 22.px)) {
-            T(h.p.title, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold)
+            T(h.p.title, 27, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold, marquee = foc)
             val time = if (h.kind == When.NOW) "${hm(h.p.start)}–${hm(h.p.end)}" else "${dayWord(h.p.start)}, ${hm(h.p.start)}"
             T("${h.ch.name} · $time", 21, if (foc) Tok.OnPlate2 else Tok.T2, modifier = Modifier.padding(top = 2.px, bottom = 6.px))
             if (h.kind == When.NOW) Ticking(vm) { t -> Progress((t - h.p.start).toFloat() / h.p.duration, Modifier.fillMaxWidth(.6f), if (foc) Tok.OnPlate else Tok.T1, if (foc) Color(0x1F000000) else Color(0x24FFFFFF), 3) }

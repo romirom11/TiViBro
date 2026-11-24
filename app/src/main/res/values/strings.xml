@@ -111,13 +111,9 @@
     <string name="paused">❚❚ Пауза</string>
     <string name="behind_live">−%1$s від ефіру</string>
     <string name="archive">Архів</string>
-    <string name="osd_restart">⟲  З початку</string>
-    <string name="osd_prev">⏮  Попередня</string>
-    <string name="osd_next">⏭  Наступна</string>
-    <string name="osd_live">●  Наживо</string>
+    <string name="osd_restart">З початку</string>
+    <string name="osd_live">Наживо</string>
     <string name="osd_audio">Звук</string>
-    <string name="osd_seek_back">−%1$d с</string>
-    <string name="osd_seek_fwd">+%1$d с</string>
 
     <!-- hints -->
     <string name="key_ok_long">OK довго</string>
@@ -208,6 +204,8 @@
     <string name="language_sub">Мова інтерфейсу TiViBro</string>
     <string name="row_scale">Масштаб інтерфейсу</string>
     <string name="row_scale_desc">Розмір тексту, списків і панелей</string>
+    <string name="row_glass">Ефекти скла</string>
+    <string name="row_glass_desc">Розмите відео під панелями. Вимкніть, якщо телевізор пригальмовує</string>
     <string name="scale_value">%1$d %%</string>
     <string name="row_update">Перевірити оновлення</string>
     <string name="version">Версія %1$s</string>

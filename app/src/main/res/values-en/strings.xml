@@ -100,13 +100,9 @@
     <string name="paused">❚❚ Paused</string>
     <string name="behind_live">−%1$s behind live</string>
     <string name="archive">Archive</string>
-    <string name="osd_restart">⟲  Restart</string>
-    <string name="osd_prev">⏮  Previous</string>
-    <string name="osd_next">⏭  Next</string>
-    <string name="osd_live">●  Live</string>
+    <string name="osd_restart">Restart</string>
+    <string name="osd_live">Live</string>
     <string name="osd_audio">Audio</string>
-    <string name="osd_seek_back">−%1$d s</string>
-    <string name="osd_seek_fwd">+%1$d s</string>
 
     <!-- hints -->
     <string name="key_ok_long">Hold OK</string>
@@ -197,6 +193,8 @@
     <string name="language_sub">TiViBro\'s interface language</string>
     <string name="row_scale">Interface size</string>
     <string name="row_scale_desc">Size of text, lists and panels</string>
+    <string name="row_glass">Glass effects</string>
+    <string name="row_glass_desc">Blurred picture under the panels. Turn off if the TV feels slow</string>
     <string name="scale_value">%1$d%%</string>
     <string name="row_update">Check for updates</string>
     <string name="version">Version %1$s</string>

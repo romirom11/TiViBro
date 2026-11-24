@@ -101,13 +101,9 @@
     <string name="paused">❚❚ Pause</string>
     <string name="behind_live">−%1$s hinter live</string>
     <string name="archive">Archiv</string>
-    <string name="osd_restart">⟲  Neustart</string>
-    <string name="osd_prev">⏮  Vorherige</string>
-    <string name="osd_next">⏭  Nächste</string>
-    <string name="osd_live">●  Live</string>
+    <string name="osd_restart">Neustart</string>
+    <string name="osd_live">Live</string>
     <string name="osd_audio">Ton</string>
-    <string name="osd_seek_back">−%1$d s</string>
-    <string name="osd_seek_fwd">+%1$d s</string>
 
     <!-- hints -->
     <string name="key_ok_long">OK halten</string>
@@ -198,6 +194,8 @@
     <string name="language_sub">Sprache der TiViBro-Oberfläche</string>
     <string name="row_scale">Größe der Oberfläche</string>
     <string name="row_scale_desc">Größe von Text, Listen und Feldern</string>
+    <string name="row_glass">Glaseffekte</string>
+    <string name="row_glass_desc">Unscharfes Bild unter den Bedienfeldern. Ausschalten, wenn der Fernseher langsam wirkt</string>
     <string name="scale_value">%1$d %%</string>
     <string name="row_update">Nach Updates suchen</string>
     <string name="version">Version %1$s</string>

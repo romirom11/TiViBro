@@ -76,17 +76,15 @@ fun groupTitle(name: String): String = if (name == OTHER_GROUP) str(R.string.gro
 fun Menu(vm: AppViewModel) {
     vm.cfgVersion // the settings live in Prefs: re-read them when they change
     val top = vm.sheets.lastOrNull() == Sheet.MENU
-    Box(
-        Modifier.fillMaxSize().background(
-            // opaque over the groups rail it opens from, fading out over the channels
-            Brush.horizontalGradient(0f to Color(0xFA060709), .3f to Color(0xF2060709), .62f to Color(0x40060709), 1f to Color.Transparent),
-        ),
-    ) {
+    Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Color(0x99060709), .6f to Color(0x40060709), 1f to Color.Transparent))) {
         val stage = LocalStage.current
-        Column(Modifier.width(min(600, stage.width * 45 / 100).px).fillMaxHeight().padding(start = 32.px, end = 32.px, top = 64.px, bottom = 84.px)) {
+        Column(
+            Modifier.width(min(600, stage.width * 45 / 100).px).fillMaxHeight().padding(top = 20.px, bottom = 88.px).glass(SIDE_PANE, Tok.GlassHi)
+                .padding(start = 32.px, end = 32.px, top = 44.px, bottom = 8.px),
+        ) {
             Row(Modifier.padding(start = 24.px, end = 24.px, bottom = 34.px), verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier.size(72.px).background(Brush.linearGradient(listOf(Color(0xFF4A7BD8), Color(0xFF2A3F78))), CircleShape),
+                    Modifier.size(72.px).background(Brush.linearGradient(listOf(Tok.Accent, Tok.AccentDeep)), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) { T((vm.playlist?.title ?: "TiViBro").take(1).uppercase(), 30, Tok.T1, FontWeight.Bold) }
                 Column(Modifier.padding(start = 20.px)) {
@@ -118,7 +116,7 @@ fun Menu(vm: AppViewModel) {
                             else -> ""
                         }
                         if (small.isNotEmpty()) {
-                            Box(Modifier.background(if (foc) Color(0x1F000000) else Color(0x2930D158), RoundedCornerShape(9.px)).padding(horizontal = 12.px, vertical = 4.px)) {
+                            Box(Modifier.background(if (foc) Color(0x1F000000) else Tok.Accent.copy(alpha = .16f), RoundedCornerShape(9.px)).padding(horizontal = 12.px, vertical = 4.px)) {
                                 T(small, 21, if (foc) Tok.OnPlate else Tok.Ok, FontWeight.SemiBold)
                             }
                         }
@@ -135,8 +133,10 @@ fun Menu(vm: AppViewModel) {
 fun SideSheet(vm: AppViewModel, sheet: Sheet) {
     Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0x26000000), Color(0x99000000))))) {
         Row(Modifier.align(Alignment.TopEnd).width(min(900, LocalStage.current.width * 7 / 10).px).fillMaxHeight()) {
-            Box(Modifier.width(1.dp).fillMaxHeight().background(Tok.Hair))
-            Column(Modifier.weight(1f).fillMaxHeight().background(Tok.GlassHi).padding(top = 64.px, bottom = 96.px)) {
+            Column(
+                Modifier.weight(1f).fillMaxHeight().padding(top = 20.px, bottom = 20.px)
+                    .glass(RoundedCornerShape(topStart = 40.px, bottomStart = 40.px), Tok.GlassHi).padding(top = 44.px, bottom = 76.px),
+            ) {
                 when (sheet) {
                     Sheet.SETTINGS -> SettingsSheet(vm)
                     Sheet.GROUPS -> GroupsSheet(vm)
@@ -267,6 +267,9 @@ private fun SettingsSheet(vm: AppViewModel) {
                 val v = str(R.string.scale_value, vm.uiScale)
                 Value(if (foc) "◀  $v  ▶" else v, foc)
             }
+            SettingsRow.GLASS -> SheetRow(foc, str(R.string.row_glass), str(R.string.row_glass_desc)) {
+                Switch(vm.glassOn, onPlate = foc, modifier = Modifier.padding(start = 24.px))
+            }
             SettingsRow.UPDATE -> {
                 val u = vm.updater
                 val desc = when {
@@ -338,7 +341,7 @@ fun ChannelMenu(vm: AppViewModel, ch: Channel) {
     Box(Modifier.fillMaxSize().background(Color(0x80000000)), contentAlignment = Alignment.Center) {
         val shape = RoundedCornerShape(28.px)
         Column(
-            Modifier.width(min(680, LocalStage.current.width * 6 / 10).px).shadow(40.dp, shape).background(Tok.GlassHi, shape).border(1.dp, Tok.Hair, shape)
+            Modifier.width(min(680, LocalStage.current.width * 6 / 10).px).shadow(40.dp, shape).glass(shape, Tok.GlassHi)
                 .padding(start = 22.px, end = 22.px, top = 36.px, bottom = 22.px),
         ) {
             Eyebrow(str(R.string.ctx_channel), Modifier.padding(start = 24.px, end = 24.px, bottom = 8.px))
@@ -370,7 +373,7 @@ fun MarkMenu(vm: AppViewModel, m: Mark) {
     Box(Modifier.fillMaxSize().background(Color(0x80000000)), contentAlignment = Alignment.Center) {
         val shape = RoundedCornerShape(28.px)
         Column(
-            Modifier.width(min(760, LocalStage.current.width * 6 / 10).px).shadow(40.dp, shape).background(Tok.GlassHi, shape).border(1.dp, Tok.Hair, shape)
+            Modifier.width(min(760, LocalStage.current.width * 6 / 10).px).shadow(40.dp, shape).glass(shape, Tok.GlassHi)
                 .padding(start = 22.px, end = 22.px, top = 36.px, bottom = 22.px),
         ) {
             Eyebrow("${m.ch.name} · ${dayWord(m.p.start)}, ${hm(m.p.start)}", Modifier.padding(start = 24.px, end = 24.px, bottom = 8.px))

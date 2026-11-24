@@ -100,7 +100,7 @@ enum class Sheet { MENU, SETTINGS, GROUPS, HIDDEN, PLAYLISTS, PLAYLIST, GUIDE, L
 enum class HomeSetting { SOURCES, TMDB, TMDB_KEY }
 /** The main menu. Groups, guide refresh and the update live in Settings: rare, and the menu stays short. */
 enum class MenuItem { HOME, SEARCH, SETTINGS, EXIT }
-enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, HOME, STARTUP, REMOTE, LANGUAGE, SCALE, UPDATE, ABOUT }
+enum class SettingsRow { PLAYLISTS, GROUPS, HIDDEN, GUIDE, HOME, STARTUP, REMOTE, LANGUAGE, SCALE, GLASS, UPDATE, ABOUT }
 /** Actions on one playlist (Sheet.PLAYLIST), top to bottom. */
 enum class PlaylistAction { USE, REFRESH, RENAME, DELETE }
 /** Rows of «Програма передач» (Sheet.GUIDE): the three sources, then the refresh. */
@@ -115,9 +115,10 @@ sealed class GuideSource {
 enum class CtxItem { FAV, HIDE }
 /** The «Продовжити перегляд» context menu (long OK on a bookmark or a watched programme), top to bottom. */
 enum class MarkAction { FROM_START, FORGET, DONE }
-/** The player control panel's button row, left to right. [seekSec]: a fixed jump back (−) or forward (+), 0 for the rest. */
-enum class OsdButton(val seekSec: Int = 0) {
-    RESTART, PREV, BACK30(-30), BACK15(-15), BACK5(-5), FWD5(5), FWD15(15), FWD30(30), NEXT, LIVE, AUDIO
+/** The player control panel's buttons, in focus order: the transport in the middle ([primary], round icons), then the
+ *  rest as small chips on the right. [seekSec]: a fixed jump back (−) or forward (+), 0 for the rest. */
+enum class OsdButton(val seekSec: Int = 0, val primary: Boolean = false) {
+    PREV(primary = true), BACK15(-15, true), PLAY(primary = true), FWD15(15, true), NEXT(primary = true), RESTART, LIVE, AUDIO
 }
 enum class Key { UP, DOWN, LEFT, RIGHT, OK, BACK, CHUP, CHDOWN, PLAYPAUSE, RED, GREEN, YELLOW, BLUE, INFO, MENU, SEARCH, D0, D1, D2, D3, D4, D5, D6, D7, D8, D9 }
 
@@ -237,7 +238,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The player control panel. Focus is on the timeline, or on [osdBtn] in the button row. */
     var osd by mutableStateOf(false); private set
     var osdOnButtons by mutableStateOf(false); private set
-    var osdBtn by mutableStateOf(OsdButton.RESTART); private set
+    var osdBtn by mutableStateOf(OsdButton.PLAY); private set
     var audioTracks by mutableIntStateOf(0); private set
     private var seekRun = 0
     private var lastSeekAt = 0L
@@ -262,6 +263,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val homeCols = HashMap<HomeKind, Int>()
     /** Settings → «При запуску»; Home also opens on a playlist's first start, when it has no last channel yet. */
     var startHome by mutableStateOf(prefs.startHome); private set
+    /** Settings → «Ефекти скла»: the blurred picture under the panes. Off by default on a TV Android calls low-RAM. */
+    var glassOn by mutableStateOf(
+        prefs.glass ?: !(app.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager).isLowRamDevice,
+    ); private set
     private var startupPending = true
     /** A home screen link waiting for its playlist's channels (see [openDeepLink]). */
     private var pendingLink: DeepLink? = null
@@ -960,6 +965,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private var recentJob: Job? = null
 
+    /** The launch animation has played in this process (a recreated activity doesn't play it again). */
+    var introShown = false
+
     /** A channel picked on purpose goes to the top of «Нещодавні» at once; one reached by zapping only after it has
      *  stayed on screen for [RECENT_DWELL], so a run of CH+/CH− doesn't push what was really watched out of the list. */
     private fun noteRecent(ch: Channel, zapping: Boolean) {
@@ -1133,8 +1141,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         showOsd()
     }
 
-    /** 10 s → 30 s → 1 min → 5 min: a step up every second tap in a quick run, or every few repeats of a held key. */
-    private val seekSteps = longArrayOf(10, 30, 60, 300)
+    /** 5 s → 15 s → 30 s → 1 min → 5 min: a step up every second tap in a quick run, or every few repeats of a held key. */
+    private val seekSteps = longArrayOf(5, 15, 30, 60, 300)
     private fun seek(dir: Int, repeat: Int) {
         val ch = cur ?: return
         if (!canArchive(ch)) { showToast(str(R.string.no_archive)); return }
@@ -1174,6 +1182,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             OsdButton.PREV -> p != null && progAt(ch, p.start - 1)?.let(ch::inArchive) == true
             OsdButton.NEXT, OsdButton.LIVE -> mode == Mode.ARCHIVE
             OsdButton.AUDIO -> audioTracks > 1
+            OsdButton.PLAY -> paused || canArchive(ch)
             else -> if (b.seekSec < 0) canArchive(ch) else mode == Mode.ARCHIVE
         }
     }
@@ -1193,6 +1202,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             OsdButton.LIVE -> goLive()
             OsdButton.AUDIO -> cycleAudio()
+            OsdButton.PLAY -> togglePause()
             else -> seekBy(b.seekSec * 1000L)
         }
         if (!osd) return
@@ -1236,7 +1246,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Key.LEFT -> seek(-1, repeat)
             Key.RIGHT -> seek(1, repeat)
             Key.OK -> togglePause()
-            Key.DOWN -> (osdBtn.takeIf(::osdEnabled) ?: osdButtons().firstOrNull())?.let { osdBtn = it; osdOnButtons = true }
+            Key.DOWN -> (osdBtn.takeIf(::osdEnabled) ?: OsdButton.PLAY.takeIf(::osdEnabled) ?: osdButtons().firstOrNull())?.let { osdBtn = it; osdOnButtons = true }
             else -> Unit
         } else when (k) {
             Key.LEFT, Key.RIGHT -> {
@@ -1625,6 +1635,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     SettingsRow.REMOTE -> openSheet(Sheet.REMOTE)
                     SettingsRow.LANGUAGE -> openSheet(Sheet.LANGUAGE)
                     SettingsRow.SCALE -> stepScale(1, wrap = true)
+                    SettingsRow.GLASS -> { glassOn = !glassOn; prefs.glass = glassOn; cfgVersion++ }
                     SettingsRow.UPDATE -> if (updater.available != null) updater.install() else updater.check(manual = true)
                     SettingsRow.ABOUT -> Unit
                 }

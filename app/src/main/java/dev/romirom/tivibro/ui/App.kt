@@ -30,7 +30,23 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.shadow
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -110,17 +126,24 @@ fun Ticking(vm: AppViewModel, content: @Composable (now: Long) -> Unit) {
 @Composable
 fun App(vm: AppViewModel) {
     val base = LocalDensity.current
+    val backdrop = remember { Backdrop() }
+    val glassOn = vm.glassOn
+    androidx.compose.runtime.SideEffect { backdrop.enabled = glassOn }
+    RunBackdrop(backdrop)
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         val ready = vm.playlistUrl != null
-        if (ready) Video(vm) // full screen whatever the UI scale: only what is drawn over it is scaled
+        if (ready) Video(vm, backdrop) // full screen whatever the UI scale: only what is drawn over it is scaled
         // Settings → «Масштаб інтерфейсу»: one factor for every overlay, through the density (dp and sp alike). The stage
         // is worked out here from the pixel size and the scale: a BoxWithConstraints under the scaled density would not
         // re-run on a scale change alone (its pixel constraints stay the same) and would keep the old stage.
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val d = base.density * vm.uiScale / 100f
             val stage = IntSize((constraints.maxWidth / d * 2).toInt(), (constraints.maxHeight / d * 2).toInt())
-            CompositionLocalProvider(LocalDensity provides Density(d, base.fontScale), LocalStage provides stage) {
+            CompositionLocalProvider(LocalDensity provides Density(d, base.fontScale), LocalStage provides stage, LocalBackdrop provides backdrop) {
                 Box(Modifier.fillMaxSize()) { if (!ready) Setup(vm) else Overlays(vm) }
+                // once per process: not again after a language change recreates the activity
+                var intro by remember { mutableStateOf(!vm.introShown) }
+                if (intro) Intro { vm.introShown = true; intro = false }
             }
         }
     }
@@ -150,7 +173,7 @@ private fun BoxScope.Overlays(vm: AppViewModel) {
     if (vm.numBuf.isNotEmpty()) {
         Column(
             Modifier.align(Alignment.TopEnd).padding(top = 120.px, end = 72.px)
-                .background(Tok.GlassHi, RoundedCornerShape(28.px)).padding(horizontal = 36.px, vertical = 20.px),
+                .glass(RoundedCornerShape(28.px), Tok.GlassHi).padding(horizontal = 36.px, vertical = 20.px),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             T(vm.numBuf, 72, Tok.T1, FontWeight.Bold)
@@ -158,7 +181,7 @@ private fun BoxScope.Overlays(vm: AppViewModel) {
         }
     }
     AnimatedVisibility(vm.toast != null, Modifier.align(Alignment.TopCenter).padding(top = 56.px, start = 72.px, end = 72.px), enter = fadeIn() + slideInVertically { -it / 2 }, exit = fadeOut()) {
-        Box(Modifier.background(Tok.GlassHi, RoundedCornerShape(50)).border(1.dp, Tok.Hair, RoundedCornerShape(50)).padding(horizontal = 30.px, vertical = 18.px)) {
+        Box(Modifier.glass(RoundedCornerShape(50), Tok.GlassHi).padding(horizontal = 30.px, vertical = 18.px)) {
             T(vm.toast ?: "", 25, Tok.T1, FontWeight.Medium)
         }
     }
@@ -169,7 +192,7 @@ private fun BoxScope.Overlays(vm: AppViewModel) {
 
 @OptIn(UnstableApi::class)
 @Composable
-private fun Video(vm: AppViewModel) {
+private fun Video(vm: AppViewModel, backdrop: Backdrop) {
     AndroidView(
         factory = { ctx ->
             PlayerView(ctx).apply {
@@ -179,6 +202,7 @@ private fun Video(vm: AppViewModel) {
                 setShutterBackgroundColor(android.graphics.Color.BLACK)
                 isFocusable = false
                 keepScreenOn = true
+                backdrop.attach(videoSurfaceView as? android.view.SurfaceView)
             }
         },
         modifier = Modifier.fillMaxSize(),
@@ -187,7 +211,7 @@ private fun Video(vm: AppViewModel) {
 
 @Composable
 private fun Loading(status: String?) {
-    Box(Modifier.fillMaxSize().background(Tok.Ink), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().ambient(), contentAlignment = Alignment.Center) {
         T(status ?: str(R.string.loading_list), 28, Tok.T2)
     }
 }
@@ -199,7 +223,7 @@ private fun Banner(vm: AppViewModel) {
     val next = p?.let { vm.progAt(ch, it.end + 1) }
     Row(
         Modifier.padding(start = 72.px, end = 72.px, bottom = 100.px).fillMaxWidth()
-            .background(Tok.Glass, RoundedCornerShape(28.px)).border(1.dp, Tok.Hair, RoundedCornerShape(28.px))
+            .glass(RoundedCornerShape(36.px))
             .padding(horizontal = 36.px, vertical = 30.px),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -249,13 +273,13 @@ private fun Osd(vm: AppViewModel) {
     Box {
         if (vm.seekAcc != 0L) {
             Box(
-                Modifier.align(Alignment.TopCenter).offset(y = (-20).px).background(Tok.GlassHi, RoundedCornerShape(18.px))
+                Modifier.align(Alignment.TopCenter).offset(y = (-20).px).glass(RoundedCornerShape(24.px), Tok.GlassHi)
                     .padding(horizontal = 28.px, vertical = 12.px),
             ) { T((if (vm.seekAcc > 0) "+" else "−") + hms(kotlin.math.abs(vm.seekAcc)), 42, Tok.T1, FontWeight.Bold) }
         }
         Column(
             Modifier.padding(start = 72.px, end = 72.px, bottom = 100.px, top = if (vm.seekAcc != 0L) 110.px else 0.px).fillMaxWidth()
-                .background(Tok.Glass, RoundedCornerShape(28.px)).border(1.dp, Tok.Hair, RoundedCornerShape(28.px))
+                .glass(RoundedCornerShape(36.px))
                 .padding(start = 36.px, end = 36.px, top = 30.px, bottom = 26.px),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -291,27 +315,96 @@ private fun Osd(vm: AppViewModel) {
                 Spacer(Modifier.weight(1f))
                 T(hm(end), 22, Tok.T2)
             }
-            // wraps onto a second line when it doesn't fit (long labels, a large interface scale)
-            FlowRow(Modifier.padding(top = 22.px), horizontalArrangement = Arrangement.spacedBy(14.px), verticalArrangement = Arrangement.spacedBy(14.px)) {
-                for (b in OsdButton.entries) {
-                    val on = vm.osdEnabled(b)
-                    val foc = vm.osdOnButtons && vm.osdBtn == b && on
-                    val label = when (b) {
-                        OsdButton.RESTART -> str(R.string.osd_restart)
-                        OsdButton.PREV -> str(R.string.osd_prev)
-                        OsdButton.NEXT -> str(R.string.osd_next)
-                        OsdButton.LIVE -> str(R.string.osd_live)
-                        OsdButton.AUDIO -> str(R.string.osd_audio) + if (vm.audioTracks > 1) " · ${vm.audioTracks}" else ""
-                        else -> str(if (b.seekSec < 0) R.string.osd_seek_back else R.string.osd_seek_fwd, kotlin.math.abs(b.seekSec))
+            // the transport, round and in the middle of what the chips leave; the chips on the right
+            Row(Modifier.padding(top = 18.px).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(22.px, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+                    for (b in OsdButton.entries.filter { it.primary }) {
+                        val on = vm.osdEnabled(b)
+                        RoundButton(vm.osdOnButtons && vm.osdBtn == b && on, on, if (b == OsdButton.PLAY) 104 else 84, if (b.seekSec != 0) "${kotlin.math.abs(b.seekSec)}" else null) { c -> drawOsdIcon(b, c, vm.paused) }
                     }
-                    Plate(foc, Modifier.height(64.px).alpha(if (on) 1f else 0.35f), quiet = on && !foc, radius = 16, lift = 1.05f) {
-                        T(
-                            label, 23, if (foc) Tok.OnPlate else if (b == OsdButton.LIVE && on) Tok.Live else Tok.T1, FontWeight.SemiBold,
-                            Modifier.align(Alignment.Center).padding(horizontal = if (b.seekSec != 0) 18.px else 26.px),
-                        )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.px)) {
+                    for (b in OsdButton.entries.filter { !it.primary }) {
+                        val on = vm.osdEnabled(b)
+                        val foc = vm.osdOnButtons && vm.osdBtn == b && on
+                        Plate(foc, Modifier.height(56.px).alpha(if (on) 1f else 0.35f), quiet = on && !foc, radius = 28, lift = 1.05f) {
+                            Row(Modifier.align(Alignment.Center).padding(horizontal = 24.px), verticalAlignment = Alignment.CenterVertically) {
+                                if (b == OsdButton.LIVE) Box(Modifier.padding(end = 10.px).size(10.px).background(if (foc) Tok.LiveOnPlate else if (on) Tok.Live else Tok.T2, CircleShape))
+                                val label = when (b) {
+                                    OsdButton.RESTART -> str(R.string.osd_restart)
+                                    OsdButton.LIVE -> str(R.string.osd_live)
+                                    else -> str(R.string.osd_audio) + if (vm.audioTracks > 1) " · ${vm.audioTracks}" else ""
+                                }
+                                T(label, 21, if (foc) Tok.OnPlate else Tok.T1, FontWeight.SemiBold)
+                            }
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+/** A round transport button: a light pane, the lit white plate when focused, dimmed when it does nothing now. */
+@Composable
+private fun RoundButton(focused: Boolean, enabled: Boolean, size: Int, label: String?, icon: DrawScope.(Color) -> Unit) {
+    val s by animateFloatAsState(if (focused) 1.1f else 1f, tween(140), label = "lift")
+    Box(
+        Modifier.size(size.px).graphicsLayer { scaleX = s; scaleY = s }.alpha(if (enabled) 1f else .35f)
+            .then(if (focused) Modifier.shadow(16.dp, CircleShape, ambientColor = Color.White, spotColor = Color.White) else Modifier)
+            .background(if (focused) Tok.Plate else Tok.CardHi, CircleShape)
+            .then(if (focused) Modifier else Modifier.border(1.dp, CardEdge, CircleShape)),
+    ) {
+        val c = if (focused) Tok.OnPlate else Tok.T1
+        Canvas(Modifier.fillMaxSize()) { icon(c) }
+        if (label != null) T(label, 19, c, FontWeight.Bold, Modifier.align(Alignment.Center).padding(top = 2.px))
+    }
+}
+
+/** The transport icons, drawn: crisp at any scale, no font glyphs. */
+private fun DrawScope.drawOsdIcon(b: OsdButton, c: Color, paused: Boolean) {
+    val w = size.width
+    val m = center
+    fun tri(cx: Float, cy: Float, h: Float, right: Boolean) = Path().apply {
+        val d = if (right) 1f else -1f
+        moveTo(cx - d * h * .45f, cy - h / 2); lineTo(cx + d * h * .55f, cy); lineTo(cx - d * h * .45f, cy + h / 2); close()
+    }
+    val round = Stroke(w * .03f, join = StrokeJoin.Round)
+    when (b) {
+        OsdButton.PLAY -> if (paused) {
+            val t = tri(m.x + w * .03f, m.y, w * .34f, true)
+            drawPath(t, c); drawPath(t, c, style = round)
+        } else {
+            val bw = w * .09f; val bh = w * .32f; val gap = w * .07f
+            drawRoundRect(c, Offset(m.x - gap - bw, m.y - bh / 2), Size(bw, bh), CornerRadius(bw * .3f))
+            drawRoundRect(c, Offset(m.x + gap, m.y - bh / 2), Size(bw, bh), CornerRadius(bw * .3f))
+        }
+        OsdButton.PREV, OsdButton.NEXT -> {
+            val right = b == OsdButton.NEXT
+            val d = if (right) 1f else -1f
+            val t = tri(m.x - d * w * .04f, m.y, w * .28f, right)
+            drawPath(t, c); drawPath(t, c, style = round)
+            val bx = m.x + d * w * .17f
+            drawRoundRect(c, Offset(bx - w * .035f, m.y - w * .14f), Size(w * .07f, w * .28f), CornerRadius(w * .02f))
+        }
+        else -> { // ±15: an arrow round the number, open at the top, its head there pointing the way it turns
+            val back = b.seekSec < 0
+            val r = w * .29f
+            val start = if (back) -65f else 245f
+            drawArc(c, start, if (back) 295f else -295f, false, Offset(m.x - r, m.y - r), Size(2 * r, 2 * r), style = Stroke(w * .045f, cap = StrokeCap.Round))
+            val a = Math.toRadians(start.toDouble())
+            val p = Offset(m.x + r * kotlin.math.cos(a).toFloat(), m.y + r * kotlin.math.sin(a).toFloat())
+            val sa = kotlin.math.sin(a).toFloat(); val ca = kotlin.math.cos(a).toFloat()
+            val dir = if (back) Offset(sa, -ca) else Offset(-sa, ca) // back: towards smaller angles (anticlockwise)
+            val nrm = Offset(-dir.y, dir.x)
+            val h = w * .14f
+            val head = Path().apply {
+                moveTo(p.x + dir.x * h * .6f, p.y + dir.y * h * .6f)
+                lineTo(p.x - dir.x * h * .3f + nrm.x * h * .55f, p.y - dir.y * h * .3f + nrm.y * h * .55f)
+                lineTo(p.x - dir.x * h * .3f - nrm.x * h * .55f, p.y - dir.y * h * .3f - nrm.y * h * .55f)
+                close()
+            }
+            drawPath(head, c); drawPath(head, c, style = Stroke(w * .02f, join = StrokeJoin.Round))
         }
     }
 }
@@ -419,7 +512,7 @@ private fun Hints(vm: AppViewModel, modifier: Modifier) {
         )
         else -> return
     }
-    HintRow(items, modifier.fillMaxWidth().height(84.px).background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xB3000000)))).padding(horizontal = 72.px))
+    HintRow(items, modifier.fillMaxWidth().height(84.px).background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xD9000000)))).padding(horizontal = 72.px))
 }
 
 /** A key and what it does. [drop]: which go first when the bar is too narrow (a large UI scale), 2 before 1; the
@@ -464,7 +557,7 @@ private fun Setup(vm: AppViewModel) {
     val address = remember(vm.setupServer) { vm.setupServer.start(); vm.setupServer.address }
     val qr = remember(address) { address?.let(::qrBitmap) }
     val stage = LocalStage.current
-    Row(Modifier.fillMaxSize().background(Tok.Ink).padding(horizontal = min(160, stage.width / 12).px), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxSize().ambient().padding(horizontal = min(160, stage.width / 12).px), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f).padding(end = 48.px)) {
             T(str(R.string.setup_title), 56, Tok.T1, FontWeight.Bold, maxLines = 2)
             T(str(R.string.setup_steps), 26, Tok.T2, modifier = Modifier.padding(top = 32.px), maxLines = 10)

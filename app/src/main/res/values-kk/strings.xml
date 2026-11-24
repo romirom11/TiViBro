@@ -101,13 +101,9 @@
     <string name="paused">❚❚ Кідіріс</string>
     <string name="behind_live">Эфирден −%1$s</string>
     <string name="archive">Мұрағат</string>
-    <string name="osd_restart">⟲  Басынан</string>
-    <string name="osd_prev">⏮  Алдыңғы</string>
-    <string name="osd_next">⏭  Келесі</string>
-    <string name="osd_live">●  Тікелей</string>
+    <string name="osd_restart">Басынан</string>
+    <string name="osd_live">Тікелей</string>
     <string name="osd_audio">Дыбыс</string>
-    <string name="osd_seek_back">−%1$d с</string>
-    <string name="osd_seek_fwd">+%1$d с</string>
 
     <!-- hints -->
     <string name="key_ok_long">OK ұзақ</string>
@@ -198,6 +194,8 @@
     <string name="language_sub">TiViBro интерфейсінің тілі</string>
     <string name="row_scale">Интерфейс өлшемі</string>
     <string name="row_scale_desc">Мәтін, тізімдер мен панельдер өлшемі</string>
+    <string name="row_glass">Шыны әсерлері</string>
+    <string name="row_glass_desc">Панельдер астындағы бұлдыр бейне. Теледидар баяуласа, өшіріңіз</string>
     <string name="scale_value">%1$d%%</string>
     <string name="row_update">Жаңартуларды тексеру</string>
     <string name="version">Нұсқа %1$s</string>
