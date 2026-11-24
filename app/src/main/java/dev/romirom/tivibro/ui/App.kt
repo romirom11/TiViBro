@@ -16,6 +16,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -231,6 +233,7 @@ private fun Banner(vm: AppViewModel) {
 }
 
 /** The player control panel: what is playing, a timeline (focused first) and a row of buttons. */
+@kotlin.OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Osd(vm: AppViewModel) {
     val ch = vm.cur ?: return
@@ -288,7 +291,8 @@ private fun Osd(vm: AppViewModel) {
                 Spacer(Modifier.weight(1f))
                 T(hm(end), 22, Tok.T2)
             }
-            Row(Modifier.padding(top = 22.px), horizontalArrangement = Arrangement.spacedBy(14.px)) {
+            // wraps onto a second line when it doesn't fit (long labels, a large interface scale)
+            FlowRow(Modifier.padding(top = 22.px), horizontalArrangement = Arrangement.spacedBy(14.px), verticalArrangement = Arrangement.spacedBy(14.px)) {
                 for (b in OsdButton.entries) {
                     val on = vm.osdEnabled(b)
                     val foc = vm.osdOnButtons && vm.osdBtn == b && on
@@ -298,11 +302,12 @@ private fun Osd(vm: AppViewModel) {
                         OsdButton.NEXT -> str(R.string.osd_next)
                         OsdButton.LIVE -> str(R.string.osd_live)
                         OsdButton.AUDIO -> str(R.string.osd_audio) + if (vm.audioTracks > 1) " · ${vm.audioTracks}" else ""
+                        else -> str(if (b.seekSec < 0) R.string.osd_seek_back else R.string.osd_seek_fwd, kotlin.math.abs(b.seekSec))
                     }
                     Plate(foc, Modifier.height(64.px).alpha(if (on) 1f else 0.35f), quiet = on && !foc, radius = 16, lift = 1.05f) {
                         T(
                             label, 23, if (foc) Tok.OnPlate else if (b == OsdButton.LIVE && on) Tok.Live else Tok.T1, FontWeight.SemiBold,
-                            Modifier.align(Alignment.Center).padding(horizontal = 26.px),
+                            Modifier.align(Alignment.Center).padding(horizontal = if (b.seekSec != 0) 18.px else 26.px),
                         )
                     }
                 }

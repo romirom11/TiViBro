@@ -115,8 +115,10 @@ sealed class GuideSource {
 enum class CtxItem { FAV, HIDE }
 /** The «Продовжити перегляд» context menu (long OK on a bookmark or a watched programme), top to bottom. */
 enum class MarkAction { FROM_START, FORGET, DONE }
-/** The player control panel's button row, left to right. */
-enum class OsdButton { RESTART, PREV, NEXT, LIVE, AUDIO }
+/** The player control panel's button row, left to right. [seekSec]: a fixed jump back (−) or forward (+), 0 for the rest. */
+enum class OsdButton(val seekSec: Int = 0) {
+    RESTART, PREV, BACK30(-30), BACK15(-15), BACK5(-5), FWD5(5), FWD15(15), FWD30(30), NEXT, LIVE, AUDIO
+}
 enum class Key { UP, DOWN, LEFT, RIGHT, OK, BACK, CHUP, CHDOWN, PLAYPAUSE, RED, GREEN, YELLOW, BLUE, INFO, MENU, SEARCH, D0, D1, D2, D3, D4, D5, D6, D7, D8, D9 }
 
 /**
@@ -401,6 +403,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Makes [info] the active playlist: its own favourites, hidden channels, groups and bookmarks, its guide. */
     private fun openPlaylist(info: PlaylistInfo, download: Boolean) {
         openJob?.cancel()
+        recentJob?.cancel() // a channel of the old playlist: not one for the new one's «Нещодавні»
         if (playlist?.id != info.id) saveMark()
         prefs.activePlaylist = info.id
         prefs.scope = info.id
@@ -955,6 +958,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (mode == Mode.ARCHIVE && cur == ch && progAt(ch, posAbs())?.start == p.start) markLock = markKey(ch, p)
     }
 
+    private var recentJob: Job? = null
+
+    /** A channel picked on purpose goes to the top of «Нещодавні» at once; one reached by zapping only after it has
+     *  stayed on screen for [RECENT_DWELL], so a run of CH+/CH− doesn't push what was really watched out of the list. */
+    private fun noteRecent(ch: Channel, zapping: Boolean) {
+        recentJob?.cancel()
+        if (!zapping) { addRecent(ch); return }
+        recentJob = viewModelScope.launch { delay(RECENT_DWELL); if (cur == ch) addRecent(ch) }
+    }
+
+    /** Leaving the app (TV off, Home, another app) on a channel zapped to moments ago: that one was being watched. */
+    private fun commitRecent() {
+        if (recentJob?.isActive != true) return
+        recentJob?.cancel()
+        cur?.let(::addRecent)
+    }
+
     /** Remembers [ch] at the top of «Нещодавні». */
     private fun addRecent(ch: Channel) {
         if (recent.firstOrNull() == ch.id) return
@@ -1000,12 +1020,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         player.playWhenReady = true
     }
 
-    fun tune(ch: Channel, at: Long? = null) {
+    fun tune(ch: Channel, at: Long? = null, zapping: Boolean = false) {
         if (BuildConfig.DEBUG) android.util.Log.d("tivibro", "tune ${ch.id} at=$at")
         saveMark()
         cur = ch
         prefs.lastChannel = ch.id
-        addRecent(ch)
+        noteRecent(ch, zapping)
         pausedLiveAt = null
         paused = false
         if (at == null) {
@@ -1089,9 +1109,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         showToast(str(R.string.back_live))
     }
 
+    /** The player gave up (an error, or stopped): un-pausing it shows nothing until it is prepared again. */
+    private fun playerDead() = player.playerError != null || player.playbackState == Player.STATE_IDLE
+
+    /** Opens the stream again: live at the live edge, the archive at [at] (or where it plays). */
+    private fun restartPlayback(ch: Channel, at: Long? = null) {
+        if (mode == Mode.LIVE) { paused = false; play(ch.url); return }
+        // a long sleep can carry the spot out of the archive's reach: its oldest moment then
+        playArchive(ch, max(at ?: posAbs(), now() - ch.archiveDays * DAY + MIN))
+    }
+
     private fun togglePause() {
         val ch = cur ?: return
         when {
+            paused && pausedLiveAt == null && playerDead() -> restartPlayback(ch)
             mode == Mode.LIVE -> {
                 if (!canArchive(ch)) { showToast(str(R.string.no_archive)); return }
                 pausedLiveAt = livePos(); mode = Mode.ARCHIVE; paused = true; player.pause()
@@ -1107,17 +1138,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun seek(dir: Int, repeat: Int) {
         val ch = cur ?: return
         if (!canArchive(ch)) { showToast(str(R.string.no_archive)); return }
-        if (dir > 0 && mode == Mode.LIVE) return // already at the live edge
+        if (dir > 0 && mode == Mode.LIVE) return
         if (repeat == 0) { seekRun = if (now() - lastSeekAt < 1200) seekRun + 1 else 0 }
         lastSeekAt = now()
-        if (mode == Mode.LIVE) { // ◀ in live: timeshift from the frame on screen
+        seekBy(seekSteps[min(seekRun / 2 + repeat / 6, seekSteps.size - 1)] * 1000 * dir)
+        showOsd()
+    }
+
+    /** Jumps [ms] from the playing position (back from live goes into the timeshift), showing the running total. */
+    private fun seekBy(ms: Long) {
+        val ch = cur ?: return
+        if (!canArchive(ch)) { showToast(str(R.string.no_archive)); return }
+        if (ms > 0 && mode == Mode.LIVE) return // already at the live edge
+        if (mode == Mode.LIVE) { // back from live: timeshift from the frame on screen
             pendingAbs = livePos()
             pausedLiveAt = null; mode = Mode.ARCHIVE; archiveFrom = 0; archiveTo = 0
         }
-        val step = seekSteps[min(seekRun / 2 + repeat / 6, seekSteps.size - 1)] * 1000 * dir
-        seekAcc += step
-        seekAbs(posAbs() + step)
-        showOsd()
+        seekAcc += ms
+        seekAbs(posAbs() + ms)
         seekJob?.cancel()
         seekJob = viewModelScope.launch { delay(900); seekAcc = 0 }
     }
@@ -1136,6 +1174,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             OsdButton.PREV -> p != null && progAt(ch, p.start - 1)?.let(ch::inArchive) == true
             OsdButton.NEXT, OsdButton.LIVE -> mode == Mode.ARCHIVE
             OsdButton.AUDIO -> audioTracks > 1
+            else -> if (b.seekSec < 0) canArchive(ch) else mode == Mode.ARCHIVE
         }
     }
 
@@ -1154,6 +1193,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
             OsdButton.LIVE -> goLive()
             OsdButton.AUDIO -> cycleAudio()
+            else -> seekBy(b.seekSec * 1000L)
         }
         if (!osd) return
         showOsd()
@@ -1196,7 +1236,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Key.LEFT -> seek(-1, repeat)
             Key.RIGHT -> seek(1, repeat)
             Key.OK -> togglePause()
-            Key.DOWN -> osdButtons().firstOrNull()?.let { osdBtn = it; osdOnButtons = true }
+            Key.DOWN -> (osdBtn.takeIf(::osdEnabled) ?: osdButtons().firstOrNull())?.let { osdBtn = it; osdOnButtons = true }
             else -> Unit
         } else when (k) {
             Key.LEFT, Key.RIGHT -> {
@@ -1221,6 +1261,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (i >= 0) list[(i + dir + list.size) % list.size]
             // the current channel was just hidden: go on from where it stood
             else if (dir > 0) list.firstOrNull { it.num > n } ?: list.first() else list.lastOrNull { it.num < n } ?: list.last(),
+            zapping = true,
         )
     }
 
@@ -1259,7 +1300,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun onStop() { saveMark(); player.pause(); syncTvHome(now = true) }
+    /** When the app went to the background ([SystemClock.elapsedRealtime], 0: it is in the foreground) and the archive
+     *  position it left at (null: live). */
+    private var stoppedAt = 0L
+    private var stoppedPos: Long? = null
+
+    fun onStop() {
+        saveMark()
+        commitRecent()
+        stoppedAt = SystemClock.elapsedRealtime()
+        stoppedPos = if (mode == Mode.ARCHIVE) posAbs() else null
+        player.pause()
+        syncTvHome(now = true)
+    }
 
     /** «Вихід»: the bookmark is saved, playback stops, the activity finishes. */
     private fun exitApp() {
@@ -1268,8 +1321,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         player.stop()
         onExit()
     }
+    /** Back from the background. After the TV slept the paused stream is usually dead (the connection dropped, the
+     *  link's token ran out, live moved on), and un-pausing an errored player leaves a black screen: anything but a
+     *  short trip away starts the stream again, live at the live edge, the archive where it was left. */
     fun onStart() {
-        if (!paused && cur != null) player.playWhenReady = true
+        val ch = cur
+        val away = stoppedAt != 0L && SystemClock.elapsedRealtime() - stoppedAt > RESTART_AFTER
+        val pos = stoppedPos
+        stoppedAt = 0L; stoppedPos = null
+        if (ch != null && !paused) {
+            if (away || playerDead()) restartPlayback(ch, pos) else player.playWhenReady = true
+        }
         updater.checkIfDue()
     }
 
@@ -2448,6 +2510,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     companion object {
         const val DONE = .92f
         const val RECENT_MAX = 20
+        /** Away from the app longer than this, the stream is opened again on return rather than un-paused. */
+        const val RESTART_AFTER = 30_000L
+        /** How long a channel zapped to has to stay on screen to count as watched for «Нещодавні». */
+        const val RECENT_DWELL = 10_000L
         /** Cards per Home row at most. */
         const val HOME_ROW_MAX = 20
         /** «Зараз в ефірі» shows more: it is one card per channel. */
